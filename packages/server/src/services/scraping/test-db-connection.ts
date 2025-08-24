@@ -1,0 +1,16 @@
+import { connectToDatabase, disconnectFromDatabase } from '../../db/mongoose'
+
+async function testConnection() {
+  try {
+    console.log('🔌 Testing MongoDB Atlas connection...')
+    await connectToDatabase()
+    console.log('✅ Database connected successfully!')
+    await disconnectFromDatabase()
+    console.log('✅ Database disconnected successfully!')
+  } catch (error) {
+    console.error('❌ Database connection failed:', error)
+  }
+  process.exit(0)
+}
+
+testConnection()

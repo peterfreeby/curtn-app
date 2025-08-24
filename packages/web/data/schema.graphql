@@ -1,0 +1,566 @@
+"""The root query type"""
+type Query {
+  movieList(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+  ): MovieConnection
+  singleMovie(id: ID!): Movie
+  searchMovieFromTMDB(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+    title: String!
+  ): MovieConnection
+  movieSummary(id: ID!): MovieSummary
+  personList(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+  ): PersonConnection
+  me: User
+  userList(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+
+    """Filter users by this username"""
+    username: String
+
+    """Filter users by this email"""
+    email: String
+  ): UserConnection
+  singleUser(id: ID!): User
+  reviewList(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+
+    """Sort reviews by this field"""
+    sort: String
+
+    """Use the sort field in this direction"""
+    direction: String
+
+    """Filter reviews by this rating"""
+    rating: Int
+
+    """Filter reviews by this movie"""
+    movie: ID
+
+    """Filter reviews by this username"""
+    username: String
+  ): UserReviewConnection
+  singleReview(id: ID!): UserReview
+
+  """Fetches an object given its ID"""
+  node(
+    """The ID of an object"""
+    id: ID!
+  ): Node
+
+  """Fetches objects given their IDs"""
+  nodes(
+    """The IDs of objects"""
+    ids: [ID!]!
+  ): [Node]!
+}
+
+"""A connection to a list of items."""
+type MovieConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [MovieEdge]
+}
+
+"""Information about pagination in a connection."""
+type PageInfo {
+  """When paginating forwards, are there more items?"""
+  hasNextPage: Boolean!
+
+  """When paginating backwards, are there more items?"""
+  hasPreviousPage: Boolean!
+
+  """When paginating backwards, the cursor to continue."""
+  startCursor: String
+
+  """When paginating forwards, the cursor to continue."""
+  endCursor: String
+}
+
+"""An edge in a connection."""
+type MovieEdge {
+  """The item at the end of the edge"""
+  node: Movie
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+"""Movie type"""
+type Movie implements Node {
+  """The ID of an object"""
+  id: ID!
+
+  """Movie's title"""
+  title: String!
+
+  """Movie's duration"""
+  duration: String!
+
+  """Movie's description"""
+  description: String!
+
+  """Movie's genres"""
+  genres: [String]!
+
+  """Movie's global release date"""
+  releaseDate: String!
+
+  """Movie's poster path"""
+  posterPath: String
+
+  """Movie's rating according to users"""
+  rating: Float!
+
+  """Movie's cast"""
+  cast: [Credit]
+
+  """Movie's crew  """
+  crew: [Credit]
+}
+
+"""An object with an ID"""
+interface Node {
+  """The id of the object."""
+  id: ID!
+}
+
+"""Who made what on this movie development"""
+type Credit {
+  """Who played this role"""
+  person: Person!
+
+  """What was the role of this person on this movie development"""
+  role: String!
+}
+
+"""Person type"""
+type Person implements Node {
+  """The ID of an object"""
+  id: ID!
+
+  """Person's name"""
+  name: String!
+}
+
+type MovieSummary {
+  error: String
+  totalWatches: Int
+  reviewsPerRating: [ReviewsPerRating]
+  uniqueWatches: Int
+}
+
+type ReviewsPerRating {
+  rating: Float
+  count: Int
+}
+
+"""A connection to a list of items."""
+type PersonConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [PersonEdge]
+}
+
+"""An edge in a connection."""
+type PersonEdge {
+  """The item at the end of the edge"""
+  node: Person
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+"""User type"""
+type User implements Node {
+  """The ID of an object"""
+  id: ID!
+
+  """User's full name"""
+  fullName: String!
+
+  """User's username"""
+  username: String!
+
+  """User's email"""
+  email: String!
+}
+
+"""A connection to a list of items."""
+type UserConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [UserEdge]
+}
+
+"""An edge in a connection."""
+type UserEdge {
+  """The item at the end of the edge"""
+  node: User
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+"""A connection to a list of items."""
+type UserReviewConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [UserReviewEdge]
+}
+
+"""An edge in a connection."""
+type UserReviewEdge {
+  """The item at the end of the edge"""
+  node: UserReview
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+"""Users review's type"""
+type UserReview implements Node {
+  """The ID of an object"""
+  id: ID!
+
+  """The user who wrote the review"""
+  user: User!
+
+  """The movie being reviewed"""
+  movie: Movie!
+
+  """User's review"""
+  text: String
+
+  """User's rating"""
+  rating: Float
+
+  """When the user watched the movie"""
+  watchedAt: String
+
+  """Users comments on the review"""
+  comments(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+  ): CommentConnection
+  totalComments: Int
+}
+
+"""A connection to a list of items."""
+type CommentConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [CommentEdge]
+}
+
+"""An edge in a connection."""
+type CommentEdge {
+  """The item at the end of the edge"""
+  node: Comment
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+type Comment implements Node {
+  """The ID of an object"""
+  id: ID!
+  user: User
+  content: String
+}
+
+"""The root mutation type"""
+type Mutation {
+  """Creates a new user"""
+  userCreate(input: userCreateInput!): userCreatePayload
+
+  """Update a user using its id"""
+  userUpdate(input: userUpdateInput!): userUpdatePayload
+
+  """Delete a user using its id"""
+  userDelete(input: userDeleteInput!): userDeletePayload
+
+  """Login a user"""
+  loginUser(input: loginUserInput!): loginUserPayload
+  userLogout: userLogoutPayload
+
+  """From a given refresh token, generate a new access token"""
+  userRefreshToken(input: userRefreshTokenInput!): userRefreshTokenPayload
+
+  """Add a comment"""
+  commentCreate(input: commentCreateInput!): commentCreatePayload
+
+  """Update a comment using its id"""
+  commentUpdate(input: commentUpdateInput!): commentUpdatePayload
+
+  """Delete a comment using its id"""
+  commentDelete(input: commentDeleteInput!): commentDeletePayload
+
+  """Add a review"""
+  reviewCreate(input: reviewCreateInput!): reviewCreatePayload
+
+  """Update a review using its id"""
+  reviewUpdate(input: reviewUpdateInput!): reviewUpdatePayload
+
+  """Delete a review using its id"""
+  reviewDelete(input: reviewDeleteInput!): reviewDeletePayload
+}
+
+type userCreatePayload {
+  user: User
+  token: Token
+  error: String
+  clientMutationId: String
+}
+
+"""The access and the refresh token"""
+type Token {
+  """The access token, needed to authenticate"""
+  accessToken: String
+  refreshToken: RefreshToken
+}
+
+type RefreshToken {
+  """"""
+  expiresIn: String
+
+  """The refresh token, used to generate a new access token"""
+  value: String
+}
+
+input userCreateInput {
+  """User's full name"""
+  fullName: String!
+
+  """User's email"""
+  email: String!
+
+  """User's username"""
+  username: String!
+
+  """User's password"""
+  password: String!
+
+  """User's confirm password"""
+  confirmPassword: String!
+  clientMutationId: String
+}
+
+type userUpdatePayload {
+  user: User
+  error: String
+  clientMutationId: String
+}
+
+input userUpdateInput {
+  id: ID!
+
+  """User's full name"""
+  fullName: String!
+
+  """User's password"""
+  password: String!
+  clientMutationId: String
+}
+
+type userDeletePayload {
+  deletedCount: String
+  error: String
+  clientMutationId: String
+}
+
+input userDeleteInput {
+  id: ID!
+  clientMutationId: String
+}
+
+type loginUserPayload {
+  token: Token
+  user: User
+  error: String
+  clientMutationId: String
+}
+
+input loginUserInput {
+  email: String!
+  password: String!
+  clientMutationId: String
+}
+
+type userLogoutPayload {
+  error: String
+}
+
+type userRefreshTokenPayload {
+  error: String
+  accessToken: String
+  clientMutationId: String
+}
+
+input userRefreshTokenInput {
+  refreshToken: String!
+  clientMutationId: String
+}
+
+type commentCreatePayload {
+  comment: Comment
+  error: String
+  clientMutationId: String
+}
+
+input commentCreateInput {
+  """The id of the review to comment on"""
+  review: ID!
+
+  """The content of the comment"""
+  content: String!
+  clientMutationId: String
+}
+
+type commentUpdatePayload {
+  comment: Comment
+  error: String
+  clientMutationId: String
+}
+
+input commentUpdateInput {
+  id: ID!
+
+  """The content of the comment"""
+  content: String!
+  clientMutationId: String
+}
+
+type commentDeletePayload {
+  """The id of the deleted comment"""
+  deletedId: ID
+  error: String
+  clientMutationId: String
+}
+
+input commentDeleteInput {
+  id: ID!
+  clientMutationId: String
+}
+
+type reviewCreatePayload {
+  review: UserReview
+  error: String
+  clientMutationId: String
+}
+
+input reviewCreateInput {
+  """Movie's unique identifier"""
+  movie: ID!
+
+  """Users review's text"""
+  text: String
+
+  """User review's rating"""
+  rating: Float
+
+  """When the user watched the movie"""
+  watchedAt: String
+  clientMutationId: String
+}
+
+type reviewUpdatePayload {
+  review: UserReview
+  error: String
+  clientMutationId: String
+}
+
+input reviewUpdateInput {
+  id: ID!
+
+  """User review's text"""
+  text: String
+
+  """User review's rating"""
+  rating: Float
+
+  """When the user watched the movie"""
+  watchedAt: String
+  clientMutationId: String
+}
+
+type reviewDeletePayload {
+  deletedCount: String
+  error: String
+  clientMutationId: String
+}
+
+input reviewDeleteInput {
+  id: ID!
+  clientMutationId: String
+}

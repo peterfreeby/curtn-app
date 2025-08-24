@@ -1,0 +1,266 @@
+import axios from 'axios'
+import * as cheerio from 'cheerio'
+
+// Interface for Caveat event data
+export interface CaveatEvent {
+  title: string
+  description?: string
+  date: string
+  time?: string
+  ticketUrl?: string
+  price?: string
+  eventType?: string
+  imageUrl?: string
+  soldOut?: boolean
+}
+
+// Main scraper function for Caveat NYC
+export async function scrapeCaveatEvents(): Promise<CaveatEvent[]> {
+  try {
+    console.log('🎭 Scraping Caveat NYC events...')
+    
+    const response = await axios.get('https://caveat.nyc/', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+      },
+      timeout: 15000
+    })
+
+    const $ = cheerio.load(response.data)
+    const events: CaveatEvent[] = []
+
+    console.log('📄 Page loaded, parsing events...')
+
+    // Look for event listings - we'll need to inspect the actual HTML structure
+    // Common selectors to try:
+    const possibleEventSelectors = [
+      '.event',
+      '.event-item',
+      '.show',
+      '.listing',
+      '.event-card',
+      '[class*="event"]',
+      '[class*="show"]'
+    ]
+
+    let foundEvents = false
+
+    for (const selector of possibleEventSelectors) {
+      const elements = $(selector)
+      if (elements.length > 0) {
+        console.log(`📅 Found ${elements.length} events using selector: ${selector}`)
+        
+        elements.each((index, element) => {
+          const eventData = parseEventElement($, $(element))
+          if (eventData.title) {
+            events.push(eventData)
+            foundEvents = true
+          }
+        })
+        
+        if (foundEvents) break
+      }
+    }
+
+    // If no events found with standard selectors, try more generic approaches
+    if (!foundEvents) {
+      console.log('🔍 Trying alternative parsing methods...')
+      
+      // Look for any links that might be events
+      $('a').each((index, element) => {
+        const linkText = $(element).text().trim()
+        const href = $(element).attr('href')
+        
+        // Filter for event-like links
+        if (linkText.length > 10 && href && (
+          href.includes('event') || 
+          href.includes('show') || 
+          href.includes('ticket') ||
+          linkText.toLowerCase().includes('pm') ||
+          linkText.toLowerCase().includes('am')
+        )) {
+          const eventData: CaveatEvent = {
+            title: linkText,
+            ticketUrl: href.startsWith('http') ? href : `https://caveat.nyc${href}`,
+            date: extractDateFromText(linkText)
+          }
+          
+          if (eventData.title.length < 200) { // Avoid super long text
+            events.push(eventData)
+          }
+        }
+      })
+    }
+
+    // Remove duplicates
+    const uniqueEvents = events.filter((event, index, self) => 
+      index === self.findIndex(e => e.title === event.title && e.date === event.date)
+    )
+
+    console.log(`✅ Found ${uniqueEvents.length} unique events`)
+    return uniqueEvents
+
+  } catch (error: any) {
+    console.error('❌ Error scraping Caveat events:', error.message)
+    return []
+  }
+}
+
+// Parse individual event element
+function parseEventElement($: cheerio.CheerioAPI, element: cheerio.Cheerio<cheerio.Element>): CaveatEvent {
+  // Try multiple ways to extract event information
+  const title = extractText($, element, [
+    '.title',
+    '.event-title',
+    '.show-title',
+    'h1', 'h2', 'h3', 'h4',
+    '.name'
+  ])
+
+  const description = extractText($, element, [
+    '.description',
+    '.event-description',
+    '.summary',
+    'p'
+  ])
+
+  const date = extractText($, element, [
+    '.date',
+    '.event-date',
+    '.show-date',
+    '.time',
+    '[class*="date"]'
+  ])
+
+  const price = extractText($, element, [
+    '.price',
+    '.cost',
+    '[class*="price"]',
+    '[class*="cost"]'
+  ])
+
+  const ticketUrl = extractAttribute($, element, [
+    'a'
+  ], 'href')
+
+  const imageUrl = extractAttribute($, element, [
+    'img'
+  ], 'src')
+
+  // Check for sold out indicators
+  const soldOut = element.text().toLowerCase().includes('sold out') ||
+                  element.find('.sold-out').length > 0
+
+  return {
+    title: title || '',
+    description: description || undefined,
+    date: date || extractDateFromText(element.text()),
+    price: price || undefined,
+    ticketUrl: ticketUrl ? (ticketUrl.startsWith('http') ? ticketUrl : `https://caveat.nyc${ticketUrl}`) : undefined,
+    imageUrl: imageUrl ? (imageUrl.startsWith('http') ? imageUrl : `https://caveat.nyc${imageUrl}`) : undefined,
+    soldOut
+  }
+}
+
+// Helper function to extract text using multiple possible selectors
+function extractText($: cheerio.CheerioAPI, element: cheerio.Cheerio<cheerio.Element>, selectors: string[]): string {
+  for (const selector of selectors) {
+    const text = element.find(selector).first().text().trim()
+    if (text) return text
+  }
+  return ''
+}
+
+// Helper function to extract attributes
+function extractAttribute($: cheerio.CheerioAPI, element: cheerio.Cheerio<cheerio.Element>, selectors: string[], attribute: string): string {
+  for (const selector of selectors) {
+    const attr = element.find(selector).first().attr(attribute)
+    if (attr) return attr
+  }
+  return ''
+}
+
+// Extract date information from text
+function extractDateFromText(text: string): string {
+  // Look for common date patterns
+  const datePatterns = [
+    /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:,\s+\d{4})?\b/gi,
+    /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}(?:,\s+\d{4})?\b/gi,
+    /\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/g,
+    /\b\d{1,2}-\d{1,2}-\d{2,4}\b/g,
+    /\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s*(.*?)(?:\s|$)/gi
+  ]
+
+  for (const pattern of datePatterns) {
+    const match = text.match(pattern)
+    if (match) {
+      return match[0].trim()
+    }
+  }
+
+  return ''
+}
+
+// Debug function to inspect page structure
+export async function debugCaveatStructure(): Promise<void> {
+  try {
+    const response = await axios.get('https://caveat.nyc/', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      },
+      timeout: 15000
+    })
+
+    const $ = cheerio.load(response.data)
+    
+    console.log('🔍 DEBUGGING CAVEAT PAGE STRUCTURE')
+    console.log('=====================================')
+    
+    // Find all unique class names
+    const classNames = new Set<string>()
+    $('[class]').each((_, element) => {
+      const classes = $(element).attr('class')?.split(' ') || []
+      classes.forEach(cls => cls.trim() && classNames.add(cls))
+    })
+    
+    console.log('\n📋 All CSS Classes Found:')
+    Array.from(classNames).sort().forEach(cls => {
+      if (cls.toLowerCase().includes('event') || 
+          cls.toLowerCase().includes('show') || 
+          cls.toLowerCase().includes('card') ||
+          cls.toLowerCase().includes('item')) {
+        console.log(`  🎯 ${cls} (${$('.' + cls).length} elements)`)
+      }
+    })
+    
+    // Find all links
+    console.log('\n🔗 Sample Links:')
+    $('a').slice(0, 10).each((index, element) => {
+      const href = $(element).attr('href')
+      const text = $(element).text().trim().substring(0, 50)
+      if (text) {
+        console.log(`  ${text}... → ${href}`)
+      }
+    })
+    
+    // Look for structured data
+    console.log('\n📊 Structured Data:')
+    $('script[type="application/ld+json"]').each((index, element) => {
+      console.log(`  Found JSON-LD: ${$(element).html()?.substring(0, 100)}...`)
+    })
+
+  } catch (error) {
+    console.error('Error debugging page structure:', error)
+  }
+}
+
+// Export main scraper
+export const CaveatScraper = {
+  scrapeEvents: scrapeCaveatEvents,
+  debugStructure: debugCaveatStructure
+}
