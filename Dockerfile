@@ -16,5 +16,5 @@ COPY . .
 # Expose port
 EXPOSE 4000
 
-# Start the application
-CMD ["yarn", "start"]
+# Use the dev:server command that exists
+CMD ["yarn", "dev:server"]
