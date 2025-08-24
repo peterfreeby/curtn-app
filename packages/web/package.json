@@ -26,7 +26,7 @@
     "react-relay": "^14.1.0",
     "react-router-dom": "6",
     "recharts": "^2.1.14",
-    "relay-runtime": "^14.1.0",
+    "relay-runtime": "^20.1.1",
     "yup": "^0.32.11"
   },
   "devDependencies": {
