@@ -1,11 +1,17 @@
 import dotenv from 'dotenv'
-import path from 'path'
 
-if (!process.env.VERCEL) {
-  // Try loading .env from server package root (works regardless of CWD)
-  dotenv.config({ path: path.resolve(__dirname, '../../.env') })
-  // Fallback: also try CWD-relative .env
-  dotenv.config()
+// Load .env files — try multiple paths to handle both standalone server
+// and webpack-bundled (Next.js) environments
+if (!process.env.VERCEL && !process.env.MONGODB_URL) {
+  try {
+    const path = require('path')
+    // When running from packages/server/ directly
+    dotenv.config({ path: path.resolve(process.cwd(), '.env') })
+    // When running from packages/app/ (Next.js dev)
+    dotenv.config({ path: path.resolve(process.cwd(), '../server/.env') })
+  } catch {
+    dotenv.config()
+  }
 }
 
 export function getEnvironmentVariables() {

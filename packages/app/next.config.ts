@@ -2,13 +2,13 @@ import type { NextConfig } from 'next'
 import path from 'path'
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['mongoose', 'bcrypt', 'mongodb', 'bson', 'jsonwebtoken', 'graphql'],
+  serverExternalPackages: ['mongoose', 'bcrypt', 'mongodb', 'bson'],
   outputFileTracingRoot: path.join(__dirname, '../../'),
+  transpilePackages: ['server'],
   webpack: (config, { isServer }) => {
     if (isServer) {
-      const nativeModules = /^(bcrypt|mongodb|mongoose|bson|jsonwebtoken|graphql)($|\/)/
+      const nativeModules = /^(bcrypt|mongodb|mongoose|bson)($|\/)/
 
-      // Handle both array and function externals
       const prevExternals = config.externals
       config.externals = async (ctx: any) => {
         const { request } = ctx
@@ -16,7 +16,6 @@ const nextConfig: NextConfig = {
           return `commonjs ${request}`
         }
 
-        // Call previous externals
         if (Array.isArray(prevExternals)) {
           for (const ext of prevExternals) {
             if (typeof ext === 'function') {
