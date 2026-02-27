@@ -13,6 +13,7 @@ export default function SignupPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -27,17 +28,19 @@ export default function SignupPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: `
-            mutation UserCreate($fullName: String!, $username: String!, $email: String!, $password: String!) {
-              userCreate(input: { fullName: $fullName, username: $username, email: $email, password: $password }) {
+            mutation UserCreate($fullName: String!, $username: String!, $email: String!, $password: String!, $confirmPassword: String!) {
+              userCreate(input: { fullName: $fullName, username: $username, email: $email, password: $password, confirmPassword: $confirmPassword }) {
                 token {
                   accessToken
-                  refreshToken
+                  refreshToken {
+                    value
+                  }
                 }
                 error
               }
             }
           `,
-          variables: { fullName, username, email, password },
+          variables: { fullName, username, email, password, confirmPassword },
         }),
       });
 
@@ -48,7 +51,7 @@ export default function SignupPage() {
         setError(result.error);
       } else if (result?.token) {
         localStorage.setItem("curtn_access_token", result.token.accessToken);
-        localStorage.setItem("curtn_refresh_token", result.token.refreshToken);
+        localStorage.setItem("curtn_refresh_token", result.token.refreshToken.value);
         router.push("/reviews");
       }
     } catch {
@@ -97,6 +100,14 @@ export default function SignupPage() {
             placeholder="Create a password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <Input
+            label="Confirm Password"
+            type="password"
+            placeholder="Confirm your password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
             required
           />
 

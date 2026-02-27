@@ -29,7 +29,9 @@ export default function LoginPage() {
               loginUser(input: { email: $email, password: $password }) {
                 token {
                   accessToken
-                  refreshToken
+                  refreshToken {
+                    value
+                  }
                 }
                 error
               }
@@ -46,7 +48,7 @@ export default function LoginPage() {
         setError(result.error);
       } else if (result?.token) {
         localStorage.setItem("curtn_access_token", result.token.accessToken);
-        localStorage.setItem("curtn_refresh_token", result.token.refreshToken);
+        localStorage.setItem("curtn_refresh_token", result.token.refreshToken.value);
         router.push("/reviews");
       }
     } catch {
