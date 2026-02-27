@@ -1,6 +1,12 @@
 import dotenv from 'dotenv'
+import path from 'path'
 
-dotenv.config()
+if (!process.env.VERCEL) {
+  // Try loading .env from server package root (works regardless of CWD)
+  dotenv.config({ path: path.resolve(__dirname, '../../.env') })
+  // Fallback: also try CWD-relative .env
+  dotenv.config()
+}
 
 export function getEnvironmentVariables() {
   const PORT = Number(process.env.PORT)

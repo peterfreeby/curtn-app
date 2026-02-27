@@ -9,5 +9,11 @@
     "dev:all": "concurrently \"yarn dev:server\" \"yarn dev:web\"",
     "dev:server": "yarn workspace server dev",
     "dev:web": "yarn workspace web dev"
+  },
+  "dependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
   }
 }

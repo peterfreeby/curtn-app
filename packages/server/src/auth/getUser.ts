@@ -10,8 +10,16 @@ type TokenPayload = {
   admin: boolean
 }
 
-export async function getUser(ctx: Koa.Context) {
-  const { authorization } = ctx.headers
+export async function getUser(ctx: Koa.Context): Promise<any>
+export async function getUser(ctx: { authorization?: string }): Promise<any>
+export async function getUser(ctx: Koa.Context | { authorization?: string }) {
+  let authorization: string | undefined
+
+  if ('headers' in ctx && typeof ctx.headers === 'object') {
+    authorization = (ctx.headers as Record<string, string | string[] | undefined>).authorization as string | undefined
+  } else {
+    authorization = (ctx as { authorization?: string }).authorization
+  }
 
   if (!authorization) return null
 

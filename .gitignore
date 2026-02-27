@@ -1,5 +1,8 @@
 node_modules/
 dist/
 **/.env
+**/.env.local
 .vscode
 __generated__
+.next/
+.DS_Store

@@ -1,0 +1,36 @@
+interface InputProps {
+  label: string;
+  id?: string;
+  type?: string;
+  placeholder?: string;
+  value?: string;
+  required?: boolean;
+  className?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+export function Input({ label, className = "", id, ...props }: InputProps) {
+  const inputId = id || label.toLowerCase().replace(/\s+/g, "-");
+
+  return (
+    <div className="flex flex-col gap-2">
+      <label
+        htmlFor={inputId}
+        className="text-xs uppercase tracking-widest text-curtn-muted"
+      >
+        {label}
+      </label>
+      <input
+        id={inputId}
+        className={`
+          bg-transparent border-b border-curtn-dark
+          text-curtn-cream placeholder:text-curtn-dark
+          py-2 text-sm outline-none
+          focus:border-curtn-coral transition-colors duration-200
+          ${className}
+        `}
+        {...props}
+      />
+    </div>
+  );
+}
