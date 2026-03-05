@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { Providers } from "@/lib/providers";
 
 const neueRegrade = localFont({
   src: "../fonts/NeueRegrade-Variable.ttf",
@@ -20,7 +21,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={neueRegrade.variable}>
-      <body className="font-sans min-h-screen">{children}</body>
+      <body className="font-sans min-h-screen">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

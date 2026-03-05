@@ -1,19 +1,45 @@
-import { personType } from '../person/personTypes'
-import { GraphQLObjectType, GraphQLNonNull, GraphQLString } from 'graphql'
+import {
+  GraphQLString,
+  GraphQLNonNull,
+  GraphQLObjectType,
+  GraphQLInt
+} from 'graphql'
+import { PersonModel } from '../person/personModel'
+import { RunModel } from '../run/runModel'
+import { globalIdField } from 'graphql-relay'
 
 export const creditType = new GraphQLObjectType({
   name: 'Credit',
-  description: 'Who made what on this movie development',
-  fields: () => ({
-    person: {
-      type: new GraphQLNonNull(personType),
-      description: `Who played this role`,
-      resolve: cast => cast.person
-    },
-    role: {
-      type: new GraphQLNonNull(GraphQLString),
-      description: `What was the role of this person on this movie development`,
-      resolve: cast => cast.role
+  description: 'A cast or crew credit linking a person to a run',
+  fields: () => {
+    const { personType } = require('../person/personTypes')
+    const { runType } = require('../run/runTypes')
+    return {
+      id: globalIdField('Credit', credit => credit._id),
+      person: {
+        type: new GraphQLNonNull(personType),
+        resolve: async credit => await PersonModel.findById(credit.person)
+      },
+      run: {
+        type: new GraphQLNonNull(runType),
+        resolve: async credit => await RunModel.findById(credit.run)
+      },
+      creditType: {
+        type: new GraphQLNonNull(GraphQLString),
+        resolve: credit => credit.creditType
+      },
+      role: {
+        type: new GraphQLNonNull(GraphQLString),
+        resolve: credit => credit.role
+      },
+      order: {
+        type: GraphQLInt,
+        resolve: credit => credit.order
+      },
+      createdAt: {
+        type: GraphQLString,
+        resolve: credit => credit.createdAt?.toISOString()
+      }
     }
-  })
+  }
 })

@@ -6,3 +6,4 @@ dist/
 __generated__
 .next/
 .DS_Store
+.vercel

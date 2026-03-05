@@ -1,125 +1,75 @@
 import mongoose, { Schema, Types } from 'mongoose'
 
 export interface IPerformance {
-  // Basic information
-  title: string
-  description: string
-  performanceTypes: string[] // Multiple tags: 'theater', 'musical', 'dance', 'comedy', 'improv', 'spoken-word', 'cabaret', 'experimental', 'immersive', 'drag', 'burlesque', 'happening', 'other'
-  
-  // Duration and format
-  duration: number // duration in minutes
-  intermissions: number
-  languages: string[],
-  
-  // Venue references
-  venues: Types.ObjectId[] // References to Venue documents
-  
-  // Company/Troupe information
-  company: {
-    name: string
-    description?: string
-    wikidataId?: string
-  }
-  
-  // Performance schedule
-  performances: {
-    date: Date
-    time: string
-    venueId: Types.ObjectId // Reference to specific venue
-    ticketUrl?: string
-    eventbriteId?: string
-    soldOut?: boolean
-  }[]
-  
-  // External API references
-  wikidataId?: string
+  run: Types.ObjectId
+  date: Date
+  time: string
+  venueId: Types.ObjectId
+  ticketUrl?: string
   eventbriteId?: string
-  
-  // Metadata
+  soldOut: boolean
+  metadataOverrides?: {
+    description?: string
+  }
+  creditOverrides?: {
+    added: Types.ObjectId[]
+    removed: Types.ObjectId[]
+  }
   createdAt: Date
   updatedAt: Date
-  submittedBy: Types.ObjectId // reference to user who added this performance
+  submittedBy: Types.ObjectId
 }
 
 const performanceSchema = new Schema<IPerformance>({
-  title: {
+  run: {
+    type: Schema.Types.ObjectId,
+    ref: 'run',
+    required: true
+  },
+  date: {
+    type: Date,
+    required: true
+  },
+  time: {
     type: String,
     required: true,
     trim: true
   },
-  description: {
-    type: String,
-    required: true
-  },
-  performanceTypes: [{
-    type: String,
-    enum: ['theater', 'musical', 'dance', 'comedy', 'improv', 'spoken-word', 'cabaret', 'experimental', 'immersive', 'drag', 'burlesque', 'happening', 'other'],
-    required: true
-  }],
-  duration: {
-    type: Number,
-    required: true,
-    min: 1
-  },
-  intermissions: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
-  languages: [{  // Rename to avoid MongoDB conflict
-    type: String,
-    default: ['English']
-  }],
-  venues: [{
+  venueId: {
     type: Schema.Types.ObjectId,
     ref: 'venue',
     required: true
-  }],
-  company: {
-    name: {
-      type: String,
-      required: true
-    },
-    description: String,
-    wikidataId: String
   },
-  performances: [{
-    date: {
-      type: Date,
-      required: true
-    },
-    time: {
-      type: String,
-      required: true
-    },
-    venueId: {
-      type: Schema.Types.ObjectId,
-      ref: 'venue',
-      required: true
-    },
-    ticketUrl: String,
-    eventbriteId: String,
-    soldOut: {
-      type: Boolean,
-      default: false
-    }
-  }],
-  wikidataId: String,
+  ticketUrl: String,
   eventbriteId: String,
+  soldOut: {
+    type: Boolean,
+    default: false
+  },
+  metadataOverrides: {
+    description: String
+  },
+  creditOverrides: {
+    added: [{
+      type: Schema.Types.ObjectId,
+      ref: 'credit'
+    }],
+    removed: [{
+      type: Schema.Types.ObjectId,
+      ref: 'credit'
+    }]
+  },
   submittedBy: {
     type: Schema.Types.ObjectId,
     ref: 'user',
     required: true
   }
 }, {
-  timestamps: true // This automatically adds createdAt and updatedAt
+  timestamps: true
 })
 
-// Create indexes for searching and filtering
-performanceSchema.index({ title: 'text', description: 'text' })
-performanceSchema.index({ performanceTypes: 1 }) // For filtering by type
-performanceSchema.index({ 'performances.date': 1 }) // For date-based queries
-performanceSchema.index({ 'venues': 1 }) // For venue-based queries
-performanceSchema.index({ 'performances.venueId': 1 }) // For performance venue lookups
+performanceSchema.index({ run: 1, date: -1 })
+performanceSchema.index({ venueId: 1, date: -1 })
+performanceSchema.index({ date: 1 })
 
-export const PerformanceModel = mongoose.model<IPerformance>('performance', performanceSchema)
+export const PerformanceModel = (mongoose.models.performance as mongoose.Model<IPerformance>) || mongoose.model<IPerformance>('performance', performanceSchema)

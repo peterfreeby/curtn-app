@@ -55,4 +55,4 @@ schema.index({
   title: 'text'
 })
 
-export const MovieModel = mongoose.model('movie', schema)
+export const MovieModel = mongoose.models.movie || mongoose.model('movie', schema)

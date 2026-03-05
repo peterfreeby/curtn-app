@@ -144,4 +144,4 @@ venueSchema.pre('save', function(next) {
   next()
 })
 
-export const VenueModel = mongoose.model<IVenue>('venue', venueSchema)
+export const VenueModel = (mongoose.models.venue as mongoose.Model<IVenue>) || mongoose.model<IVenue>('venue', venueSchema)

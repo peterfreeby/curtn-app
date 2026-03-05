@@ -45,4 +45,4 @@ schema.methods.validatePassword = function (plainPassword: string): boolean {
   return compareSync(plainPassword, this.password)
 }
 
-export const UserModel = mongoose.model<IUser>('user', schema)
+export const UserModel = (mongoose.models.user as mongoose.Model<IUser>) || mongoose.model<IUser>('user', schema)

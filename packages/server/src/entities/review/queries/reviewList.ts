@@ -15,7 +15,8 @@ type Args = GraphQLFieldConfigArgumentMap & {
   sort?: string
   rating?: number
   direction?: -1 | 1,
-  movie?: string
+  performance?: string
+  runId?: string
   username?: string
 }
 
@@ -35,9 +36,13 @@ export const reviewList: GraphQLFieldConfig<any, any, Args> = {
       type: GraphQLInt,
       description: 'Filter reviews by this rating'
     },
-    movie: {
+    performance: {
       type: GraphQLID,
-      description: 'Filter reviews by this movie'
+      description: 'Filter reviews by this performance (showing)'
+    },
+    runId: {
+      type: GraphQLID,
+      description: 'Filter reviews by this run'
     },
     username: {
       type: GraphQLString,
@@ -45,20 +50,22 @@ export const reviewList: GraphQLFieldConfig<any, any, Args> = {
     }
   },
   resolve: async (_, args) => {
-    const { sort, rating, direction, movie, username, ...connnectionArgs } = args
+    const { sort, rating, direction, performance, runId, username, ...connnectionArgs } = args
 
-    const movieId = movie && fromGlobalId(movie).id
+    const performanceId = performance && new Types.ObjectId(fromGlobalId(performance).id)
+    const runObjectId = runId && new Types.ObjectId(fromGlobalId(runId).id)
     const userId = username && await usernameToObjectID(username)
 
     const filter = {
       ...(userId && { user: userId }),
-      ...(movieId && { movie: movieId }),
+      ...(performanceId && { performance: performanceId }),
+      ...(runObjectId && { run: runObjectId }),
       ...(rating && { rating })
     }
 
     const reviews = await ReviewModel.aggregate([
       { $match: filter },
-      { $sort: { [sort || 'watchedAt']: direction || -1 } }
+      { $sort: { [sort || 'createdAt']: direction || -1 } }
     ])
 
     return connectionFromArray(reviews, connnectionArgs)

@@ -104,4 +104,4 @@ schema.static('revoke', async function (user: string) {
   await this.deleteMany({ user })
 })
 
-export const Token = mongoose.model<IToken, TokenModel>('token', schema)
+export const Token = (mongoose.models.token as mongoose.Model<IToken> & TokenModel) || mongoose.model<IToken, TokenModel>('token', schema)

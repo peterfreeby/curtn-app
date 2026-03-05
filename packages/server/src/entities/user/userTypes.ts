@@ -1,4 +1,6 @@
 import {
+  GraphQLBoolean,
+  GraphQLInt,
   GraphQLString,
   GraphQLNonNull,
   GraphQLObjectType,
@@ -9,6 +11,7 @@ import { connectionDefinitions, globalIdField } from 'graphql-relay'
 import { nodeInterface } from '../../graphql/nodeInterface'
 import { entityRegister } from '../../graphql/entityHelpers'
 import { UserModel } from './userModel'
+import { FollowModel } from '../follow/followModel'
 
 export const userType = new GraphQLObjectType({
   name: 'User',
@@ -30,6 +33,25 @@ export const userType = new GraphQLObjectType({
       type: new GraphQLNonNull(GraphQLString),
       description: `User's email`,
       resolve: user => user.email
+    },
+    followerCount: {
+      type: GraphQLInt,
+      description: 'Number of followers',
+      resolve: async user => FollowModel.countDocuments({ following: user._id })
+    },
+    followingCount: {
+      type: GraphQLInt,
+      description: 'Number of users this user follows',
+      resolve: async user => FollowModel.countDocuments({ follower: user._id })
+    },
+    isFollowing: {
+      type: GraphQLBoolean,
+      description: 'Whether the current viewer follows this user',
+      resolve: async (user, _args, ctx: any) => {
+        if (!ctx.user || ctx.user.id === String(user._id)) return false
+        const doc = await FollowModel.findOne({ follower: ctx.user.id, following: user._id })
+        return !!doc
+      }
     }
   })
 })

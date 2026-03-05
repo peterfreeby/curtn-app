@@ -1,5 +1,53 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Phosphor";
+  src: url("../fonts/Phosphor.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Phosphor-Bold";
+  src: url("../fonts/Phosphor-Bold.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Phosphor-Light";
+  src: url("../fonts/Phosphor-Light.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Phosphor-Thin";
+  src: url("../fonts/Phosphor-Thin.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Phosphor-Fill";
+  src: url("../fonts/Phosphor-Fill.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Phosphor-Duotone";
+  src: url("../fonts/Phosphor-Duotone.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
 @theme {
   --color-curtn-dark: #393E41;
   --color-curtn-deep: #161316;
@@ -22,4 +70,8 @@ body {
 ::selection {
   background-color: var(--color-curtn-coral);
   color: var(--color-curtn-deep);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
 }
