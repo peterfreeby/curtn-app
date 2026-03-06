@@ -2,14 +2,17 @@ import mongoose, { Schema, Types } from 'mongoose'
 
 export interface IRun {
   show: Types.ObjectId
+  title?: string
   productionCompany?: Types.ObjectId
   venues: Types.ObjectId[]
+  stage?: Types.ObjectId
   intermissions: number
   startDate?: Date
   endDate?: Date
   description?: string
   wikidataId?: string
   eventbriteId?: string
+  source?: Types.ObjectId
   createdAt: Date
   updatedAt: Date
   submittedBy: Types.ObjectId
@@ -29,6 +32,14 @@ const runSchema = new Schema<IRun>({
     type: Schema.Types.ObjectId,
     ref: 'venue'
   }],
+  title: {
+    type: String,
+    trim: true
+  },
+  stage: {
+    type: Schema.Types.ObjectId,
+    ref: 'stage'
+  },
   intermissions: {
     type: Number,
     default: 0,
@@ -42,6 +53,10 @@ const runSchema = new Schema<IRun>({
   },
   wikidataId: String,
   eventbriteId: String,
+  source: {
+    type: Schema.Types.ObjectId,
+    ref: 'dataSource'
+  },
   submittedBy: {
     type: Schema.Types.ObjectId,
     ref: 'user',

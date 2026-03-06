@@ -29,6 +29,20 @@ export const runType: GraphQLObjectType = new GraphQLObjectType({
     const { creditType } = require('../credit/creditType')
     return {
       id: globalIdField('Run', run => run.id),
+      title: {
+        type: GraphQLString,
+        description: 'Run-specific title (e.g. "Inwood Shakespeare Festival\'s Annual: King Lear")',
+        resolve: run => run.title
+      },
+      effectiveTitle: {
+        type: new GraphQLNonNull(GraphQLString),
+        description: 'Run title if set, otherwise falls back to show title',
+        resolve: async run => {
+          if (run.title) return run.title
+          const show = await ShowModel.findById(run.show)
+          return show?.title || 'Untitled'
+        }
+      },
       show: {
         type: new GraphQLNonNull(showType),
         resolve: async run => await ShowModel.findById(run.show)
@@ -40,6 +54,14 @@ export const runType: GraphQLObjectType = new GraphQLObjectType({
       venues: {
         type: new GraphQLNonNull(new GraphQLList(venueType)),
         resolve: async run => await VenueModel.find({ _id: { $in: run.venues } })
+      },
+      stage: {
+        type: require('../stage/stageTypes').stageType,
+        resolve: async (run: any) => {
+          if (!run.stage) return null
+          const { StageModel } = require('../stage/stageModel')
+          return StageModel.findById(run.stage)
+        }
       },
       intermissions: {
         type: GraphQLInt,

@@ -8,6 +8,7 @@ export interface IShow {
   languages: string[]
   url?: string
   wikidataId?: string
+  source?: Types.ObjectId
   createdAt: Date
   updatedAt: Date
   submittedBy: Types.ObjectId
@@ -41,6 +42,10 @@ const showSchema = new Schema<IShow>({
     trim: true
   },
   wikidataId: String,
+  source: {
+    type: Schema.Types.ObjectId,
+    ref: 'dataSource'
+  },
   submittedBy: {
     type: Schema.Types.ObjectId,
     ref: 'user',

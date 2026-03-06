@@ -14,6 +14,7 @@ interface User {
   id: string;
   fullName: string;
   username: string;
+  isAdmin: boolean;
 }
 
 interface AuthContextValue {
@@ -32,7 +33,7 @@ export const AuthContext = createContext<AuthContextValue>({
   refreshUser: async () => {},
 });
 
-const ME_QUERY = `query { me { id fullName username } }`;
+const ME_QUERY = `query { me { id fullName username isAdmin } }`;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -58,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       const json = await res.json();
       const me = json.data?.me;
-      setUser(me ?? null);
+      setUser(me ? { ...me, isAdmin: me.isAdmin ?? false } : null);
     } catch {
       setUser(null);
     } finally {

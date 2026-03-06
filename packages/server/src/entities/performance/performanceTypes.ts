@@ -40,6 +40,26 @@ export const performanceType = new GraphQLObjectType({
         type: venueType,
         resolve: async performance => await VenueModel.findById(performance.venueId)
       },
+      stageOverride: {
+        type: require('../stage/stageTypes').stageType,
+        description: 'Stage override for this specific performance (if different from run)',
+        resolve: async (performance: any) => {
+          if (!performance.stageOverride) return null
+          const { StageModel } = require('../stage/stageModel')
+          return StageModel.findById(performance.stageOverride)
+        }
+      },
+      effectiveStage: {
+        type: require('../stage/stageTypes').stageType,
+        description: 'Resolved stage: performance override > run default',
+        resolve: async (performance: any) => {
+          const { StageModel } = require('../stage/stageModel')
+          if (performance.stageOverride) return StageModel.findById(performance.stageOverride)
+          const run = await RunModel.findById(performance.run)
+          if (run?.stage) return StageModel.findById(run.stage)
+          return null
+        }
+      },
       ticketUrl: {
         type: GraphQLString,
         resolve: performance => performance.ticketUrl

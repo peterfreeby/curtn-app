@@ -8,7 +8,7 @@ import { LogButton } from "./LogButton";
 import { ProfileDropdown } from "./ProfileDropdown";
 
 export function DesktopNav() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   return (
     <nav className="hidden md:flex fixed top-0 left-0 right-0 z-50 h-16 items-center justify-between px-6 bg-curtn-deep/95 backdrop-blur-sm border-b border-curtn-dark/20">
@@ -36,6 +36,11 @@ export function DesktopNav() {
             <NavLink href="/add" className="text-sm font-medium">
               Add
             </NavLink>
+            {user?.isAdmin && (
+              <NavLink href="/admin" className="text-sm font-medium text-curtn-muted/50 hover:text-curtn-muted">
+                Admin
+              </NavLink>
+            )}
           </>
         )}
       </div>

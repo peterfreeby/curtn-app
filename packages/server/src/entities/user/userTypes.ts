@@ -52,6 +52,10 @@ export const userType = new GraphQLObjectType({
         const doc = await FollowModel.findOne({ follower: ctx.user.id, following: user._id })
         return !!doc
       }
+    },
+    isAdmin: {
+      type: GraphQLBoolean,
+      resolve: user => !!user.isAdmin
     }
   })
 })

@@ -94,6 +94,14 @@ export const showType: GraphQLObjectType = new GraphQLObjectType({
           return !!item
         }
       },
+      source: {
+        type: require('../dataSource/dataSourceTypes').dataSourceType,
+        resolve: async (show: any) => {
+          if (!show.source) return null
+          const { DataSourceModel } = require('../dataSource/dataSourceModel')
+          return DataSourceModel.findById(show.source)
+        }
+      },
       createdAt: {
         type: GraphQLString,
         resolve: show => show.createdAt?.toISOString()

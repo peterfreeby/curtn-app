@@ -10,6 +10,8 @@ import { runQueries } from '../entities/run/queries/queries'
 import { productionCompanyQueries } from '../entities/productionCompany/queries/queries'
 import { creditQueries } from '../entities/credit/queries/queries'
 import { watchlistQueries } from '../entities/watchlist/queries/queries'
+import { dataSourceQueries } from '../entities/dataSource/queries/queries'
+import { stageQueries } from '../entities/stage/queries/queries'
 import { nodeField, nodesField } from '../graphql/nodeInterface'
 
 export const query = new GraphQLObjectType({
@@ -27,6 +29,8 @@ export const query = new GraphQLObjectType({
     ...productionCompanyQueries,
     ...creditQueries,
     ...watchlistQueries,
+    ...dataSourceQueries,
+    ...stageQueries,
     node: nodeField,
     nodes: nodesField
   })

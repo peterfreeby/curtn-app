@@ -112,6 +112,20 @@ import {
         description: 'Google Places identifier',
         resolve: venue => venue.googlePlaceId
       },
+      stages: {
+        type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(
+          require('../stage/stageTypes').stageType
+        ))),
+        description: 'Stages within this venue (excludes default if only one exists)',
+        resolve: async (venue: any) => {
+          const { StageModel } = require('../stage/stageModel')
+          const stages = await StageModel.find({ venue: venue._id }).sort({ isDefault: 1, name: 1 })
+          // If only the default stage exists, return empty (single-stage venue)
+          if (stages.length <= 1 && stages[0]?.isDefault) return []
+          // If multiple stages, return all non-default ones
+          return stages.filter((s: any) => !s.isDefault)
+        }
+      },
       createdAt: {
         type: GraphQLString,
         description: 'When venue was added',

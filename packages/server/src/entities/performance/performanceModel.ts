@@ -8,6 +8,7 @@ export interface IPerformance {
   ticketUrl?: string
   eventbriteId?: string
   soldOut: boolean
+  stageOverride?: Types.ObjectId
   metadataOverrides?: {
     description?: string
   }
@@ -15,6 +16,7 @@ export interface IPerformance {
     added: Types.ObjectId[]
     removed: Types.ObjectId[]
   }
+  source?: Types.ObjectId
   createdAt: Date
   updatedAt: Date
   submittedBy: Types.ObjectId
@@ -46,6 +48,10 @@ const performanceSchema = new Schema<IPerformance>({
     type: Boolean,
     default: false
   },
+  stageOverride: {
+    type: Schema.Types.ObjectId,
+    ref: 'stage'
+  },
   metadataOverrides: {
     description: String
   },
@@ -58,6 +64,10 @@ const performanceSchema = new Schema<IPerformance>({
       type: Schema.Types.ObjectId,
       ref: 'credit'
     }]
+  },
+  source: {
+    type: Schema.Types.ObjectId,
+    ref: 'dataSource'
   },
   submittedBy: {
     type: Schema.Types.ObjectId,
