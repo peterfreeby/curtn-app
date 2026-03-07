@@ -83,7 +83,7 @@ export const venueUpdate = mutationWithClientMutationId({
       if (input.city !== undefined) updates.city = input.city
       if (input.state !== undefined) updates.state = input.state
       if (input.zipCode !== undefined) updates.zipCode = input.zipCode
-      if (input.capacity !== undefined) updates.capacity = parseInt(input.capacity, 10)
+      if (input.capacity !== undefined && input.capacity !== '') updates.capacity = parseInt(input.capacity, 10) || 0
       if (input.venueType !== undefined) updates.venueType = input.venueType
       if (input.website !== undefined) updates.website = input.website
       if (input.phone !== undefined) updates.phone = input.phone

@@ -55,9 +55,9 @@ export const runUpdate = mutationWithClientMutationId({
 
       if (input.title !== undefined) updates.title = input.title
       if (input.description !== undefined) updates.description = input.description
-      if (input.intermissions !== undefined) updates.intermissions = parseInt(input.intermissions, 10)
-      if (input.startDate !== undefined) updates.startDate = new Date(input.startDate)
-      if (input.endDate !== undefined) updates.endDate = new Date(input.endDate)
+      if (input.intermissions !== undefined && input.intermissions !== '') updates.intermissions = parseInt(input.intermissions, 10) || 0
+      if (input.startDate !== undefined && input.startDate !== '') updates.startDate = new Date(input.startDate)
+      if (input.endDate !== undefined && input.endDate !== '') updates.endDate = new Date(input.endDate)
 
       if (Object.keys(updates).length === 0) {
         return { run }

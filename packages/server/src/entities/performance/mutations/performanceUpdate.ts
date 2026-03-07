@@ -53,7 +53,7 @@ export const performanceUpdate = mutationWithClientMutationId({
 
       const updates: Record<string, any> = {}
 
-      if (input.date !== undefined) updates.date = new Date(input.date)
+      if (input.date !== undefined && input.date !== '') updates.date = new Date(input.date)
       if (input.time !== undefined) updates.time = input.time
       if (input.ticketUrl !== undefined) updates.ticketUrl = input.ticketUrl
       if (input.soldOut !== undefined) updates.soldOut = input.soldOut

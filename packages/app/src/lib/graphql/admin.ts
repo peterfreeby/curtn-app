@@ -333,3 +333,82 @@ export const PERFORMANCE_UPDATE_MUTATION = gql`
     }
   }
 `;
+
+// --- Delete Mutations ---
+
+export const SHOW_DELETE_MUTATION = gql`
+  mutation ShowDelete($input: showDeleteInput!) {
+    showDelete(input: $input) {
+      deletedId
+      error
+    }
+  }
+`;
+
+export const VENUE_DELETE_MUTATION = gql`
+  mutation VenueDelete($input: venueDeleteInput!) {
+    venueDelete(input: $input) {
+      deletedId
+      error
+    }
+  }
+`;
+
+export const RUN_DELETE_MUTATION = gql`
+  mutation RunDelete($input: runDeleteInput!) {
+    runDelete(input: $input) {
+      deletedId
+      error
+    }
+  }
+`;
+
+export const PERFORMANCE_DELETE_MUTATION = gql`
+  mutation PerformanceDelete($input: performanceDeleteInput!) {
+    performanceDelete(input: $input) {
+      deletedId
+      error
+    }
+  }
+`;
+
+// --- Merge Mutations ---
+
+export const SHOW_MERGE_MUTATION = gql`
+  mutation ShowMerge($input: showMergeInput!) {
+    showMerge(input: $input) {
+      show {
+        id
+        title
+      }
+      error
+    }
+  }
+`;
+
+export const VENUE_MERGE_MUTATION = gql`
+  mutation VenueMerge($input: venueMergeInput!) {
+    venueMerge(input: $input) {
+      deletedId
+      error
+    }
+  }
+`;
+
+export const RUN_MERGE_MUTATION = gql`
+  mutation RunMerge($input: runMergeInput!) {
+    runMerge(input: $input) {
+      deletedId
+      error
+    }
+  }
+`;
+
+export const PERFORMANCE_MERGE_MUTATION = gql`
+  mutation PerformanceMerge($input: performanceMergeInput!) {
+    performanceMerge(input: $input) {
+      deletedId
+      error
+    }
+  }
+`;

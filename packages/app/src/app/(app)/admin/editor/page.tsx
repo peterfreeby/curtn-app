@@ -11,6 +11,14 @@ import {
   VENUE_UPDATE_MUTATION,
   RUN_UPDATE_MUTATION,
   PERFORMANCE_UPDATE_MUTATION,
+  SHOW_DELETE_MUTATION,
+  VENUE_DELETE_MUTATION,
+  RUN_DELETE_MUTATION,
+  PERFORMANCE_DELETE_MUTATION,
+  SHOW_MERGE_MUTATION,
+  VENUE_MERGE_MUTATION,
+  RUN_MERGE_MUTATION,
+  PERFORMANCE_MERGE_MUTATION,
 } from "@/lib/graphql/admin";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
@@ -72,18 +80,135 @@ function FieldEditor({
   );
 }
 
+// --- Confirm Dialog ---
+function ConfirmDialog({
+  title,
+  message,
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="w-full max-w-sm rounded-xl border border-curtn-dark bg-curtn-surface p-6 space-y-4">
+        <h3 className="text-sm font-semibold text-curtn-cream">{title}</h3>
+        <p className="text-xs text-curtn-muted">{message}</p>
+        <div className="flex gap-2 justify-end">
+          <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="rounded-lg bg-red-600 px-4 py-2 text-xs font-semibold text-white hover:bg-red-700 transition-colors cursor-pointer"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Merge Picker ---
+function MergePicker({
+  items,
+  excludeId,
+  labelFn,
+  onSelect,
+  onCancel,
+}: {
+  items: any[];
+  excludeId: string;
+  labelFn: (item: any) => string;
+  onSelect: (targetId: string) => void;
+  onCancel: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const filtered = items
+    .filter((item) => item.id !== excludeId)
+    .filter((item) => labelFn(item).toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="w-full max-w-md rounded-xl border border-curtn-dark bg-curtn-surface p-6 space-y-4 max-h-[80vh] flex flex-col">
+        <h3 className="text-sm font-semibold text-curtn-cream">Merge into...</h3>
+        <p className="text-xs text-curtn-muted">Select the target record to merge into. The source will be deleted.</p>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Filter..."
+          className="w-full rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
+        />
+        <div className="overflow-y-auto flex-1 space-y-1">
+          {filtered.length === 0 && (
+            <p className="text-xs text-curtn-muted py-2">No matching records.</p>
+          )}
+          {filtered.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onSelect(decodeGlobalId(item.id))}
+              className="w-full text-left rounded-lg px-3 py-2 text-sm text-curtn-cream hover:bg-curtn-dark/40 transition-colors cursor-pointer"
+            >
+              {labelFn(item)}
+            </button>
+          ))}
+        </div>
+        <div className="flex justify-end">
+          <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Action Buttons ---
+function EntityActions({
+  onDelete,
+  onMerge,
+}: {
+  onDelete: () => void;
+  onMerge: () => void;
+}) {
+  return (
+    <div className="flex gap-1">
+      <button
+        type="button"
+        onClick={onMerge}
+        className="rounded-md px-2 py-1 text-xs text-curtn-muted hover:text-curtn-cream hover:bg-curtn-dark/40 transition-colors cursor-pointer"
+      >
+        Merge
+      </button>
+      <button
+        type="button"
+        onClick={onDelete}
+        className="rounded-md px-2 py-1 text-xs text-red-400 hover:text-red-300 hover:bg-red-900/20 transition-colors cursor-pointer"
+      >
+        Delete
+      </button>
+    </div>
+  );
+}
+
 // --- Shows Tab ---
 function ShowsEditor() {
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<any | null>(null);
+  const [mergeSource, setMergeSource] = useState<any | null>(null);
 
   const [{ data, fetching }, reexecute] = useQuery({
     query: ADMIN_SHOW_LIST_QUERY,
     variables: { first: 50, search: search || undefined },
   });
   const [, executeUpdate] = useMutation(SHOW_UPDATE_MUTATION);
+  const [, executeDelete] = useMutation(SHOW_DELETE_MUTATION);
+  const [, executeMerge] = useMutation(SHOW_MERGE_MUTATION);
 
   const shows = data?.showList?.edges?.map((e: any) => e.node) || [];
 
@@ -102,16 +227,43 @@ function ShowsEditor() {
     if (!editingId) return;
     setMessage(null);
     const result = await executeUpdate({
-      input: {
-        showId: decodeGlobalId(editingId),
-        ...fields,
-      },
+      input: { showId: decodeGlobalId(editingId), ...fields },
     });
     if (result.data?.showUpdate?.error) {
       setMessage(result.data.showUpdate.error);
     } else {
       setMessage("Show updated");
       setEditingId(null);
+      reexecute({ requestPolicy: "network-only" });
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirmDelete) return;
+    setMessage(null);
+    const result = await executeDelete({
+      input: { showId: decodeGlobalId(confirmDelete.id) },
+    });
+    setConfirmDelete(null);
+    if (result.data?.showDelete?.error) {
+      setMessage(result.data.showDelete.error);
+    } else {
+      setMessage("Show deleted");
+      reexecute({ requestPolicy: "network-only" });
+    }
+  }
+
+  async function handleMerge(targetId: string) {
+    if (!mergeSource) return;
+    setMessage(null);
+    const result = await executeMerge({
+      input: { sourceId: decodeGlobalId(mergeSource.id), targetId },
+    });
+    setMergeSource(null);
+    if (result.data?.showMerge?.error) {
+      setMessage(result.data.showMerge.error);
+    } else {
+      setMessage(`Merged into "${result.data?.showMerge?.show?.title}"`);
       reexecute({ requestPolicy: "network-only" });
     }
   }
@@ -124,9 +276,7 @@ function ShowsEditor() {
         placeholder="Search shows..."
         className="w-full rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
       />
-      {message && (
-        <p className="text-xs text-curtn-coral">{message}</p>
-      )}
+      {message && <p className="text-xs text-curtn-coral">{message}</p>}
       {fetching && !data ? (
         <p className="text-sm text-curtn-muted">Loading...</p>
       ) : (
@@ -160,12 +310,35 @@ function ShowsEditor() {
                       {show.duration > 0 && <span>{show.duration} min</span>}
                     </div>
                   </div>
-                  <Button variant="ghost" onClick={() => startEdit(show)}>Edit</Button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button variant="ghost" onClick={() => startEdit(show)}>Edit</Button>
+                    <EntityActions
+                      onDelete={() => setConfirmDelete(show)}
+                      onMerge={() => setMergeSource(show)}
+                    />
+                  </div>
                 </div>
               )}
             </Card>
           ))}
         </div>
+      )}
+      {confirmDelete && (
+        <ConfirmDialog
+          title={`Delete "${confirmDelete.title}"?`}
+          message="This will permanently delete this show and all its runs, performances, credits, and reviews."
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+      {mergeSource && (
+        <MergePicker
+          items={shows}
+          excludeId={mergeSource.id}
+          labelFn={(s) => s.title}
+          onSelect={handleMerge}
+          onCancel={() => setMergeSource(null)}
+        />
       )}
     </div>
   );
@@ -176,12 +349,16 @@ function VenuesEditor() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<any | null>(null);
+  const [mergeSource, setMergeSource] = useState<any | null>(null);
 
   const [{ data, fetching }, reexecute] = useQuery({
     query: ADMIN_VENUE_LIST_QUERY,
     variables: { first: 50 },
   });
   const [, executeUpdate] = useMutation(VENUE_UPDATE_MUTATION);
+  const [, executeDelete] = useMutation(VENUE_DELETE_MUTATION);
+  const [, executeMerge] = useMutation(VENUE_MERGE_MUTATION);
 
   const venues = data?.venueList?.edges?.map((e: any) => e.node) || [];
 
@@ -206,16 +383,43 @@ function VenuesEditor() {
     if (!editingId) return;
     setMessage(null);
     const result = await executeUpdate({
-      input: {
-        venueId: decodeGlobalId(editingId),
-        ...fields,
-      },
+      input: { venueId: decodeGlobalId(editingId), ...fields },
     });
     if (result.data?.venueUpdate?.error) {
       setMessage(result.data.venueUpdate.error);
     } else {
       setMessage("Venue updated");
       setEditingId(null);
+      reexecute({ requestPolicy: "network-only" });
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirmDelete) return;
+    setMessage(null);
+    const result = await executeDelete({
+      input: { venueId: decodeGlobalId(confirmDelete.id) },
+    });
+    setConfirmDelete(null);
+    if (result.data?.venueDelete?.error) {
+      setMessage(result.data.venueDelete.error);
+    } else {
+      setMessage("Venue deleted");
+      reexecute({ requestPolicy: "network-only" });
+    }
+  }
+
+  async function handleMerge(targetId: string) {
+    if (!mergeSource) return;
+    setMessage(null);
+    const result = await executeMerge({
+      input: { sourceId: decodeGlobalId(mergeSource.id), targetId },
+    });
+    setMergeSource(null);
+    if (result.data?.venueMerge?.error) {
+      setMessage(result.data.venueMerge.error);
+    } else {
+      setMessage("Venue merged");
       reexecute({ requestPolicy: "network-only" });
     }
   }
@@ -270,12 +474,35 @@ function VenuesEditor() {
                       {venue.capacity ? ` · ${venue.capacity} cap` : ""}
                     </p>
                   </div>
-                  <Button variant="ghost" onClick={() => startEdit(venue)}>Edit</Button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button variant="ghost" onClick={() => startEdit(venue)}>Edit</Button>
+                    <EntityActions
+                      onDelete={() => setConfirmDelete(venue)}
+                      onMerge={() => setMergeSource(venue)}
+                    />
+                  </div>
                 </div>
               )}
             </Card>
           ))}
         </div>
+      )}
+      {confirmDelete && (
+        <ConfirmDialog
+          title={`Delete "${confirmDelete.name}"?`}
+          message="This will only work if no runs or performances reference this venue. Use Merge instead to reassign references."
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+      {mergeSource && (
+        <MergePicker
+          items={venues}
+          excludeId={mergeSource.id}
+          labelFn={(v) => `${v.name}${v.city ? ` (${v.city})` : ""}`}
+          onSelect={handleMerge}
+          onCancel={() => setMergeSource(null)}
+        />
       )}
     </div>
   );
@@ -286,12 +513,16 @@ function RunsEditor() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<any | null>(null);
+  const [mergeSource, setMergeSource] = useState<any | null>(null);
 
   const [{ data, fetching }, reexecute] = useQuery({
     query: ADMIN_RUN_LIST_QUERY,
     variables: { first: 50 },
   });
   const [, executeUpdate] = useMutation(RUN_UPDATE_MUTATION);
+  const [, executeDelete] = useMutation(RUN_DELETE_MUTATION);
+  const [, executeMerge] = useMutation(RUN_MERGE_MUTATION);
 
   const runs = data?.runList?.edges?.map((e: any) => e.node) || [];
 
@@ -324,6 +555,42 @@ function RunsEditor() {
       setEditingId(null);
       reexecute({ requestPolicy: "network-only" });
     }
+  }
+
+  async function handleDelete() {
+    if (!confirmDelete) return;
+    setMessage(null);
+    const result = await executeDelete({
+      input: { runId: decodeGlobalId(confirmDelete.id) },
+    });
+    setConfirmDelete(null);
+    if (result.data?.runDelete?.error) {
+      setMessage(result.data.runDelete.error);
+    } else {
+      setMessage("Run deleted");
+      reexecute({ requestPolicy: "network-only" });
+    }
+  }
+
+  async function handleMerge(targetId: string) {
+    if (!mergeSource) return;
+    setMessage(null);
+    const result = await executeMerge({
+      input: { sourceId: decodeGlobalId(mergeSource.id), targetId },
+    });
+    setMergeSource(null);
+    if (result.data?.runMerge?.error) {
+      setMessage(result.data.runMerge.error);
+    } else {
+      setMessage("Run merged");
+      reexecute({ requestPolicy: "network-only" });
+    }
+  }
+
+  function runLabel(run: any): string {
+    const title = run.effectiveTitle || run.show?.title || "Untitled";
+    const company = run.productionCompany?.name;
+    return company ? `${title} (${company})` : title;
   }
 
   return (
@@ -363,12 +630,35 @@ function RunsEditor() {
                       {run.venues?.length > 0 && ` · ${run.venues.map((v: any) => v.name).join(", ")}`}
                     </p>
                   </div>
-                  <Button variant="ghost" onClick={() => startEdit(run)}>Edit</Button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button variant="ghost" onClick={() => startEdit(run)}>Edit</Button>
+                    <EntityActions
+                      onDelete={() => setConfirmDelete(run)}
+                      onMerge={() => setMergeSource(run)}
+                    />
+                  </div>
                 </div>
               )}
             </Card>
           ))}
         </div>
+      )}
+      {confirmDelete && (
+        <ConfirmDialog
+          title={`Delete "${confirmDelete.effectiveTitle}"?`}
+          message="This will permanently delete this run and all its performances, credits, and reviews."
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+      {mergeSource && (
+        <MergePicker
+          items={runs}
+          excludeId={mergeSource.id}
+          labelFn={runLabel}
+          onSelect={handleMerge}
+          onCancel={() => setMergeSource(null)}
+        />
       )}
     </div>
   );
@@ -379,12 +669,16 @@ function PerformancesEditor() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<any | null>(null);
+  const [mergeSource, setMergeSource] = useState<any | null>(null);
 
   const [{ data, fetching }, reexecute] = useQuery({
     query: ADMIN_PERFORMANCE_LIST_QUERY,
     variables: { first: 50 },
   });
   const [, executeUpdate] = useMutation(PERFORMANCE_UPDATE_MUTATION);
+  const [, executeDelete] = useMutation(PERFORMANCE_DELETE_MUTATION);
+  const [, executeMerge] = useMutation(PERFORMANCE_MERGE_MUTATION);
 
   const performances = data?.performanceList?.edges?.map((e: any) => e.node) || [];
 
@@ -421,6 +715,36 @@ function PerformancesEditor() {
     }
   }
 
+  async function handleDelete() {
+    if (!confirmDelete) return;
+    setMessage(null);
+    const result = await executeDelete({
+      input: { performanceId: decodeGlobalId(confirmDelete.id) },
+    });
+    setConfirmDelete(null);
+    if (result.data?.performanceDelete?.error) {
+      setMessage(result.data.performanceDelete.error);
+    } else {
+      setMessage("Performance deleted");
+      reexecute({ requestPolicy: "network-only" });
+    }
+  }
+
+  async function handleMerge(targetId: string) {
+    if (!mergeSource) return;
+    setMessage(null);
+    const result = await executeMerge({
+      input: { sourceId: decodeGlobalId(mergeSource.id), targetId },
+    });
+    setMergeSource(null);
+    if (result.data?.performanceMerge?.error) {
+      setMessage(result.data.performanceMerge.error);
+    } else {
+      setMessage("Performance merged");
+      reexecute({ requestPolicy: "network-only" });
+    }
+  }
+
   function formatDate(iso: string | null): string {
     if (!iso) return "\u2014";
     return new Date(iso).toLocaleDateString("en-US", {
@@ -428,6 +752,12 @@ function PerformancesEditor() {
       day: "numeric",
       year: "numeric",
     });
+  }
+
+  function perfLabel(perf: any): string {
+    const title = perf.run?.effectiveTitle || perf.run?.show?.title || "Untitled";
+    const date = formatDate(perf.date);
+    return `${title} — ${date}${perf.time ? ` at ${perf.time}` : ""}`;
   }
 
   return (
@@ -476,12 +806,35 @@ function PerformancesEditor() {
                       {perf.soldOut && <span className="text-curtn-red ml-2">Sold Out</span>}
                     </p>
                   </div>
-                  <Button variant="ghost" onClick={() => startEdit(perf)}>Edit</Button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button variant="ghost" onClick={() => startEdit(perf)}>Edit</Button>
+                    <EntityActions
+                      onDelete={() => setConfirmDelete(perf)}
+                      onMerge={() => setMergeSource(perf)}
+                    />
+                  </div>
                 </div>
               )}
             </Card>
           ))}
         </div>
+      )}
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Delete this performance?"
+          message={`${confirmDelete.run?.effectiveTitle || "Untitled"} — ${formatDate(confirmDelete.date)}. This will also delete any reviews for this performance.`}
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+      {mergeSource && (
+        <MergePicker
+          items={performances}
+          excludeId={mergeSource.id}
+          labelFn={perfLabel}
+          onSelect={handleMerge}
+          onCancel={() => setMergeSource(null)}
+        />
       )}
     </div>
   );
@@ -496,7 +849,7 @@ export default function AdminEditorPage() {
       <div>
         <h1 className="text-xl font-bold text-curtn-cream">Data Editor</h1>
         <p className="mt-1 text-sm text-curtn-muted">
-          Browse and edit shows, venues, runs, and performances.
+          Browse, edit, delete, and merge shows, venues, runs, and performances.
         </p>
       </div>
 
@@ -507,7 +860,7 @@ export default function AdminEditorPage() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
                 tab === t
                   ? "bg-curtn-deep text-curtn-cream"
                   : "text-curtn-muted hover:text-curtn-cream"

@@ -58,7 +58,7 @@ export const showUpdate = mutationWithClientMutationId({
       if (input.performanceTypes !== undefined) {
         updates.performanceTypes = input.performanceTypes.split(',').map((s: string) => s.trim()).filter(Boolean)
       }
-      if (input.duration !== undefined) updates.duration = parseInt(input.duration, 10)
+      if (input.duration !== undefined && input.duration !== '') updates.duration = parseInt(input.duration, 10) || 0
       if (input.url !== undefined) updates.url = input.url
 
       if (Object.keys(updates).length === 0) {
