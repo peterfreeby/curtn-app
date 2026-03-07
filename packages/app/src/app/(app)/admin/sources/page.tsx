@@ -16,6 +16,7 @@ interface DataSourceNode {
   type: string;
   url: string | null;
   isActive: boolean;
+  lastPolledAt: string | null;
   createdAt: string;
 }
 
@@ -117,6 +118,11 @@ export default function DataSourcesPage() {
     }
   }
 
+  function isRecentlyPolled(lastPolledAt: string | null): boolean {
+    if (!lastPolledAt) return false;
+    return Date.now() - new Date(lastPolledAt).getTime() < 60 * 60 * 1000;
+  }
+
   async function handlePoll(sourceId: string, sourceName: string) {
     setPollResult(null);
     // sourceId from GraphQL is a global ID like "RGF0YVNvdXJjZToxMjM0"
@@ -135,6 +141,7 @@ export default function DataSourcesPage() {
       setPollResult(
         `${sourceName}: ${data.eventsFound} found, ${data.eventsCreated} new, ${data.eventsSkipped} skipped`
       );
+      reexecuteQuery({ requestPolicy: "network-only" });
     }
   }
 
@@ -286,13 +293,18 @@ export default function DataSourcesPage() {
                     {source.url}
                   </p>
                 )}
+                {source.lastPolledAt && (
+                  <p className="mt-0.5 text-xs text-curtn-muted/40">
+                    Last polled: {new Date(source.lastPolledAt).toLocaleString()}
+                  </p>
+                )}
               </div>
               <Button
                 variant="secondary"
                 onClick={() => handlePoll(source.id, source.name)}
-                disabled={polling}
+                disabled={polling || isRecentlyPolled(source.lastPolledAt)}
               >
-                {polling ? "Polling..." : "Poll Now"}
+                {polling ? "Polling..." : isRecentlyPolled(source.lastPolledAt) ? "Cooldown" : "Poll Now"}
               </Button>
             </Card>
           ))}

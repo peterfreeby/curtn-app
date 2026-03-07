@@ -42,6 +42,16 @@ export const pollDataSource = mutationWithClientMutationId({
       return { error: `Cannot poll a ${ds.type} data source` }
     }
 
+    // Rate limit: minimum 1 hour between polls per source
+    const MIN_POLL_INTERVAL_MS = 60 * 60 * 1000
+    if (ds.lastPolledAt) {
+      const elapsed = Date.now() - new Date(ds.lastPolledAt).getTime()
+      if (elapsed < MIN_POLL_INTERVAL_MS) {
+        const minutesLeft = Math.ceil((MIN_POLL_INTERVAL_MS - elapsed) / 60000)
+        return { error: `Rate limited: wait ${minutesLeft} more minute${minutesLeft === 1 ? '' : 's'} before polling again` }
+      }
+    }
+
     try {
       const rules: CleanupRules = (ds.config as any) || {}
       const events = await parseFeed(ds.type as 'rss' | 'ical', ds.url, rules)

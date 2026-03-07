@@ -52,8 +52,14 @@ function extractTimeFromDate(date: Date): string {
   return `${h}:${minutes.toString().padStart(2, '0')} ${ampm}`
 }
 
+const FETCH_TIMEOUT_MS = 15000
+const USER_AGENT = 'Curtn/1.0 (https://curtn.com; data-feed-reader)'
+
 export async function parseRssFeed(url: string, rules: CleanupRules = {}): Promise<ParsedEvent[]> {
-  const parser = new Parser()
+  const parser = new Parser({
+    timeout: FETCH_TIMEOUT_MS,
+    headers: { 'User-Agent': USER_AGENT }
+  })
   const feed = await parser.parseURL(url)
 
   return (feed.items || []).map(item => {
@@ -79,7 +85,12 @@ export async function parseRssFeed(url: string, rules: CleanupRules = {}): Promi
 }
 
 export async function parseIcalFeed(url: string, rules: CleanupRules = {}): Promise<ParsedEvent[]> {
-  const response = await fetch(url)
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  const response = await fetch(url, {
+    signal: controller.signal,
+    headers: { 'User-Agent': USER_AGENT }
+  }).finally(() => clearTimeout(timeoutId))
   const text = await response.text()
 
   const jcalData = ICAL.parse(text)

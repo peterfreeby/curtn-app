@@ -29,6 +29,7 @@ export const DATA_SOURCE_LIST_QUERY = gql`
           type
           url
           isActive
+          lastPolledAt
           createdAt
         }
       }
