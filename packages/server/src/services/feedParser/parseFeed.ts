@@ -53,6 +53,8 @@ function extractTimeFromDate(date: Date): string {
 }
 
 const FETCH_TIMEOUT_MS = 15000
+const MAX_FEED_ITEMS = 200
+const MAX_RESPONSE_BYTES = 5 * 1024 * 1024 // 5MB
 const USER_AGENT = 'Curtn/1.0 (https://curtn.com; data-feed-reader)'
 
 export async function parseRssFeed(url: string, rules: CleanupRules = {}): Promise<ParsedEvent[]> {
@@ -62,7 +64,7 @@ export async function parseRssFeed(url: string, rules: CleanupRules = {}): Promi
   })
   const feed = await parser.parseURL(url)
 
-  return (feed.items || []).map(item => {
+  return (feed.items || []).slice(0, MAX_FEED_ITEMS).map(item => {
     const title = applyCleanupRules(item.title || 'Untitled', rules)
     const date = item.isoDate ? new Date(item.isoDate) : undefined
 
@@ -91,13 +93,22 @@ export async function parseIcalFeed(url: string, rules: CleanupRules = {}): Prom
     signal: controller.signal,
     headers: { 'User-Agent': USER_AGENT }
   }).finally(() => clearTimeout(timeoutId))
+
+  const contentLength = response.headers.get('content-length')
+  if (contentLength && parseInt(contentLength, 10) > MAX_RESPONSE_BYTES) {
+    throw new Error(`Feed too large: ${contentLength} bytes (max ${MAX_RESPONSE_BYTES})`)
+  }
+
   const text = await response.text()
+  if (text.length > MAX_RESPONSE_BYTES) {
+    throw new Error(`Feed too large: ${text.length} bytes (max ${MAX_RESPONSE_BYTES})`)
+  }
 
   const jcalData = ICAL.parse(text)
   const comp = new ICAL.Component(jcalData)
   const vevents = comp.getAllSubcomponents('vevent')
 
-  return vevents.map(vevent => {
+  return vevents.slice(0, MAX_FEED_ITEMS).map(vevent => {
     const event = new ICAL.Event(vevent)
     const rawTitle = event.summary || 'Untitled'
     const title = applyCleanupRules(rawTitle, rules)
