@@ -25,16 +25,16 @@ export const performanceType = new GraphQLObjectType({
     return {
       id: globalIdField('Performance', performance => performance.id),
       run: {
-        type: new GraphQLNonNull(runType),
-        resolve: async performance => await RunModel.findById(performance.run)
+        type: runType,
+        resolve: async performance => performance.run ? await RunModel.findById(performance.run) : null
       },
       date: {
-        type: new GraphQLNonNull(GraphQLString),
-        resolve: performance => performance.date.toISOString()
+        type: GraphQLString,
+        resolve: performance => performance.date?.toISOString() ?? null
       },
       time: {
-        type: new GraphQLNonNull(GraphQLString),
-        resolve: performance => performance.time
+        type: GraphQLString,
+        resolve: performance => performance.time ?? null
       },
       venue: {
         type: venueType,
