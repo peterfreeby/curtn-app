@@ -42,9 +42,17 @@ export function ShowGrid({ shows, loading }: ShowGridProps) {
     );
   }
 
+  // Deduplicate by ID (imports can create duplicate show records)
+  const seen = new Set<string>();
+  const uniqueShows = shows.filter((show) => {
+    if (seen.has(show.id)) return false;
+    seen.add(show.id);
+    return true;
+  });
+
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {shows.map((show) => {
+      {uniqueShows.map((show) => {
         const firstRun = show.runs?.edges?.[0]?.node;
         return (
           <ShowCard

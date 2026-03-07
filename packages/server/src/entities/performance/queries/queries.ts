@@ -75,8 +75,24 @@ export const upcomingPerformances: GraphQLFieldConfig<any, any, any> = {
   }
 }
 
+export const performanceList: GraphQLFieldConfig<any, any, any> = {
+  type: PerformanceConnection,
+  args: {
+    ...connectionArgs
+  },
+  resolve: async (_, args) => {
+    try {
+      const performances = await PerformanceModel.find().sort({ date: -1 }).limit(100)
+      return connectionFromArray(performances, args)
+    } catch {
+      return connectionFromArray([], args)
+    }
+  }
+}
+
 export const performanceQueries = {
   singlePerformance,
   performancesByRun,
-  upcomingPerformances
+  upcomingPerformances,
+  performanceList
 }

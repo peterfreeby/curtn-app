@@ -50,6 +50,7 @@ const ImportResultType = new GraphQLObjectType({
     runsCreated: { type: GraphQLInt },
     runsMatched: { type: GraphQLInt },
     performancesCreated: { type: GraphQLInt },
+    performancesMatched: { type: GraphQLInt },
     errors: { type: new GraphQLList(GraphQLString) }
   }
 })
@@ -110,6 +111,7 @@ export const csvImport = mutationWithClientMutationId({
       runsCreated: 0,
       runsMatched: 0,
       performancesCreated: 0,
+      performancesMatched: 0,
       errors: [] as string[]
     }
 
@@ -262,19 +264,33 @@ export const csvImport = mutationWithClientMutationId({
             if (isNaN(perfDate.getTime())) {
               result.errors.push(`Row ${rowNum}: Invalid date "${row.date}"`)
             } else {
-              await new PerformanceModel({
+              // Dedup: check if a performance already exists for this run + date
+              const dayStart = new Date(perfDate)
+              dayStart.setHours(0, 0, 0, 0)
+              const dayEnd = new Date(perfDate)
+              dayEnd.setHours(23, 59, 59, 999)
+              const existingPerf = await PerformanceModel.findOne({
                 run: run._id,
-                date: perfDate,
-                time: row.time?.trim() || row.startTime?.trim() || '',
-                venueId: venueIds[0],
-                ticketUrl: row.ticketUrl?.trim() || '',
-                ...(row.performanceDescription?.trim() && {
-                  metadataOverrides: { description: row.performanceDescription.trim() }
-                }),
-                submittedBy: ctx.user.id,
-                ...(sourceId && { source: sourceId })
-              }).save()
-              result.performancesCreated++
+                date: { $gte: dayStart, $lte: dayEnd }
+              })
+
+              if (existingPerf) {
+                result.performancesMatched++
+              } else {
+                await new PerformanceModel({
+                  run: run._id,
+                  date: perfDate,
+                  time: row.time?.trim() || row.startTime?.trim() || '',
+                  venueId: venueIds[0],
+                  ticketUrl: row.ticketUrl?.trim() || '',
+                  ...(row.performanceDescription?.trim() && {
+                    metadataOverrides: { description: row.performanceDescription.trim() }
+                  }),
+                  submittedBy: ctx.user.id,
+                  ...(sourceId && { source: sourceId })
+                }).save()
+                result.performancesCreated++
+              }
 
               // Auto-extend run dates
               if (!run.startDate || perfDate < new Date(run.startDate as any)) {

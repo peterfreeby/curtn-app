@@ -1,0 +1,123 @@
+import Parser from 'rss-parser'
+import ICAL from 'ical.js'
+
+export interface ParsedEvent {
+  title: string
+  description?: string
+  date?: Date
+  time?: string
+  ticketUrl?: string
+  rawData: Record<string, any>
+}
+
+export interface CleanupRules {
+  stripPrefix?: string
+  stripSuffix?: string
+  defaultVenue?: string
+  defaultStage?: string
+  defaultCompany?: string
+  defaultTypes?: string[]
+  titleCase?: boolean
+}
+
+function applyTitleCase(str: string): string {
+  const minor = new Set(['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'at', 'by', 'in', 'of', 'on', 'to', 'up'])
+  return str.split(' ').map((word, i) => {
+    if (i === 0 || !minor.has(word.toLowerCase())) {
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    }
+    return word.toLowerCase()
+  }).join(' ')
+}
+
+function applyCleanupRules(title: string, rules: CleanupRules): string {
+  let cleaned = title
+  if (rules.stripPrefix && cleaned.startsWith(rules.stripPrefix)) {
+    cleaned = cleaned.slice(rules.stripPrefix.length).trim()
+  }
+  if (rules.stripSuffix && cleaned.endsWith(rules.stripSuffix)) {
+    cleaned = cleaned.slice(0, -rules.stripSuffix.length).trim()
+  }
+  if (rules.titleCase) {
+    cleaned = applyTitleCase(cleaned)
+  }
+  return cleaned
+}
+
+function extractTimeFromDate(date: Date): string {
+  const hours = date.getHours()
+  const minutes = date.getMinutes()
+  const ampm = hours >= 12 ? 'PM' : 'AM'
+  const h = hours % 12 || 12
+  return `${h}:${minutes.toString().padStart(2, '0')} ${ampm}`
+}
+
+export async function parseRssFeed(url: string, rules: CleanupRules = {}): Promise<ParsedEvent[]> {
+  const parser = new Parser()
+  const feed = await parser.parseURL(url)
+
+  return (feed.items || []).map(item => {
+    const title = applyCleanupRules(item.title || 'Untitled', rules)
+    const date = item.isoDate ? new Date(item.isoDate) : undefined
+
+    return {
+      title,
+      description: item.contentSnippet || item.content || undefined,
+      date,
+      time: date ? extractTimeFromDate(date) : undefined,
+      ticketUrl: item.link || undefined,
+      rawData: {
+        guid: item.guid,
+        title: item.title,
+        link: item.link,
+        pubDate: item.pubDate,
+        content: item.content,
+        categories: item.categories
+      }
+    }
+  })
+}
+
+export async function parseIcalFeed(url: string, rules: CleanupRules = {}): Promise<ParsedEvent[]> {
+  const response = await fetch(url)
+  const text = await response.text()
+
+  const jcalData = ICAL.parse(text)
+  const comp = new ICAL.Component(jcalData)
+  const vevents = comp.getAllSubcomponents('vevent')
+
+  return vevents.map(vevent => {
+    const event = new ICAL.Event(vevent)
+    const rawTitle = event.summary || 'Untitled'
+    const title = applyCleanupRules(rawTitle, rules)
+    const startDate = event.startDate?.toJSDate()
+
+    return {
+      title,
+      description: event.description || undefined,
+      date: startDate,
+      time: startDate ? extractTimeFromDate(startDate) : undefined,
+      ticketUrl: (event.component?.getFirstPropertyValue('url') as string) || undefined,
+      rawData: {
+        uid: event.uid,
+        summary: event.summary,
+        description: event.description,
+        location: event.location,
+        startDate: startDate?.toISOString(),
+        endDate: event.endDate?.toJSDate()?.toISOString(),
+        url: String(event.component?.getFirstPropertyValue('url') || '')
+      }
+    }
+  })
+}
+
+function normalizeUrl(url: string): string {
+  return url.replace(/^webcal:\/\//, 'https://')
+}
+
+export async function parseFeed(type: 'rss' | 'ical', url: string, rules: CleanupRules = {}): Promise<ParsedEvent[]> {
+  const normalized = normalizeUrl(url)
+  if (type === 'rss') return parseRssFeed(normalized, rules)
+  if (type === 'ical') return parseIcalFeed(normalized, rules)
+  throw new Error(`Unsupported feed type: ${type}`)
+}

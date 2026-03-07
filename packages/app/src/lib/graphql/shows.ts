@@ -113,6 +113,8 @@ export const SINGLE_SHOW_QUERY = gql`
         edges {
           node {
             id
+            title
+            effectiveTitle
             productionCompany {
               id
               name
@@ -131,6 +133,56 @@ export const SINGLE_SHOW_QUERY = gql`
             description
             averageRating
             reviewCount
+            cast {
+              id
+              person {
+                id
+                name
+                slug
+              }
+              role
+              order
+            }
+            crew {
+              id
+              person {
+                id
+                name
+                slug
+              }
+              role
+              order
+            }
+            performances {
+              edges {
+                node {
+                  id
+                  date
+                  time
+                  venue {
+                    id
+                    name
+                  }
+                  ticketUrl
+                  soldOut
+                }
+              }
+            }
+            upcomingPerformances {
+              edges {
+                node {
+                  id
+                  date
+                  time
+                  venue {
+                    id
+                    name
+                  }
+                  ticketUrl
+                  soldOut
+                }
+              }
+            }
           }
         }
       }

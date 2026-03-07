@@ -13,6 +13,8 @@ import { runMutations } from '../entities/run/mutations/run'
 import { performanceMutations } from '../entities/performance/mutations/performance'
 import { watchlistMutations } from '../entities/watchlist/mutations/watchlist'
 import { dataSourceMutations } from '../entities/dataSource/mutations/dataSource'
+import { pendingImportMutations } from '../entities/pendingImport/mutations/pendingImport'
+import { venueMutations } from '../entities/venue/mutations/venue'
 
 export const mutation = new GraphQLObjectType({
   name: 'Mutation',
@@ -28,6 +30,8 @@ export const mutation = new GraphQLObjectType({
     ...runMutations,
     ...performanceMutations,
     ...watchlistMutations,
-    ...dataSourceMutations
+    ...dataSourceMutations,
+    ...pendingImportMutations,
+    ...venueMutations
   }
 })

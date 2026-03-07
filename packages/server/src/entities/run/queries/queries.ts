@@ -65,8 +65,24 @@ export const runsByVenue: GraphQLFieldConfig<any, any, { venueName: string }> = 
   }
 }
 
+export const runList: GraphQLFieldConfig<any, any, any> = {
+  type: RunConnection,
+  args: {
+    ...connectionArgs
+  },
+  resolve: async (_, args) => {
+    try {
+      const runs = await RunModel.find().sort({ createdAt: -1 }).limit(100)
+      return connectionFromArray(runs, args)
+    } catch {
+      return connectionFromArray([], args)
+    }
+  }
+}
+
 export const runQueries = {
   singleRun,
   runsByShow,
-  runsByVenue
+  runsByVenue,
+  runList
 }

@@ -58,7 +58,7 @@ export const personType: GraphQLObjectType = new GraphQLObjectType({
           const credits = await CreditModel.find({ person: person._id })
           const runIds = [...new Set(credits.map(c => c.run.toString()))]
           const runs = await RunModel.find({ _id: { $in: runIds } })
-          const companyIds = [...new Set(runs.map(r => r.productionCompany.toString()))]
+          const companyIds = [...new Set(runs.filter(r => r.productionCompany).map(r => r.productionCompany!.toString()))]
           return await ProductionCompanyModel.find({ _id: { $in: companyIds } })
         }
       },

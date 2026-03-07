@@ -36,6 +36,7 @@ interface ImportResult {
   runsCreated: number;
   runsMatched: number;
   performancesCreated: number;
+  performancesMatched: number;
   errors: string[];
 }
 
@@ -430,6 +431,8 @@ export default function CsvImportPage() {
                     <span className="text-curtn-muted">Performances: </span>
                     <span className="text-curtn-cream">
                       {importResult.performancesCreated} new
+                      {importResult.performancesMatched > 0 &&
+                        `, ${importResult.performancesMatched} matched`}
                     </span>
                   </div>
                 </div>
@@ -555,6 +558,14 @@ export default function CsvImportPage() {
                 </p>
                 <p className="text-xs text-curtn-muted">
                   Performances Created
+                </p>
+              </div>
+              <div className="rounded-lg bg-curtn-deep p-4 text-center">
+                <p className="text-2xl font-bold text-curtn-cream">
+                  {importResult.performancesMatched}
+                </p>
+                <p className="text-xs text-curtn-muted">
+                  Performances Matched
                 </p>
               </div>
               <div className="rounded-lg bg-curtn-deep p-4 text-center">

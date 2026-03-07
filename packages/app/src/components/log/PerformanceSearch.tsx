@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery } from "urql";
-import { SEARCH_PERFORMANCES_QUERY } from "@/lib/graphql/performances";
+import { SEARCH_SHOWS_QUERY } from "@/lib/graphql/shows";
 
 interface PerformanceResult {
   id: string;
@@ -30,13 +30,17 @@ export function PerformanceSearch({ onSelect }: PerformanceSearchProps) {
   }, [query]);
 
   const [{ data, fetching }] = useQuery({
-    query: SEARCH_PERFORMANCES_QUERY,
+    query: SEARCH_SHOWS_QUERY,
     variables: { query: debouncedQuery, first: 8 },
     pause: debouncedQuery.length < 2,
   });
 
   const results: PerformanceResult[] =
-    data?.searchPerformances?.edges?.map((e: any) => e.node) ?? [];
+    data?.searchShows?.edges?.map((e: any) => ({
+      id: e.node.id,
+      title: e.node.title,
+      company: e.node.runs?.edges?.[0]?.node?.productionCompany ?? null,
+    })) ?? [];
 
   // Close dropdown on outside click
   useEffect(() => {

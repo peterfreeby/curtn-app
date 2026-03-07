@@ -21,12 +21,32 @@ export default function AdminPage() {
           </Card>
         </Link>
 
-        <Card className="opacity-50">
-          <h2 className="text-sm font-medium text-curtn-cream">Data Sources</h2>
-          <p className="mt-1 text-xs text-curtn-muted/60">
-            RSS feeds, iCal subscriptions, and partner integrations. Coming soon.
-          </p>
-        </Card>
+        <Link href="/admin/sources">
+          <Card className="transition-colors hover:border-curtn-muted/30 cursor-pointer">
+            <h2 className="text-sm font-medium text-curtn-cream">Data Sources</h2>
+            <p className="mt-1 text-xs text-curtn-muted/60">
+              RSS feeds, iCal subscriptions, and partner integrations.
+            </p>
+          </Card>
+        </Link>
+
+        <Link href="/admin/incoming">
+          <Card className="transition-colors hover:border-curtn-muted/30 cursor-pointer">
+            <h2 className="text-sm font-medium text-curtn-cream">Incoming Events</h2>
+            <p className="mt-1 text-xs text-curtn-muted/60">
+              Review, edit, and approve events imported from feeds.
+            </p>
+          </Card>
+        </Link>
+
+        <Link href="/admin/editor">
+          <Card className="transition-colors hover:border-curtn-muted/30 cursor-pointer">
+            <h2 className="text-sm font-medium text-curtn-cream">Data Editor</h2>
+            <p className="mt-1 text-xs text-curtn-muted/60">
+              Browse and edit shows, venues, runs, and performances.
+            </p>
+          </Card>
+        </Link>
       </div>
     </div>
   );
