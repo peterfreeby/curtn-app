@@ -8,7 +8,7 @@ export function Card({ children, className = "" }: CardProps) {
     <div
       className={`
         bg-curtn-surface rounded-xl border border-curtn-dark/30
-        p-8
+        p-[var(--spacing-4)]
         ${className}
       `}
     >

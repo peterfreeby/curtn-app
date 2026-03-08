@@ -32,6 +32,10 @@ export const performanceUpdate = mutationWithClientMutationId({
     description: {
       type: GraphQLString,
       description: 'Performance-level description override'
+    },
+    imageUrl: {
+      type: GraphQLString,
+      description: 'Image URL (from Vercel Blob)'
     }
   },
   outputFields: {
@@ -58,6 +62,7 @@ export const performanceUpdate = mutationWithClientMutationId({
       if (input.ticketUrl !== undefined) updates.ticketUrl = input.ticketUrl
       if (input.soldOut !== undefined) updates.soldOut = input.soldOut
       if (input.description !== undefined) updates['metadataOverrides.description'] = input.description
+      if (input.imageUrl !== undefined && input.imageUrl !== '') updates['metadataOverrides.imageUrl'] = input.imageUrl
 
       if (Object.keys(updates).length === 0) {
         return { performance }

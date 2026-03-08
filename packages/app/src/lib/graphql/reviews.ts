@@ -53,12 +53,15 @@ export const REVIEW_LIST_QUERY = gql`
           user {
             id
             username
+            fullName
+            avatarUrl
           }
           run {
             id
             show {
               id
               title
+              imageUrl
             }
           }
         }

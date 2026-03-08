@@ -42,46 +42,92 @@ export function ShowHero({
 
   return (
     <div>
-      {imageUrl && (
-        <div className="mb-4 overflow-hidden rounded-lg">
-          <img
-            src={imageUrl}
-            alt={title}
-            className="w-full h-48 object-cover"
-          />
+      {/* Backdrop + poster layout when image exists */}
+      {imageUrl ? (
+        <div className="relative -mx-6 -mt-8 mb-6">
+          {/* Backdrop */}
+          <div className="relative h-[240px] sm:h-[300px] overflow-hidden">
+            <img
+              src={imageUrl}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-curtn-deep via-curtn-deep/60 to-curtn-deep/20" />
+            <div className="absolute inset-0 bg-gradient-to-r from-curtn-deep/80 to-transparent" />
+          </div>
+
+          {/* Poster overlay */}
+          <div className="relative -mt-28 sm:-mt-36 px-6 flex gap-5 items-end">
+            <div className="w-[110px] sm:w-[140px] shrink-0">
+              <div className="aspect-[2/3] overflow-hidden rounded-lg border-2 border-curtn-dark/50 bg-curtn-surface shadow-2xl">
+                <img src={imageUrl} alt={title} className="h-full w-full object-cover" />
+              </div>
+            </div>
+            <div className="flex-1 min-w-0 pb-1">
+              {performanceTypes.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {performanceTypes.map((type) => (
+                    <span
+                      key={type}
+                      className="rounded-full bg-curtn-deep/60 backdrop-blur-sm px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted"
+                    >
+                      {type}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <h1 className="text-2xl sm:text-3xl font-bold text-curtn-cream leading-tight">{title}</h1>
+              {creators && creators.length > 0 && (
+                <p className="mt-1 text-sm text-curtn-muted">
+                  {creators.map((c, i) => (
+                    <span key={c.id}>
+                      {i > 0 && ", "}
+                      <Link href={`/people/${c.person.slug}`} className="text-curtn-coral hover:underline">
+                        {c.person.name}
+                      </Link>
+                      <span className="text-curtn-muted/60"> ({c.role})</span>
+                    </span>
+                  ))}
+                </p>
+              )}
+              <p className="mt-1 text-xs text-curtn-muted/70">{metaParts.join(" · ")}</p>
+            </div>
+          </div>
         </div>
+      ) : (
+        <>
+          {performanceTypes.length > 0 && (
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              {performanceTypes.map((type) => (
+                <span
+                  key={type}
+                  className="rounded-full bg-curtn-dark/60 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted"
+                >
+                  {type}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <h1 className="text-2xl font-bold text-curtn-cream leading-tight">{title}</h1>
+
+          {creators && creators.length > 0 && (
+            <p className="mt-1 text-sm text-curtn-muted">
+              {creators.map((c, i) => (
+                <span key={c.id}>
+                  {i > 0 && ", "}
+                  <Link href={`/people/${c.person.slug}`} className="text-curtn-coral hover:underline">
+                    {c.person.name}
+                  </Link>
+                  <span className="text-curtn-muted/60"> ({c.role})</span>
+                </span>
+              ))}
+            </p>
+          )}
+
+          <p className="mt-2 text-xs text-curtn-muted/70">{metaParts.join(" · ")}</p>
+        </>
       )}
-
-      {performanceTypes.length > 0 && (
-        <div className="mb-3 flex flex-wrap gap-1.5">
-          {performanceTypes.map((type) => (
-            <span
-              key={type}
-              className="rounded-full bg-curtn-dark/60 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted"
-            >
-              {type}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <h1 className="text-2xl font-bold text-curtn-cream leading-tight">{title}</h1>
-
-      {creators && creators.length > 0 && (
-        <p className="mt-1 text-sm text-curtn-muted">
-          {creators.map((c, i) => (
-            <span key={c.id}>
-              {i > 0 && ", "}
-              <Link href={`/people/${c.person.slug}`} className="text-curtn-coral hover:underline">
-                {c.person.name}
-              </Link>
-              <span className="text-curtn-muted/60"> ({c.role})</span>
-            </span>
-          ))}
-        </p>
-      )}
-
-      <p className="mt-2 text-xs text-curtn-muted/70">{metaParts.join(" · ")}</p>
 
       {description && (
         <div className="mt-4">

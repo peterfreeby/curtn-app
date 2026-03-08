@@ -14,6 +14,7 @@ interface PerformanceHeroProps {
   language: string[] | null;
   averageRating: number | null;
   reviewCount: number;
+  imageUrl?: string | null;
 }
 
 export function PerformanceHero({
@@ -26,6 +27,7 @@ export function PerformanceHero({
   language,
   averageRating,
   reviewCount,
+  imageUrl,
 }: PerformanceHeroProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -37,24 +39,59 @@ export function PerformanceHero({
 
   return (
     <div>
-      {performanceTypes.length > 0 && (
-        <div className="mb-3 flex flex-wrap gap-1.5">
-          {performanceTypes.map((type) => (
-            <span
-              key={type}
-              className="rounded-full bg-curtn-dark/60 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted"
-            >
-              {type}
-            </span>
-          ))}
+      {imageUrl ? (
+        <div className="relative -mx-6 -mt-8 mb-6">
+          <div className="relative h-[240px] sm:h-[300px] overflow-hidden">
+            <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-curtn-deep via-curtn-deep/60 to-curtn-deep/20" />
+            <div className="absolute inset-0 bg-gradient-to-r from-curtn-deep/80 to-transparent" />
+          </div>
+
+          <div className="relative -mt-28 sm:-mt-36 px-6 flex gap-5 items-end">
+            <div className="w-[110px] sm:w-[140px] shrink-0">
+              <div className="aspect-[2/3] overflow-hidden rounded-lg border-2 border-curtn-dark/50 bg-curtn-surface shadow-2xl">
+                <img src={imageUrl} alt={title} className="h-full w-full object-cover" />
+              </div>
+            </div>
+            <div className="flex-1 min-w-0 pb-1">
+              {performanceTypes.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {performanceTypes.map((type) => (
+                    <span
+                      key={type}
+                      className="rounded-full bg-curtn-deep/60 backdrop-blur-sm px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted"
+                    >
+                      {type}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <h1 className="text-2xl sm:text-3xl font-bold text-curtn-cream leading-tight">{title}</h1>
+              <p className="mt-1 text-sm text-curtn-muted">by {companyName}</p>
+              <p className="mt-1 text-xs text-curtn-muted/70">{metaParts.join(" · ")}</p>
+            </div>
+          </div>
         </div>
+      ) : (
+        <>
+          {performanceTypes.length > 0 && (
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              {performanceTypes.map((type) => (
+                <span
+                  key={type}
+                  className="rounded-full bg-curtn-dark/60 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted"
+                >
+                  {type}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <h1 className="text-2xl font-bold text-curtn-cream leading-tight">{title}</h1>
+          <p className="mt-1 text-sm text-curtn-muted">by {companyName}</p>
+          <p className="mt-2 text-xs text-curtn-muted/70">{metaParts.join(" · ")}</p>
+        </>
       )}
-
-      <h1 className="text-2xl font-bold text-curtn-cream leading-tight">{title}</h1>
-
-      <p className="mt-1 text-sm text-curtn-muted">by {companyName}</p>
-
-      <p className="mt-2 text-xs text-curtn-muted/70">{metaParts.join(" · ")}</p>
 
       {description && (
         <div className="mt-4">

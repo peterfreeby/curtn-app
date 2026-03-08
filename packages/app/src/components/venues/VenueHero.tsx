@@ -16,6 +16,7 @@ interface VenueHeroProps {
   website: string | null;
   phone: string | null;
   email: string | null;
+  imageUrl?: string | null;
 }
 
 export function VenueHero({
@@ -30,6 +31,7 @@ export function VenueHero({
   website,
   phone,
   email,
+  imageUrl,
 }: VenueHeroProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -41,13 +43,28 @@ export function VenueHero({
 
   return (
     <div>
-      <span className="inline-block rounded-full bg-curtn-dark/60 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted">
-        {VENUE_TYPE_LABELS[venueType] ?? venueType}
-      </span>
+      {imageUrl ? (
+        <div className="relative -mx-6 -mt-8 mb-6">
+          <div className="relative h-[220px] sm:h-[280px] overflow-hidden">
+            <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-curtn-deep via-curtn-deep/50 to-curtn-deep/10" />
+          </div>
 
-      <h1 className="mt-3 text-2xl font-bold text-curtn-cream leading-tight">
-        {name}
-      </h1>
+          <div className="relative -mt-16 px-6">
+            <span className="inline-block rounded-full bg-curtn-deep/60 backdrop-blur-sm px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted">
+              {VENUE_TYPE_LABELS[venueType] ?? venueType}
+            </span>
+            <h1 className="mt-2 text-2xl sm:text-3xl font-bold text-curtn-cream leading-tight">{name}</h1>
+          </div>
+        </div>
+      ) : (
+        <>
+          <span className="inline-block rounded-full bg-curtn-dark/60 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted">
+            {VENUE_TYPE_LABELS[venueType] ?? venueType}
+          </span>
+          <h1 className="mt-3 text-2xl font-bold text-curtn-cream leading-tight">{name}</h1>
+        </>
+      )}
 
       <div className="mt-2 flex items-start gap-1.5 text-sm text-curtn-muted">
         <Icon

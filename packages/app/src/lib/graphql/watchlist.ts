@@ -29,6 +29,7 @@ export const MY_WATCHLIST_QUERY = gql`
           id
           title
           performanceTypes
+          imageUrl
           averageRating
           reviewCount
         }

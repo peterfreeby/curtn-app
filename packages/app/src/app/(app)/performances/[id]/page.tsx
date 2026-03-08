@@ -11,22 +11,19 @@ import { RunHero } from "@/components/runs/RunHero";
 import { RunCard } from "@/components/runs/RunCard";
 import { ShowingsList } from "@/components/performances/ShowingsList";
 import { CreditsList } from "@/components/credits/CreditsList";
-import { AddCreditForm } from "@/components/credits/AddCreditForm";
-import { AddShowCreditForm } from "@/components/credits/AddShowCreditForm";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { WatchlistButton } from "@/components/watchlist/WatchlistButton";
 import { Icon } from "@/components/icons/Icons";
 import { useAuth } from "@/lib/auth/useAuth";
-import { formatShowDate, formatShowTime } from "@/lib/format";
 
 const REVIEW_PAGE_SIZE = 12;
 
 export default function ShowDetailPage() {
   const params = useParams();
   const id = decodeURIComponent(params.id as string);
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
 
-  const [{ data, fetching }, reexecuteShow] = useQuery({
+  const [{ data, fetching }] = useQuery({
     query: SINGLE_SHOW_QUERY,
     variables: { id },
   });
@@ -101,10 +98,6 @@ export default function ShowDetailPage() {
     reexecuteReviews({ requestPolicy: "network-only" });
   }
 
-  function handleCreditAdded() {
-    reexecuteShow({ requestPolicy: "network-only" });
-  }
-
   // --- SCENARIO A: 1 run, 1 performance — fully combined page ---
   if (singleRun && singlePerf) {
     const company = singleRun.productionCompany;
@@ -136,36 +129,11 @@ export default function ShowDetailPage() {
           endDate={null}
           averageRating={singleRun.averageRating}
           reviewCount={singleRun.reviewCount}
+          performanceDate={singlePerf.date}
+          performanceTime={singlePerf.time}
+          ticketUrl={singlePerf.ticketUrl}
+          soldOut={isSoldOut}
         />
-
-        {/* Single performance details inline */}
-        <div className="flex items-center gap-3 rounded-lg border border-curtn-dark/50 bg-curtn-surface px-4 py-3">
-          <div className="flex-1 flex items-center gap-3 text-sm">
-            <span className="flex items-center gap-1 text-curtn-cream">
-              <Icon name="calendar" size={14} />
-              {formatShowDate(singlePerf.date)}
-            </span>
-            {singlePerf.time && (
-              <span className="text-curtn-muted">
-                {formatShowTime(singlePerf.time)}
-              </span>
-            )}
-            {isSoldOut && (
-              <span className="text-xs text-curtn-muted/50">Sold Out</span>
-            )}
-          </div>
-          {!isSoldOut && singlePerf.ticketUrl && (
-            <a
-              href={singlePerf.ticketUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded-full border border-curtn-coral/30 px-3 py-1 text-xs text-curtn-coral transition-colors hover:bg-curtn-coral/10"
-            >
-              <Icon name="ticket" size={12} />
-              Tickets
-            </a>
-          )}
-        </div>
 
         <WatchlistButton
           showId={show.id}
@@ -182,11 +150,14 @@ export default function ShowDetailPage() {
 
         <CreditsList cast={singleRun.cast ?? []} crew={singleRun.crew ?? []} />
 
-        {isAuthenticated && (
-          <div className="rounded-lg border border-curtn-dark/50 bg-curtn-surface p-4 space-y-6">
-            <AddShowCreditForm showId={show.id} onAdded={handleCreditAdded} />
-            <AddCreditForm runId={singleRun.id} onAdded={handleCreditAdded} />
-          </div>
+        {user?.isAdmin && (
+          <Link
+            href={`/admin/edit/performance/${id}`}
+            className="flex items-center justify-center gap-2 rounded-lg border border-curtn-dark px-4 py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream"
+          >
+            <Icon name="pencil" size={14} />
+            Edit Performance
+          </Link>
         )}
 
         <ReviewsSection
@@ -256,11 +227,14 @@ export default function ShowDetailPage() {
 
         <CreditsList cast={singleRun.cast ?? []} crew={singleRun.crew ?? []} />
 
-        {isAuthenticated && (
-          <div className="rounded-lg border border-curtn-dark/50 bg-curtn-surface p-4 space-y-6">
-            <AddShowCreditForm showId={show.id} onAdded={handleCreditAdded} />
-            <AddCreditForm runId={singleRun.id} onAdded={handleCreditAdded} />
-          </div>
+        {user?.isAdmin && (
+          <Link
+            href={`/admin/edit/performance/${id}`}
+            className="flex items-center justify-center gap-2 rounded-lg border border-curtn-dark px-4 py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream"
+          >
+            <Icon name="pencil" size={14} />
+            Edit Performance
+          </Link>
         )}
 
         <ReviewsSection
@@ -299,10 +273,14 @@ export default function ShowDetailPage() {
         initialWatchlistCount={show.watchlistCount ?? 0}
       />
 
-      {isAuthenticated && (
-        <div className="rounded-lg border border-curtn-dark/50 bg-curtn-surface p-4">
-          <AddShowCreditForm showId={show.id} onAdded={handleCreditAdded} />
-        </div>
+      {user?.isAdmin && (
+        <Link
+          href={`/admin/edit/performance/${id}`}
+          className="flex items-center justify-center gap-2 rounded-lg border border-curtn-dark px-4 py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream"
+        >
+          <Icon name="pencil" size={14} />
+          Edit Performance
+        </Link>
       )}
 
       <div>

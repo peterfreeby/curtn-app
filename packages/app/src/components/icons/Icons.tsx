@@ -22,13 +22,16 @@ const ICONS = {
   heart: "\uE2A8",
   ticket: "\uE490",
   calendar: "\uE108",
-  globe: "\uE286",
+  globe: "\uE288",
   phone: "\uE3BC",
-  envelope: "\uE1F4",
-  "arrow-left": "\uE068",
+  envelope: "\uE214",
+  "arrow-left": "\uE058",
   "buildings": "\uE0F4",
-  eye: "\uE236",
-  "eye-slash": "\uE23A",
+  eye: "\uE220",
+  "eye-slash": "\uE224",
+  clock: "\uE19C",
+  "clock-countdown": "\uE1A8",
+  pencil: "\uE3A4",
 } as const;
 
 export type IconName = keyof typeof ICONS;

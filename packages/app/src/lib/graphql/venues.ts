@@ -26,6 +26,7 @@ export const VENUE_LIST_QUERY = gql`
           state
           capacity
           venueType
+          imageUrl
         }
       }
       pageInfo {
@@ -66,6 +67,7 @@ export const VENUE_BY_SLUG_QUERY = gql`
       website
       phone
       email
+      imageUrl
     }
   }
 `;
@@ -81,6 +83,7 @@ export const VENUE_RUNS_QUERY = gql`
             id
             title
             performanceTypes
+            imageUrl
           }
           productionCompany {
             name

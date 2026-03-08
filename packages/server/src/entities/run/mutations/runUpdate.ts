@@ -32,6 +32,10 @@ export const runUpdate = mutationWithClientMutationId({
     endDate: {
       type: GraphQLString,
       description: 'End date (ISO string)'
+    },
+    imageUrl: {
+      type: GraphQLString,
+      description: 'Image URL (from Vercel Blob)'
     }
   },
   outputFields: {
@@ -58,6 +62,7 @@ export const runUpdate = mutationWithClientMutationId({
       if (input.intermissions !== undefined && input.intermissions !== '') updates.intermissions = parseInt(input.intermissions, 10) || 0
       if (input.startDate !== undefined && input.startDate !== '') updates.startDate = new Date(input.startDate)
       if (input.endDate !== undefined && input.endDate !== '') updates.endDate = new Date(input.endDate)
+      if (input.imageUrl !== undefined && input.imageUrl !== '') updates.imageUrl = input.imageUrl
 
       if (Object.keys(updates).length === 0) {
         return { run }

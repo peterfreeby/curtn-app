@@ -34,6 +34,16 @@ export const userType = new GraphQLObjectType({
       description: `User's email`,
       resolve: user => user.email
     },
+    bio: {
+      type: GraphQLString,
+      description: `User's bio`,
+      resolve: user => user.bio || ''
+    },
+    avatarUrl: {
+      type: GraphQLString,
+      description: `User's avatar image URL`,
+      resolve: user => user.avatarUrl || ''
+    },
     followerCount: {
       type: GraphQLInt,
       description: 'Number of followers',

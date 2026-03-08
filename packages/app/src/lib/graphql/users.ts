@@ -8,11 +8,27 @@ export const USER_BY_USERNAME_QUERY = gql`
           id
           fullName
           username
+          bio
+          avatarUrl
           followerCount
           followingCount
           isFollowing
         }
       }
+    }
+  }
+`;
+
+export const USER_PROFILE_UPDATE_MUTATION = gql`
+  mutation UserProfileUpdate($input: userProfileUpdateInput!) {
+    userProfileUpdate(input: $input) {
+      user {
+        id
+        fullName
+        bio
+        avatarUrl
+      }
+      error
     }
   }
 `;
@@ -37,6 +53,7 @@ export const USER_REVIEWS_QUERY = gql`
             show {
               id
               title
+              imageUrl
             }
           }
         }

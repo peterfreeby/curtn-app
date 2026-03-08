@@ -1,19 +1,26 @@
 "use client";
 
-import { ShowCard } from "./ShowCard";
-import { PerformanceCardSkeleton } from "@/components/performances/PerformanceCardSkeleton";
+import { WiredPosterCard } from "@/components/WiredPosterCard";
+
+interface RunNode {
+  id: string;
+  productionCompany?: { name: string; slug: string } | null;
+  venues?: { name: string; city: string }[];
+  startDate?: string | null;
+  endDate?: string | null;
+}
 
 interface ShowNode {
   id: string;
   title: string;
   performanceTypes: string[];
+  imageUrl?: string | null;
   averageRating: number | null;
   reviewCount: number;
+  isOnMyWatchlist?: boolean;
   runs?: {
     edges: {
-      node: {
-        productionCompany: { name: string; slug: string };
-      };
+      node: RunNode;
     }[];
   };
 }
@@ -23,12 +30,26 @@ interface ShowGridProps {
   loading: boolean;
 }
 
+function buildRunLabel(run: RunNode, showTitle: string): string {
+  const parts: string[] = [];
+  if (run.productionCompany?.name) parts.push(run.productionCompany.name);
+  if (run.venues?.[0]?.name) parts.push(run.venues[0].name);
+  if (run.startDate) {
+    const d = new Date(run.startDate).toLocaleDateString("en-US", {
+      month: "short",
+      year: "numeric",
+    });
+    parts.push(d);
+  }
+  return parts.length > 0 ? parts.join(" · ") : showTitle;
+}
+
 export function ShowGrid({ shows, loading }: ShowGridProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <PerformanceCardSkeleton key={i} />
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-[var(--spacing-2)]">
+        {Array.from({ length: 12 }).map((_, i) => (
+          <div key={i} className="aspect-[2/3] rounded-[var(--spacing-1)] bg-curtn-dark/30 animate-pulse" />
         ))}
       </div>
     );
@@ -42,7 +63,7 @@ export function ShowGrid({ shows, loading }: ShowGridProps) {
     );
   }
 
-  // Deduplicate by ID (imports can create duplicate show records)
+  // Deduplicate by ID
   const seen = new Set<string>();
   const uniqueShows = shows.filter((show) => {
     if (seen.has(show.id)) return false;
@@ -51,19 +72,29 @@ export function ShowGrid({ shows, loading }: ShowGridProps) {
   });
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-[var(--spacing-2)]">
       {uniqueShows.map((show) => {
-        const firstRun = show.runs?.edges?.[0]?.node;
+        const runEdges = show.runs?.edges ?? [];
+        const firstRun = runEdges[0]?.node;
+        const singleRunId = runEdges.length === 1 ? firstRun?.id : undefined;
+        const runs = runEdges.map((e) => ({
+          id: e.node.id,
+          label: buildRunLabel(e.node, show.title),
+        }));
+
         return (
-          <ShowCard
+          <WiredPosterCard
             key={show.id}
-            id={show.id}
+            showId={show.id}
+            imageUrl={show.imageUrl}
             title={show.title}
-            performanceTypes={show.performanceTypes}
-            companyName={firstRun?.productionCompany?.name}
-            companySlug={firstRun?.productionCompany?.slug}
-            averageRating={show.averageRating}
-            reviewCount={show.reviewCount}
+            subtitle={firstRun?.productionCompany?.name ?? undefined}
+            href={`/performances/${show.id}`}
+            size="md"
+            className="!w-full"
+            runId={singleRunId}
+            runs={runs.length > 1 ? runs : undefined}
+            isOnWatchlist={show.isOnMyWatchlist}
           />
         );
       })}

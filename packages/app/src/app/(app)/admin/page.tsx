@@ -47,6 +47,15 @@ export default function AdminPage() {
             </p>
           </Card>
         </Link>
+
+        <Link href="/admin/styleguide">
+          <Card className="transition-colors hover:border-curtn-muted/30 cursor-pointer">
+            <h2 className="text-sm font-medium text-curtn-cream">Style Guide</h2>
+            <p className="mt-1 text-xs text-curtn-muted/60">
+              Component library, design tokens, and visual reference.
+            </p>
+          </Card>
+        </Link>
       </div>
     </div>
   );

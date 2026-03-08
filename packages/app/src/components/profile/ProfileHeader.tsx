@@ -1,12 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
+import { Avatar } from "@/components/Avatar";
 
 interface ProfileHeaderProps {
   fullName: string;
   username: string;
+  bio?: string;
+  avatarUrl?: string;
   reviewCount: number;
   followerCount: number;
   followingCount: number;
@@ -15,11 +17,14 @@ interface ProfileHeaderProps {
   onFollowToggle?: () => void;
   followLoading?: boolean;
   isAuthenticated?: boolean;
+  onEditProfile?: () => void;
 }
 
 export function ProfileHeader({
   fullName,
   username,
+  bio,
+  avatarUrl,
   reviewCount,
   followerCount,
   followingCount,
@@ -28,19 +33,21 @@ export function ProfileHeader({
   onFollowToggle,
   followLoading,
   isAuthenticated,
+  onEditProfile,
 }: ProfileHeaderProps) {
-  const initial = fullName.charAt(0).toUpperCase();
-
   return (
     <Card className="flex items-center gap-5">
-      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-curtn-coral text-curtn-deep text-2xl font-bold select-none">
-        {initial}
-      </div>
+      <Avatar src={avatarUrl} name={fullName} size="lg" />
       <div className="min-w-0 flex-1">
         <h1 className="text-xl font-bold text-curtn-cream truncate">
           {fullName}
         </h1>
         <p className="text-sm text-curtn-muted">@{username}</p>
+        {bio && (
+          <p className="mt-1 text-sm text-curtn-cream/80 line-clamp-2">
+            {bio}
+          </p>
+        )}
         <p className="mt-1 text-xs text-curtn-muted/70">
           {reviewCount} {reviewCount === 1 ? "review" : "reviews"}
           {" · "}
@@ -50,12 +57,13 @@ export function ProfileHeader({
         </p>
       </div>
       {isOwnProfile ? (
-        <Link
-          href="/settings"
-          className="shrink-0 rounded-lg border border-curtn-dark px-4 py-2 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream"
+        <button
+          type="button"
+          onClick={onEditProfile}
+          className="shrink-0 rounded-lg border border-curtn-dark px-4 py-2 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer"
         >
           Edit Profile
-        </Link>
+        </button>
       ) : isAuthenticated ? (
         <Button
           variant={isFollowing ? "secondary" : "primary"}

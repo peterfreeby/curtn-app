@@ -13,7 +13,7 @@ export function Input({ label, className = "", id, ...props }: InputProps) {
   const inputId = id || label.toLowerCase().replace(/\s+/g, "-");
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-[var(--spacing-1)]">
       <label
         htmlFor={inputId}
         className="text-xs uppercase tracking-widest text-curtn-muted"
@@ -25,7 +25,7 @@ export function Input({ label, className = "", id, ...props }: InputProps) {
         className={`
           bg-transparent border-b border-curtn-dark
           text-curtn-cream placeholder:text-curtn-dark
-          py-2 text-sm outline-none
+          py-[var(--spacing-1)] text-sm outline-none
           focus:border-curtn-coral transition-colors duration-200
           ${className}
         `}

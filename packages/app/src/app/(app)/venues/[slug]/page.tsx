@@ -51,6 +51,7 @@ export default function VenueDetailPage() {
         website={venue.website}
         phone={venue.phone}
         email={venue.email}
+        imageUrl={venue.imageUrl}
       />
 
       <VenuePerformances venueName={venue.name} />

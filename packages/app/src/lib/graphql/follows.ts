@@ -24,12 +24,14 @@ export const FEED_REVIEWS_QUERY = gql`
             id
             username
             fullName
+            avatarUrl
           }
           run {
             id
             show {
               id
               title
+              imageUrl
             }
           }
         }

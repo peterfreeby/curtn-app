@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation } from "urql";
-import Link from "next/link";
 import { USER_BY_USERNAME_QUERY, USER_REVIEWS_QUERY } from "@/lib/graphql/users";
 import { FOLLOW_TOGGLE_MUTATION } from "@/lib/graphql/follows";
 import { MY_WATCHLIST_QUERY } from "@/lib/graphql/watchlist";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
+import { EditProfileModal } from "@/components/profile/EditProfileModal";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
+import { WiredPosterCard } from "@/components/WiredPosterCard";
 import { Card } from "@/components/Card";
 import { useAuth } from "@/lib/auth/useAuth";
 
@@ -21,8 +22,9 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<"reviews" | "watchlist">("reviews");
   const [after, setAfter] = useState<string | null>(null);
   const [allEdges, setAllEdges] = useState<any[]>([]);
+  const [showEditModal, setShowEditModal] = useState(false);
 
-  const [{ data: userData, fetching: userFetching }] = useQuery({
+  const [{ data: userData, fetching: userFetching }, reexecuteUser] = useQuery({
     query: USER_BY_USERNAME_QUERY,
     variables: { username, first: 1 },
   });
@@ -115,6 +117,8 @@ export default function ProfilePage() {
       <ProfileHeader
         fullName={profileUser.fullName}
         username={profileUser.username}
+        bio={profileUser.bio}
+        avatarUrl={profileUser.avatarUrl}
         reviewCount={displayEdges.length}
         followerCount={followerCount}
         followingCount={profileUser.followingCount ?? 0}
@@ -123,7 +127,18 @@ export default function ProfilePage() {
         onFollowToggle={handleFollowToggle}
         followLoading={followLoading}
         isAuthenticated={!!currentUser}
+        onEditProfile={() => setShowEditModal(true)}
       />
+
+      {showEditModal && profileUser && (
+        <EditProfileModal
+          fullName={profileUser.fullName}
+          bio={profileUser.bio || ""}
+          avatarUrl={profileUser.avatarUrl || ""}
+          onClose={() => setShowEditModal(false)}
+          onSaved={() => reexecuteUser({ requestPolicy: "network-only" })}
+        />
+      )}
 
       {isOwnProfile && (
         <div className="flex gap-1 rounded-lg bg-curtn-dark/30 p-1">
@@ -218,49 +233,20 @@ export default function ProfilePage() {
           )}
 
           {!watchlistFetching && (watchlistData?.myWatchlist?.edges?.length ?? 0) > 0 && (
-            <div className="space-y-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-[var(--spacing-2)]">
               {watchlistData.myWatchlist.edges.map((edge: any) => {
                 const show = edge.node;
                 return (
-                  <Link
+                  <WiredPosterCard
                     key={show.id}
+                    showId={show.id}
+                    imageUrl={show.imageUrl}
+                    title={show.title}
                     href={`/performances/${encodeURIComponent(show.id)}`}
-                    className="block"
-                  >
-                    <Card className="transition-colors hover:border-curtn-muted/30">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <h3 className="text-sm font-medium text-curtn-cream truncate">
-                            {show.title}
-                          </h3>
-                          {show.performanceTypes?.length > 0 && (
-                            <div className="mt-1.5 flex flex-wrap gap-1.5">
-                              {show.performanceTypes.map((t: string) => (
-                                <span
-                                  key={t}
-                                  className="rounded-full bg-curtn-dark/60 px-2.5 py-0.5 text-[11px] text-curtn-muted"
-                                >
-                                  {t}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-shrink-0 text-right">
-                          {show.averageRating != null && (
-                            <p className="text-sm text-curtn-cream">
-                              {show.averageRating.toFixed(1)}
-                            </p>
-                          )}
-                          {show.reviewCount > 0 && (
-                            <p className="text-[11px] text-curtn-muted">
-                              {show.reviewCount} {show.reviewCount === 1 ? "review" : "reviews"}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </Card>
-                  </Link>
+                    size="md"
+                    className="!w-full"
+                    isOnWatchlist={true}
+                  />
                 );
               })}
             </div>

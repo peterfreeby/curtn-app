@@ -20,9 +20,11 @@ export const SHOW_LIST_QUERY = gql`
           title
           performanceTypes
           duration
+          imageUrl
           averageRating
           reviewCount
           watchlistCount
+          isOnMyWatchlist
           runs {
             edges {
               node {
@@ -59,8 +61,10 @@ export const SEARCH_SHOWS_QUERY = gql`
           id
           title
           performanceTypes
+          imageUrl
           averageRating
           reviewCount
+          isOnMyWatchlist
           runs {
             edges {
               node {

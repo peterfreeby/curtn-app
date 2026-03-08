@@ -29,7 +29,7 @@ export function Button({
   return (
     <button
       className={`
-        rounded-lg px-6 py-3 text-sm tracking-wide
+        rounded-[var(--spacing-1)] px-[var(--spacing-3)] py-[var(--spacing-1_5)] text-sm tracking-wide
         transition-all duration-150 cursor-pointer
         disabled:opacity-40 disabled:cursor-not-allowed
         ${variants[variant]}

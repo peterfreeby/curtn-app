@@ -7,6 +7,8 @@ export type IUser = {
   email: string
   username: string
   password: string
+  bio: string
+  avatarUrl: string
   isAdmin: boolean,
   validatePassword: (plainPassword: string) => boolean,
 }
@@ -29,6 +31,14 @@ const schema = new Schema<IUser>({
   password: {
     type: String,
     required: true
+  },
+  bio: {
+    type: String,
+    default: ''
+  },
+  avatarUrl: {
+    type: String,
+    default: ''
   },
   isAdmin: {
     type: Boolean,

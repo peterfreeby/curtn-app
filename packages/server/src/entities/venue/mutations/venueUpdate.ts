@@ -56,6 +56,10 @@ export const venueUpdate = mutationWithClientMutationId({
     email: {
       type: GraphQLString,
       description: 'Contact email'
+    },
+    imageUrl: {
+      type: GraphQLString,
+      description: 'Image URL (from Vercel Blob)'
     }
   },
   outputFields: {
@@ -88,6 +92,7 @@ export const venueUpdate = mutationWithClientMutationId({
       if (input.website !== undefined) updates.website = input.website
       if (input.phone !== undefined) updates.phone = input.phone
       if (input.email !== undefined) updates.email = input.email
+      if (input.imageUrl !== undefined && input.imageUrl !== '') updates.imageUrl = input.imageUrl
 
       if (Object.keys(updates).length === 0) {
         return { venue }

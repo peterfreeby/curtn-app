@@ -15,7 +15,7 @@ export function DesktopNav() {
       {/* Left: Logo */}
       <Link
         href={isAuthenticated ? "/feed" : "/"}
-        className="text-xl font-bold tracking-tight text-curtn-cream hover:text-curtn-coral transition-colors duration-200"
+        className="text-xl font-bold tracking-tight text-curtn-cream hover:text-curtn-coral transition-colors duration-200 font-display"
       >
         Curtn
       </Link>

@@ -11,6 +11,7 @@ interface VenueCardProps {
   city: string;
   state: string;
   capacity: number | null;
+  imageUrl?: string | null;
 }
 
 const VENUE_TYPE_LABELS: Record<string, string> = {
@@ -31,32 +32,49 @@ export function VenueCard({
   city,
   state,
   capacity,
+  imageUrl,
 }: VenueCardProps) {
   return (
     <Link
       href={`/venues/${slug}`}
-      className="block rounded-lg border border-curtn-dark/50 bg-curtn-surface p-4 transition-colors duration-200 hover:border-curtn-muted/50"
+      className="group block rounded-xl border border-curtn-dark/50 bg-curtn-surface overflow-hidden transition-colors duration-200 hover:border-curtn-muted/50"
     >
-      <span className="inline-block rounded-full bg-curtn-dark/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted">
-        {VENUE_TYPE_LABELS[venueType] ?? venueType}
-      </span>
+      {/* Image header */}
+      <div className="relative aspect-[16/9] overflow-hidden bg-curtn-dark/20">
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={name}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <Icon name="buildings" weight="thin" size={32} className="text-curtn-dark" />
+          </div>
+        )}
+      </div>
 
-      <h3 className="mt-2 text-base font-semibold text-curtn-cream line-clamp-2 leading-snug">
-        {name}
-      </h3>
+      {/* Info */}
+      <div className="p-[var(--spacing-2)]">
+        <span className="inline-block rounded-full bg-curtn-dark/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted">
+          {VENUE_TYPE_LABELS[venueType] ?? venueType}
+        </span>
 
-      <p className="mt-1 text-sm text-curtn-muted truncate">{address}</p>
+        <h3 className="mt-[var(--spacing-0_5)] text-sm font-semibold text-curtn-cream line-clamp-2 leading-snug">
+          {name}
+        </h3>
 
-      <p className="mt-0.5 text-sm text-curtn-muted/70">
-        {city}, {state}
-      </p>
+        <p className="mt-[var(--spacing-0_5)] text-xs text-curtn-muted truncate">
+          {city}, {state}
+        </p>
 
-      {capacity && (
-        <div className="mt-2 flex items-center gap-1 text-xs text-curtn-muted/70">
-          <Icon name="user" size={12} className="text-curtn-muted/50" />
-          <span>{capacity} seats</span>
-        </div>
-      )}
+        {capacity && (
+          <div className="mt-[var(--spacing-0_5)] flex items-center gap-1 text-xs text-curtn-muted/70">
+            <Icon name="user" size={12} className="text-curtn-muted/50" />
+            <span>{capacity} seats</span>
+          </div>
+        )}
+      </div>
     </Link>
   );
 }
