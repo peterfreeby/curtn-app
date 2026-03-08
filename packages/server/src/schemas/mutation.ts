@@ -7,6 +7,7 @@ import { reviewMutations } from '../entities/review/mutations/review'
 import { commentMutations } from '../entities/comment/mutations/comment'
 import { followMutations } from '../entities/follow/mutations/follow'
 import { creditMutations } from '../entities/credit/mutations/credit'
+import { showCreditMutations } from '../entities/showCredit/mutations/showCredit'
 import { productionCompanyMutations } from '../entities/productionCompany/mutations/productionCompany'
 import { showMutations } from '../entities/show/mutations/show'
 import { runMutations } from '../entities/run/mutations/run'
@@ -25,6 +26,7 @@ export const mutation = new GraphQLObjectType({
     ...reviewMutations,
     ...followMutations,
     ...creditMutations,
+    ...showCreditMutations,
     ...productionCompanyMutations,
     ...showMutations,
     ...runMutations,

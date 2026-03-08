@@ -25,6 +25,9 @@ export interface IVenue {
   phone?: string
   email?: string
   
+  // Image
+  imageUrl?: string
+
   // External references
   eventbriteVenueId?: string
   googlePlaceId?: string
@@ -109,6 +112,7 @@ const venueSchema = new Schema<IVenue>({
     trim: true,
     lowercase: true
   },
+  imageUrl: String,
   eventbriteVenueId: {
     type: String,
     trim: true

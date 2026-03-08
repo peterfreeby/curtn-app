@@ -102,6 +102,11 @@ import {
         description: 'Contact email',
         resolve: venue => venue.email
       },
+      imageUrl: {
+        type: GraphQLString,
+        description: 'Venue image URL',
+        resolve: venue => venue.imageUrl
+      },
       eventbriteVenueId: {
         type: GraphQLString,
         description: 'Eventbrite venue identifier',

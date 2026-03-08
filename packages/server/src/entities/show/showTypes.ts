@@ -46,6 +46,10 @@ export const showType: GraphQLObjectType = new GraphQLObjectType({
         type: GraphQLString,
         resolve: show => show.url
       },
+      imageUrl: {
+        type: GraphQLString,
+        resolve: show => show.imageUrl
+      },
       wikidataId: {
         type: GraphQLString,
         resolve: show => show.wikidataId
@@ -61,10 +65,14 @@ export const showType: GraphQLObjectType = new GraphQLObjectType({
       averageRating: {
         type: GraphQLFloat,
         resolve: async show => {
-          const runs = await RunModel.find({ show: show._id })
+          const { PerformanceModel } = require('../performance/performanceModel')
+          const runs = await RunModel.find({ show: show._id }, '_id')
           if (runs.length === 0) return null
           const runIds = runs.map(r => r._id)
-          const reviews = await ReviewModel.find({ run: { $in: runIds } })
+          const performances = await PerformanceModel.find({ run: { $in: runIds } }, '_id')
+          if (performances.length === 0) return null
+          const perfIds = performances.map((p: any) => p._id)
+          const reviews = await ReviewModel.find({ performance: { $in: perfIds } })
           if (reviews.length === 0) return null
           const sum = reviews.reduce((acc, r) => acc + r.rating, 0)
           return Math.round((sum / reviews.length) * 10) / 10
@@ -73,9 +81,12 @@ export const showType: GraphQLObjectType = new GraphQLObjectType({
       reviewCount: {
         type: GraphQLInt,
         resolve: async show => {
-          const runs = await RunModel.find({ show: show._id })
+          const { PerformanceModel } = require('../performance/performanceModel')
+          const runs = await RunModel.find({ show: show._id }, '_id')
           const runIds = runs.map(r => r._id)
-          return await ReviewModel.countDocuments({ run: { $in: runIds } })
+          const performances = await PerformanceModel.find({ run: { $in: runIds } }, '_id')
+          const perfIds = performances.map((p: any) => p._id)
+          return await ReviewModel.countDocuments({ performance: { $in: perfIds } })
         }
       },
       watchlistCount: {
@@ -92,6 +103,18 @@ export const showType: GraphQLObjectType = new GraphQLObjectType({
           const { WatchlistItemModel } = require('../watchlist/watchlistModel')
           const item = await WatchlistItemModel.findOne({ user: ctx.user.id, show: show._id })
           return !!item
+        }
+      },
+      creators: {
+        type: require('../showCredit/showCreditTypes').ShowCreditConnection,
+        description: 'Show-level credits (playwrights, composers, etc.)',
+        resolve: async (show: any) => {
+          const { ShowCreditModel } = require('../showCredit/showCreditModel')
+          const showCredits = await ShowCreditModel.find({ show: show._id }).sort({ order: 1 })
+          return {
+            edges: showCredits.map((sc: any) => ({ node: sc, cursor: sc._id.toString() })),
+            pageInfo: { hasNextPage: false, hasPreviousPage: false }
+          }
         }
       },
       source: {

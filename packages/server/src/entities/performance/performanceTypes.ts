@@ -68,6 +68,10 @@ export const performanceType = new GraphQLObjectType({
         type: GraphQLBoolean,
         resolve: performance => performance.soldOut
       },
+      imageUrl: {
+        type: GraphQLString,
+        resolve: perf => perf.metadataOverrides?.imageUrl
+      },
       effectiveDescription: {
         type: GraphQLString,
         description: 'Resolved description: performance override > run > show',

@@ -1,8 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Icon } from "@/components/icons/Icons";
 import { formatDuration } from "@/lib/format";
+
+interface Creator {
+  id: string;
+  person: { id: string; name: string; slug: string };
+  role: string;
+  order: number;
+}
 
 interface ShowHeroProps {
   title: string;
@@ -10,6 +18,8 @@ interface ShowHeroProps {
   performanceTypes: string[];
   duration: number;
   languages: string[] | null;
+  imageUrl?: string | null;
+  creators?: Creator[];
   averageRating: number | null;
   reviewCount: number;
 }
@@ -20,6 +30,8 @@ export function ShowHero({
   performanceTypes,
   duration,
   languages,
+  imageUrl,
+  creators,
   averageRating,
   reviewCount,
 }: ShowHeroProps) {
@@ -30,6 +42,16 @@ export function ShowHero({
 
   return (
     <div>
+      {imageUrl && (
+        <div className="mb-4 overflow-hidden rounded-lg">
+          <img
+            src={imageUrl}
+            alt={title}
+            className="w-full h-48 object-cover"
+          />
+        </div>
+      )}
+
       {performanceTypes.length > 0 && (
         <div className="mb-3 flex flex-wrap gap-1.5">
           {performanceTypes.map((type) => (
@@ -44,6 +66,20 @@ export function ShowHero({
       )}
 
       <h1 className="text-2xl font-bold text-curtn-cream leading-tight">{title}</h1>
+
+      {creators && creators.length > 0 && (
+        <p className="mt-1 text-sm text-curtn-muted">
+          {creators.map((c, i) => (
+            <span key={c.id}>
+              {i > 0 && ", "}
+              <Link href={`/people/${c.person.slug}`} className="text-curtn-coral hover:underline">
+                {c.person.name}
+              </Link>
+              <span className="text-curtn-muted/60"> ({c.role})</span>
+            </span>
+          ))}
+        </p>
+      )}
 
       <p className="mt-2 text-xs text-curtn-muted/70">{metaParts.join(" · ")}</p>
 

@@ -4,6 +4,7 @@ export const SINGLE_RUN_QUERY = gql`
   query SingleRun($id: ID!) {
     singleRun(id: $id) {
       id
+      imageUrl
       show {
         id
         title
@@ -11,6 +12,21 @@ export const SINGLE_RUN_QUERY = gql`
         performanceTypes
         duration
         languages
+        imageUrl
+        creators {
+          edges {
+            node {
+              id
+              person {
+                id
+                name
+                slug
+              }
+              role
+              order
+            }
+          }
+        }
       }
       productionCompany {
         id

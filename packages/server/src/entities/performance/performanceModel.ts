@@ -11,6 +11,7 @@ export interface IPerformance {
   stageOverride?: Types.ObjectId
   metadataOverrides?: {
     description?: string
+    imageUrl?: string
   }
   creditOverrides?: {
     added: Types.ObjectId[]
@@ -53,7 +54,8 @@ const performanceSchema = new Schema<IPerformance>({
     ref: 'stage'
   },
   metadataOverrides: {
-    description: String
+    description: String,
+    imageUrl: String
   },
   creditOverrides: {
     added: [{

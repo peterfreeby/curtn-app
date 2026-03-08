@@ -17,6 +17,7 @@ type Args = GraphQLFieldConfigArgumentMap & {
   direction?: -1 | 1,
   performance?: string
   runId?: string
+  showId?: string
   username?: string
 }
 
@@ -42,7 +43,11 @@ export const reviewList: GraphQLFieldConfig<any, any, Args> = {
     },
     runId: {
       type: GraphQLID,
-      description: 'Filter reviews by this run'
+      description: 'Filter reviews by this run (aggregates all performances in that run)'
+    },
+    showId: {
+      type: GraphQLID,
+      description: 'Filter reviews by this show (aggregates all performances across all runs)'
     },
     username: {
       type: GraphQLString,
@@ -50,16 +55,35 @@ export const reviewList: GraphQLFieldConfig<any, any, Args> = {
     }
   },
   resolve: async (_, args) => {
-    const { sort, rating, direction, performance, runId, username, ...connnectionArgs } = args
+    const { sort, rating, direction, performance, runId, showId, username, ...connnectionArgs } = args
 
     const performanceId = performance && new Types.ObjectId(fromGlobalId(performance).id)
-    const runObjectId = runId && new Types.ObjectId(fromGlobalId(runId).id)
     const userId = username && await usernameToObjectID(username)
+
+    // Build performance filter for run or show level aggregation
+    let performanceFilter: { performance?: any } = {}
+    if (performanceId) {
+      performanceFilter = { performance: performanceId }
+    } else if (runId) {
+      const runObjectId = new Types.ObjectId(fromGlobalId(runId).id)
+      const { PerformanceModel } = require('../../performance/performanceModel')
+      const performances = await PerformanceModel.find({ run: runObjectId }, '_id')
+      const perfIds = performances.map((p: any) => p._id)
+      performanceFilter = { performance: { $in: perfIds } }
+    } else if (showId) {
+      const showObjectId = new Types.ObjectId(fromGlobalId(showId).id)
+      const { RunModel } = require('../../run/runModel')
+      const { PerformanceModel } = require('../../performance/performanceModel')
+      const runs = await RunModel.find({ show: showObjectId }, '_id')
+      const runIds = runs.map((r: any) => r._id)
+      const performances = await PerformanceModel.find({ run: { $in: runIds } }, '_id')
+      const perfIds = performances.map((p: any) => p._id)
+      performanceFilter = { performance: { $in: perfIds } }
+    }
 
     const filter = {
       ...(userId && { user: userId }),
-      ...(performanceId && { performance: performanceId }),
-      ...(runObjectId && { run: runObjectId }),
+      ...performanceFilter,
       ...(rating && { rating })
     }
 

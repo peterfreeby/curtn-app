@@ -79,6 +79,10 @@ export const runType: GraphQLObjectType = new GraphQLObjectType({
         type: GraphQLString,
         resolve: run => run.description
       },
+      imageUrl: {
+        type: GraphQLString,
+        resolve: run => run.imageUrl
+      },
       wikidataId: {
         type: GraphQLString,
         resolve: run => run.wikidataId
@@ -114,7 +118,10 @@ export const runType: GraphQLObjectType = new GraphQLObjectType({
       averageRating: {
         type: GraphQLFloat,
         resolve: async run => {
-          const reviews = await ReviewModel.find({ run: run._id })
+          const performances = await PerformanceModel.find({ run: run._id }, '_id')
+          if (performances.length === 0) return null
+          const perfIds = performances.map((p: any) => p._id)
+          const reviews = await ReviewModel.find({ performance: { $in: perfIds } })
           if (reviews.length === 0) return null
           const sum = reviews.reduce((acc, r) => acc + r.rating, 0)
           return Math.round((sum / reviews.length) * 10) / 10
@@ -122,7 +129,11 @@ export const runType: GraphQLObjectType = new GraphQLObjectType({
       },
       reviewCount: {
         type: GraphQLInt,
-        resolve: async run => await ReviewModel.countDocuments({ run: run._id })
+        resolve: async run => {
+          const performances = await PerformanceModel.find({ run: run._id }, '_id')
+          const perfIds = performances.map((p: any) => p._id)
+          return await ReviewModel.countDocuments({ performance: { $in: perfIds } })
+        }
       },
       createdAt: {
         type: GraphQLString,

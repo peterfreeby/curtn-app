@@ -178,6 +178,7 @@ export const ADMIN_SHOW_LIST_QUERY = gql`
           duration
           description
           url
+          imageUrl
           createdAt
         }
       }
@@ -202,6 +203,7 @@ export const ADMIN_VENUE_LIST_QUERY = gql`
           phone
           email
           description
+          imageUrl
           createdAt
         }
       }
@@ -231,6 +233,7 @@ export const ADMIN_RUN_LIST_QUERY = gql`
           venues {
             name
           }
+          imageUrl
           createdAt
         }
       }
@@ -259,6 +262,7 @@ export const ADMIN_PERFORMANCE_LIST_QUERY = gql`
           venue {
             name
           }
+          imageUrl
           createdAt
         }
       }
@@ -276,6 +280,7 @@ export const SHOW_UPDATE_MUTATION = gql`
         performanceTypes
         duration
         url
+        imageUrl
       }
       error
     }
@@ -298,6 +303,7 @@ export const VENUE_UPDATE_MUTATION = gql`
         website
         phone
         email
+        imageUrl
       }
       error
     }
@@ -314,6 +320,7 @@ export const RUN_UPDATE_MUTATION = gql`
         intermissions
         startDate
         endDate
+        imageUrl
       }
       error
     }
@@ -329,6 +336,7 @@ export const PERFORMANCE_UPDATE_MUTATION = gql`
         time
         ticketUrl
         soldOut
+        imageUrl
       }
       error
     }

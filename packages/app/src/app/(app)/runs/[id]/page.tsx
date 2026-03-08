@@ -10,6 +10,7 @@ import { RunHero } from "@/components/runs/RunHero";
 import { ShowingsList } from "@/components/performances/ShowingsList";
 import { CreditsList } from "@/components/credits/CreditsList";
 import { AddCreditForm } from "@/components/credits/AddCreditForm";
+import { AddShowCreditForm } from "@/components/credits/AddShowCreditForm";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { Icon } from "@/components/icons/Icons";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -62,6 +63,8 @@ export default function RunDetailPage() {
 
   const show = run.show;
   const company = run.productionCompany;
+  const creators = show?.creators?.edges?.map((e: any) => e.node) ?? [];
+  const heroImage = run.imageUrl || show?.imageUrl || null;
   const allShowings = run.performances?.edges?.map((e: any) => e.node) ?? [];
   const upcomingShowings = run.upcomingPerformances?.edges?.map((e: any) => e.node) ?? [];
   const pastShowings = allShowings.filter((s: any) => new Date(s.date) <= new Date());
@@ -104,6 +107,8 @@ export default function RunDetailPage() {
           duration={show.duration}
           intermissions={run.intermissions}
           languages={show.languages}
+          imageUrl={heroImage}
+          creators={creators}
           companyName={company?.name}
           companySlug={company?.slug}
           venues={run.venues.map((v: any) => ({ name: v.name, slug: v.slug, city: v.city }))}
@@ -152,7 +157,8 @@ export default function RunDetailPage() {
         <CreditsList cast={run.cast ?? []} crew={run.crew ?? []} />
 
         {isAuthenticated && (
-          <div className="rounded-lg border border-curtn-dark/50 bg-curtn-surface p-4">
+          <div className="rounded-lg border border-curtn-dark/50 bg-curtn-surface p-4 space-y-6">
+            <AddShowCreditForm showId={show.id} onAdded={handleCreditAdded} />
             <AddCreditForm runId={id} onAdded={handleCreditAdded} />
           </div>
         )}
@@ -197,6 +203,8 @@ export default function RunDetailPage() {
         duration={show.duration}
         intermissions={run.intermissions}
         languages={show.languages}
+        imageUrl={heroImage}
+        creators={creators}
         companyName={company?.name}
         companySlug={company?.slug}
         venues={run.venues.map((v: any) => ({ name: v.name, slug: v.slug, city: v.city }))}
@@ -220,7 +228,8 @@ export default function RunDetailPage() {
       <CreditsList cast={run.cast ?? []} crew={run.crew ?? []} />
 
       {isAuthenticated && (
-        <div className="rounded-lg border border-curtn-dark/50 bg-curtn-surface p-4">
+        <div className="rounded-lg border border-curtn-dark/50 bg-curtn-surface p-4 space-y-6">
+          <AddShowCreditForm showId={show.id} onAdded={handleCreditAdded} />
           <AddCreditForm runId={id} onAdded={handleCreditAdded} />
         </div>
       )}

@@ -104,11 +104,26 @@ export const SINGLE_SHOW_QUERY = gql`
       performanceTypes
       duration
       languages
+      imageUrl
       wikidataId
       averageRating
       reviewCount
       watchlistCount
       isOnMyWatchlist
+      creators {
+        edges {
+          node {
+            id
+            person {
+              id
+              name
+              slug
+            }
+            role
+            order
+          }
+        }
+      }
       runs {
         edges {
           node {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "urql";
 import {
   ADMIN_SHOW_LIST_QUERY,
@@ -76,6 +76,94 @@ function FieldEditor({
           className={inputClass}
         />
       )}
+    </div>
+  );
+}
+
+// --- Image Upload Component ---
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+function ImageUpload({
+  entityType,
+  entityId,
+  currentImageUrl,
+  onUploaded,
+}: {
+  entityType: string;
+  entityId: string;
+  currentImageUrl: string | null;
+  onUploaded: (url: string) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function handleFile(file: File) {
+    setError(null);
+
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      setError("Accepted formats: JPEG, PNG, WebP, GIF");
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      setError("File must be under 5 MB");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("entityType", entityType);
+      formData.append("entityId", entityId);
+
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const json = await res.json();
+
+      if (json.error) {
+        setError(json.error);
+      } else {
+        onUploaded(json.url);
+      }
+    } catch {
+      setError("Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-3">
+      {currentImageUrl && (
+        <img
+          src={currentImageUrl}
+          alt=""
+          className="h-16 w-16 rounded-lg object-cover border border-curtn-dark shrink-0"
+        />
+      )}
+      <div className="space-y-1">
+        <input
+          ref={fileRef}
+          type="file"
+          accept={ACCEPTED_TYPES.join(",")}
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFile(file);
+          }}
+        />
+        <button
+          type="button"
+          disabled={uploading}
+          onClick={() => fileRef.current?.click()}
+          className="rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-1.5 text-xs text-curtn-cream hover:border-curtn-coral transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {uploading ? "Uploading..." : currentImageUrl ? "Replace Image" : "Upload Image"}
+        </button>
+        {error && <p className="text-xs text-curtn-red">{error}</p>}
+      </div>
     </div>
   );
 }
@@ -220,6 +308,7 @@ function ShowsEditor() {
       performanceTypes: (show.performanceTypes || []).join(", "),
       duration: String(show.duration || ""),
       url: show.url || "",
+      imageUrl: show.imageUrl || "",
     });
   }
 
@@ -294,6 +383,12 @@ function ShowsEditor() {
                       <FieldEditor label="Description" value={fields.description} onChange={(v) => setFields((f) => ({ ...f, description: v }))} type="textarea" />
                     </div>
                   </div>
+                  <ImageUpload
+                    entityType="show"
+                    entityId={decodeGlobalId(show.id)}
+                    currentImageUrl={fields.imageUrl || null}
+                    onUploaded={(url) => setFields((f) => ({ ...f, imageUrl: url }))}
+                  />
                   <div className="flex gap-2">
                     <Button variant="primary" onClick={handleSave}>Save</Button>
                     <Button variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
@@ -376,6 +471,7 @@ function VenuesEditor() {
       website: venue.website || "",
       phone: venue.phone || "",
       email: venue.email || "",
+      imageUrl: venue.imageUrl || "",
     });
   }
 
@@ -460,6 +556,12 @@ function VenuesEditor() {
                       <FieldEditor label="Description" value={fields.description} onChange={(v) => setFields((f) => ({ ...f, description: v }))} type="textarea" />
                     </div>
                   </div>
+                  <ImageUpload
+                    entityType="venue"
+                    entityId={decodeGlobalId(venue.id)}
+                    currentImageUrl={fields.imageUrl || null}
+                    onUploaded={(url) => setFields((f) => ({ ...f, imageUrl: url }))}
+                  />
                   <div className="flex gap-2">
                     <Button variant="primary" onClick={handleSave}>Save</Button>
                     <Button variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
@@ -534,6 +636,7 @@ function RunsEditor() {
       intermissions: String(run.intermissions || "0"),
       startDate: run.startDate ? run.startDate.split("T")[0] : "",
       endDate: run.endDate ? run.endDate.split("T")[0] : "",
+      imageUrl: run.imageUrl || "",
     });
   }
 
@@ -613,6 +716,12 @@ function RunsEditor() {
                       <FieldEditor label="Description" value={fields.description} onChange={(v) => setFields((f) => ({ ...f, description: v }))} type="textarea" />
                     </div>
                   </div>
+                  <ImageUpload
+                    entityType="run"
+                    entityId={decodeGlobalId(run.id)}
+                    currentImageUrl={fields.imageUrl || null}
+                    onUploaded={(url) => setFields((f) => ({ ...f, imageUrl: url }))}
+                  />
                   <div className="flex gap-2">
                     <Button variant="primary" onClick={handleSave}>Save</Button>
                     <Button variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
@@ -690,6 +799,7 @@ function PerformancesEditor() {
       ticketUrl: perf.ticketUrl || "",
       soldOut: perf.soldOut ? "true" : "false",
       description: perf.effectiveDescription || "",
+      imageUrl: perf.imageUrl || "",
     });
   }
 
@@ -789,6 +899,12 @@ function PerformancesEditor() {
                       <FieldEditor label="Description (override)" value={fields.description} onChange={(v) => setFields((f) => ({ ...f, description: v }))} type="textarea" />
                     </div>
                   </div>
+                  <ImageUpload
+                    entityType="performance"
+                    entityId={decodeGlobalId(perf.id)}
+                    currentImageUrl={fields.imageUrl || null}
+                    onUploaded={(url) => setFields((f) => ({ ...f, imageUrl: url }))}
+                  />
                   <div className="flex gap-2">
                     <Button variant="primary" onClick={handleSave}>Save</Button>
                     <Button variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>

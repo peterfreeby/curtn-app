@@ -10,6 +10,7 @@ export interface IRun {
   startDate?: Date
   endDate?: Date
   description?: string
+  imageUrl?: string
   wikidataId?: string
   eventbriteId?: string
   source?: Types.ObjectId
@@ -51,6 +52,7 @@ const runSchema = new Schema<IRun>({
     type: String,
     trim: true
   },
+  imageUrl: String,
   wikidataId: String,
   eventbriteId: String,
   source: {

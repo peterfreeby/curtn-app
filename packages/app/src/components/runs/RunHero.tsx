@@ -5,6 +5,12 @@ import Link from "next/link";
 import { Icon } from "@/components/icons/Icons";
 import { formatDuration } from "@/lib/format";
 
+interface Creator {
+  id: string;
+  person: { id: string; name: string; slug: string };
+  role: string;
+}
+
 interface RunHeroProps {
   showTitle: string;
   showId: string;
@@ -14,6 +20,8 @@ interface RunHeroProps {
   duration: number;
   intermissions: number | null;
   languages: string[] | null;
+  imageUrl?: string | null;
+  creators?: Creator[];
   companyName?: string | null;
   companySlug?: string | null;
   venues: { name: string; slug: string; city: string }[];
@@ -32,6 +40,8 @@ export function RunHero({
   duration,
   intermissions,
   languages,
+  imageUrl,
+  creators,
   companyName,
   companySlug,
   venues,
@@ -60,6 +70,16 @@ export function RunHero({
 
   return (
     <div>
+      {imageUrl && (
+        <div className="mb-4 overflow-hidden rounded-lg">
+          <img
+            src={imageUrl}
+            alt={showTitle}
+            className="w-full h-48 object-cover"
+          />
+        </div>
+      )}
+
       {performanceTypes.length > 0 && (
         <div className="mb-3 flex flex-wrap gap-1.5">
           {performanceTypes.map((type) => (
@@ -74,6 +94,20 @@ export function RunHero({
       )}
 
       <h1 className="text-2xl font-bold text-curtn-cream leading-tight">{showTitle}</h1>
+
+      {creators && creators.length > 0 && (
+        <p className="mt-1 text-sm text-curtn-muted">
+          {creators.map((c, i) => (
+            <span key={c.id}>
+              {i > 0 && ", "}
+              <Link href={`/people/${c.person.slug}`} className="text-curtn-coral hover:underline">
+                {c.person.name}
+              </Link>
+              <span className="text-curtn-muted/60"> ({c.role})</span>
+            </span>
+          ))}
+        </p>
+      )}
 
       {companyName && (
         <p className="mt-1 text-sm text-curtn-muted">

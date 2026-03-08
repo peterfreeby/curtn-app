@@ -7,6 +7,7 @@ export interface IShow {
   duration: number
   languages: string[]
   url?: string
+  imageUrl?: string
   wikidataId?: string
   source?: Types.ObjectId
   createdAt: Date
@@ -41,6 +42,7 @@ const showSchema = new Schema<IShow>({
     type: String,
     trim: true
   },
+  imageUrl: String,
   wikidataId: String,
   source: {
     type: Schema.Types.ObjectId,

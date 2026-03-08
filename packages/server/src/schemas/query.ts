@@ -9,6 +9,7 @@ import { showQueries } from '../entities/show/queries/queries'
 import { runQueries } from '../entities/run/queries/queries'
 import { productionCompanyQueries } from '../entities/productionCompany/queries/queries'
 import { creditQueries } from '../entities/credit/queries/queries'
+import { showCreditQueries } from '../entities/showCredit/queries/queries'
 import { watchlistQueries } from '../entities/watchlist/queries/queries'
 import { dataSourceQueries } from '../entities/dataSource/queries/queries'
 import { stageQueries } from '../entities/stage/queries/queries'
@@ -29,6 +30,7 @@ export const query = new GraphQLObjectType({
     ...runQueries,
     ...productionCompanyQueries,
     ...creditQueries,
+    ...showCreditQueries,
     ...watchlistQueries,
     ...dataSourceQueries,
     ...stageQueries,

@@ -12,6 +12,7 @@ import { RunCard } from "@/components/runs/RunCard";
 import { ShowingsList } from "@/components/performances/ShowingsList";
 import { CreditsList } from "@/components/credits/CreditsList";
 import { AddCreditForm } from "@/components/credits/AddCreditForm";
+import { AddShowCreditForm } from "@/components/credits/AddShowCreditForm";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { WatchlistButton } from "@/components/watchlist/WatchlistButton";
 import { Icon } from "@/components/icons/Icons";
@@ -37,6 +38,7 @@ export default function ShowDetailPage() {
   const performances = singleRun?.performances?.edges?.map((e: any) => e.node) ?? [];
   const perfCount = performances.length;
   const singlePerf = perfCount === 1 ? performances[0] : null;
+  const creators = show?.creators?.edges?.map((e: any) => e.node) ?? [];
 
   // For reviews, use the single run's ID when in Scenario A or B
   const reviewRunId = singleRun?.id || null;
@@ -121,6 +123,8 @@ export default function ShowDetailPage() {
           duration={show.duration}
           intermissions={singleRun.intermissions}
           languages={show.languages}
+          imageUrl={show.imageUrl}
+          creators={creators}
           companyName={company?.name}
           companySlug={company?.slug}
           venues={venues.map((v: any) => ({
@@ -179,7 +183,8 @@ export default function ShowDetailPage() {
         <CreditsList cast={singleRun.cast ?? []} crew={singleRun.crew ?? []} />
 
         {isAuthenticated && (
-          <div className="rounded-lg border border-curtn-dark/50 bg-curtn-surface p-4">
+          <div className="rounded-lg border border-curtn-dark/50 bg-curtn-surface p-4 space-y-6">
+            <AddShowCreditForm showId={show.id} onAdded={handleCreditAdded} />
             <AddCreditForm runId={singleRun.id} onAdded={handleCreditAdded} />
           </div>
         )}
@@ -217,6 +222,8 @@ export default function ShowDetailPage() {
           duration={show.duration}
           intermissions={singleRun.intermissions}
           languages={show.languages}
+          imageUrl={show.imageUrl}
+          creators={creators}
           companyName={company?.name}
           companySlug={company?.slug}
           venues={venues.map((v: any) => ({
@@ -250,7 +257,8 @@ export default function ShowDetailPage() {
         <CreditsList cast={singleRun.cast ?? []} crew={singleRun.crew ?? []} />
 
         {isAuthenticated && (
-          <div className="rounded-lg border border-curtn-dark/50 bg-curtn-surface p-4">
+          <div className="rounded-lg border border-curtn-dark/50 bg-curtn-surface p-4 space-y-6">
+            <AddShowCreditForm showId={show.id} onAdded={handleCreditAdded} />
             <AddCreditForm runId={singleRun.id} onAdded={handleCreditAdded} />
           </div>
         )}
@@ -279,6 +287,8 @@ export default function ShowDetailPage() {
         performanceTypes={show.performanceTypes}
         duration={show.duration}
         languages={show.languages}
+        imageUrl={show.imageUrl}
+        creators={creators}
         averageRating={show.averageRating}
         reviewCount={show.reviewCount}
       />
@@ -288,6 +298,12 @@ export default function ShowDetailPage() {
         initialIsOnWatchlist={show.isOnMyWatchlist ?? false}
         initialWatchlistCount={show.watchlistCount ?? 0}
       />
+
+      {isAuthenticated && (
+        <div className="rounded-lg border border-curtn-dark/50 bg-curtn-surface p-4">
+          <AddShowCreditForm showId={show.id} onAdded={handleCreditAdded} />
+        </div>
+      )}
 
       <div>
         <h2 className="mb-3 text-xs uppercase tracking-widest text-curtn-muted">

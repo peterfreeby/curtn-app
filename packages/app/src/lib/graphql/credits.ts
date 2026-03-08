@@ -19,6 +19,24 @@ export const CREDIT_ADD_MUTATION = gql`
   }
 `;
 
+export const SHOW_CREDIT_CREATE_MUTATION = gql`
+  mutation ShowCreditCreate($input: showCreditCreateInput!) {
+    showCreditCreate(input: $input) {
+      showCredit {
+        id
+        person {
+          id
+          name
+          slug
+        }
+        role
+        order
+      }
+      error
+    }
+  }
+`;
+
 export const CREDIT_REMOVE_MUTATION = gql`
   mutation CreditRemove($input: creditRemoveInput!) {
     creditRemove(input: $input) {
