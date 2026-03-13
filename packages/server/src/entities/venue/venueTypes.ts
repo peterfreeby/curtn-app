@@ -107,6 +107,11 @@ import {
         description: 'Venue image URL',
         resolve: venue => venue.imageUrl
       },
+      wikidataId: {
+        type: GraphQLString,
+        description: 'Wikidata entity identifier (e.g. Q12345)',
+        resolve: venue => venue.wikidataId
+      },
       eventbriteVenueId: {
         type: GraphQLString,
         description: 'Eventbrite venue identifier',

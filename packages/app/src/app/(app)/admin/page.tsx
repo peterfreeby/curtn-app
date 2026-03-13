@@ -21,6 +21,15 @@ export default function AdminPage() {
           </Card>
         </Link>
 
+        <Link href="/admin/wikidata">
+          <Card className="transition-colors hover:border-curtn-muted/30 cursor-pointer">
+            <h2 className="text-sm font-medium text-curtn-cream">Wikipedia Import</h2>
+            <p className="mt-1 text-xs text-curtn-muted/60">
+              Search and import shows, venues, and people from Wikipedia &amp; Wikidata.
+            </p>
+          </Card>
+        </Link>
+
         <Link href="/admin/sources">
           <Card className="transition-colors hover:border-curtn-muted/30 cursor-pointer">
             <h2 className="text-sm font-medium text-curtn-cream">Data Sources</h2>

@@ -6,26 +6,59 @@ import { CSV_IMPORT_MUTATION } from "@/lib/graphql/admin";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 
-// Field options for column mapping
+// Field options for column mapping, organized by entity
 const CURTN_FIELDS = [
-  { value: "", label: "-- Skip --" },
-  { value: "title", label: "Show Title" },
-  { value: "description", label: "Description (Show)" },
-  { value: "showDescription", label: "Show Description" },
-  { value: "runDescription", label: "Run Description" },
-  { value: "performanceDescription", label: "Performance Description" },
-  { value: "performanceTypes", label: "Performance Types" },
-  { value: "duration", label: "Duration (minutes)" },
-  { value: "date", label: "Date" },
-  { value: "time", label: "Time" },
-  { value: "startTime", label: "Start Time" },
-  { value: "endTime", label: "End Time" },
-  { value: "venueName", label: "Venue Name" },
-  { value: "stageName", label: "Stage Name" },
-  { value: "runTitle", label: "Run Title" },
-  { value: "companyName", label: "Company Name" },
-  { value: "ticketUrl", label: "Ticket URL" },
+  { value: "", label: "-- Skip --", group: "" },
+  // Show
+  { value: "title", label: "Show Title", group: "Show" },
+  { value: "showDescription", label: "Show Description", group: "Show" },
+  { value: "performanceTypes", label: "Performance Types", group: "Show" },
+  { value: "duration", label: "Duration (minutes)", group: "Show" },
+  { value: "showUrl", label: "Show URL", group: "Show" },
+  { value: "showImageUrl", label: "Show Image URL", group: "Show" },
+  { value: "languages", label: "Languages", group: "Show" },
+  // Venue
+  { value: "venueName", label: "Venue Name", group: "Venue" },
+  { value: "stageName", label: "Stage Name", group: "Venue" },
+  { value: "venueDescription", label: "Venue Description", group: "Venue" },
+  { value: "venueAddress", label: "Venue Address", group: "Venue" },
+  { value: "venueCity", label: "Venue City", group: "Venue" },
+  { value: "venueState", label: "Venue State", group: "Venue" },
+  { value: "venueZipCode", label: "Venue Zip Code", group: "Venue" },
+  { value: "venueCapacity", label: "Venue Capacity", group: "Venue" },
+  { value: "venueType", label: "Venue Type", group: "Venue" },
+  { value: "venueWebsite", label: "Venue Website", group: "Venue" },
+  { value: "venuePhone", label: "Venue Phone", group: "Venue" },
+  { value: "venueEmail", label: "Venue Email", group: "Venue" },
+  { value: "venueImageUrl", label: "Venue Image URL", group: "Venue" },
+  // Run
+  { value: "runTitle", label: "Run Title", group: "Run" },
+  { value: "runDescription", label: "Run Description", group: "Run" },
+  { value: "runStartDate", label: "Run Start Date", group: "Run" },
+  { value: "runEndDate", label: "Run End Date", group: "Run" },
+  { value: "intermissions", label: "Intermissions", group: "Run" },
+  { value: "runImageUrl", label: "Run Image URL", group: "Run" },
+  // Performance
+  { value: "date", label: "Date", group: "Performance" },
+  { value: "time", label: "Time", group: "Performance" },
+  { value: "startTime", label: "Start Time", group: "Performance" },
+  { value: "endTime", label: "End Time", group: "Performance" },
+  { value: "ticketUrl", label: "Ticket URL", group: "Performance" },
+  { value: "performanceDescription", label: "Performance Description", group: "Performance" },
+  { value: "soldOut", label: "Sold Out", group: "Performance" },
+  // Company
+  { value: "companyName", label: "Company Name", group: "Company" },
+  { value: "companyDescription", label: "Company Description", group: "Company" },
+  { value: "companyLogoUrl", label: "Company Logo URL", group: "Company" },
+  // Credits
+  { value: "personName", label: "Person Name", group: "Credit" },
+  { value: "personRole", label: "Person Role", group: "Credit" },
+  { value: "creditType", label: "Credit Type", group: "Credit" },
+  { value: "creditDepartment", label: "Credit Department", group: "Credit" },
 ];
+
+// Group labels for optgroup rendering
+const FIELD_GROUPS = ["Show", "Venue", "Run", "Performance", "Company", "Credit"];
 
 type Step = "upload" | "map" | "preview" | "results";
 
@@ -37,6 +70,13 @@ interface ImportResult {
   runsMatched: number;
   performancesCreated: number;
   performancesMatched: number;
+  venuesCreated: number;
+  venuesMatched: number;
+  companiesCreated: number;
+  companiesMatched: number;
+  personsCreated: number;
+  personsMatched: number;
+  creditsCreated: number;
   errors: string[];
 }
 
@@ -111,50 +151,61 @@ export default function CsvImportPage() {
 
       // Auto-map columns by header name
       const autoMap: Record<number, string> = {};
+      const aliasMap: Record<string, string> = {
+        // Show
+        name: "title", showtitle: "title", show: "title", title: "title",
+        showdescription: "showDescription", description: "showDescription",
+        type: "performanceTypes", genre: "performanceTypes", category: "performanceTypes",
+        performancetypes: "performanceTypes",
+        duration: "duration", durationminutes: "duration", runtime: "duration",
+        showurl: "showUrl",
+        showimageurl: "showImageUrl", showimage: "showImageUrl", poster: "showImageUrl",
+        languages: "languages", language: "languages",
+        // Venue
+        venue: "venueName", location: "venueName", venuename: "venueName",
+        stage: "stageName", stagename: "stageName", room: "stageName", theater: "stageName", hall: "stageName",
+        venuedescription: "venueDescription",
+        venueaddress: "venueAddress", address: "venueAddress",
+        venuecity: "venueCity", city: "venueCity",
+        venuestate: "venueState", state: "venueState",
+        venuezipcode: "venueZipCode", zipcode: "venueZipCode", zip: "venueZipCode",
+        venuecapacity: "venueCapacity", capacity: "venueCapacity", seats: "venueCapacity",
+        venuetype: "venueType",
+        venuewebsite: "venueWebsite",
+        venuephone: "venuePhone",
+        venueemail: "venueEmail",
+        venueimageurl: "venueImageUrl", venueimage: "venueImageUrl",
+        // Run
+        runtitle: "runTitle", productiontitle: "runTitle", productionname: "runTitle",
+        rundescription: "runDescription", productiondescription: "runDescription",
+        runstartdate: "runStartDate", openingnight: "runStartDate",
+        runenddate: "runEndDate", closingnight: "runEndDate",
+        intermissions: "intermissions", intermission: "intermissions",
+        runimageurl: "runImageUrl", runimage: "runImageUrl",
+        // Performance
+        date: "date",
+        time: "time",
+        starttime: "startTime", start: "startTime", doortime: "startTime",
+        endtime: "endTime", end: "endTime",
+        ticketurl: "ticketUrl", tickets: "ticketUrl", url: "ticketUrl", link: "ticketUrl",
+        performancedescription: "performanceDescription", showingdescription: "performanceDescription", eventnotes: "performanceDescription",
+        soldout: "soldOut",
+        // Company
+        company: "companyName", producer: "companyName", productioncompany: "companyName", companyname: "companyName",
+        companydescription: "companyDescription",
+        companylogourl: "companyLogoUrl", companylogo: "companyLogoUrl",
+        // Credits
+        personname: "personName", person: "personName", performer: "personName",
+        actor: "personName", artist: "personName", castmember: "personName",
+        personrole: "personRole", role: "personRole", character: "personRole",
+        credittype: "creditType",
+        creditdepartment: "creditDepartment", department: "creditDepartment",
+      };
+
       csvHeaders.forEach((header, idx) => {
         const normalized = header.toLowerCase().replace(/[^a-z]/g, "");
-        const match = CURTN_FIELDS.find(
-          (f) => f.value && f.value.toLowerCase() === normalized
-        );
-        if (match) autoMap[idx] = match.value;
-        // Common aliases
-        if (normalized === "name" || normalized === "showtitle" || normalized === "show")
-          autoMap[idx] = "title";
-        if (normalized === "venue" || normalized === "location")
-          autoMap[idx] = "venueName";
-        if (
-          normalized === "company" ||
-          normalized === "producer" ||
-          normalized === "productioncompany"
-        )
-          autoMap[idx] = "companyName";
-        if (
-          normalized === "type" ||
-          normalized === "genre" ||
-          normalized === "category"
-        )
-          autoMap[idx] = "performanceTypes";
-        if (
-          normalized === "ticketurl" ||
-          normalized === "tickets" ||
-          normalized === "url" ||
-          normalized === "link"
-        )
-          autoMap[idx] = "ticketUrl";
-        if (normalized === "starttime" || normalized === "start" || normalized === "doortime")
-          autoMap[idx] = "startTime";
-        if (normalized === "endtime" || normalized === "end")
-          autoMap[idx] = "endTime";
-        if (normalized === "stage" || normalized === "stagename" || normalized === "room" || normalized === "theater" || normalized === "hall")
-          autoMap[idx] = "stageName";
-        if (normalized === "runtitle" || normalized === "productiontitle" || normalized === "productionname")
-          autoMap[idx] = "runTitle";
-        if (normalized === "showdescription")
-          autoMap[idx] = "showDescription";
-        if (normalized === "rundescription" || normalized === "productiondescription")
-          autoMap[idx] = "runDescription";
-        if (normalized === "performancedescription" || normalized === "showingdescription" || normalized === "eventnotes")
-          autoMap[idx] = "performanceDescription";
+        const match = aliasMap[normalized];
+        if (match) autoMap[idx] = match;
       });
       setColumnMap(autoMap);
       setImportError(null);
@@ -309,16 +360,68 @@ export default function CsvImportPage() {
                     }
                     className="flex-1 rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
                   >
-                    {CURTN_FIELDS.map((f) => (
-                      <option key={f.value} value={f.value}>
-                        {f.label}
-                      </option>
+                    <option value="">-- Skip --</option>
+                    {FIELD_GROUPS.map((group) => (
+                      <optgroup key={group} label={group}>
+                        {CURTN_FIELDS.filter((f) => f.group === group).map(
+                          (f) => (
+                            <option key={f.value} value={f.value}>
+                              {f.label}
+                            </option>
+                          )
+                        )}
+                      </optgroup>
                     ))}
                   </select>
                 </div>
               ))}
             </div>
           </Card>
+
+          {/* Credit inference rules (show when credit fields are mapped) */}
+          {Object.values(columnMap).some((v) =>
+            ["personName", "personRole", "creditType", "creditDepartment"].includes(v)
+          ) && (
+            <Card>
+              <h2 className="mb-2 text-sm font-medium text-curtn-cream">
+                Credit Level Inference
+              </h2>
+              <p className="text-xs text-curtn-muted mb-3">
+                Credits are automatically assigned to the right level based on
+                what other columns are in the row:
+              </p>
+              <div className="space-y-2 text-xs">
+                <div className="flex gap-3 items-start">
+                  <span className="shrink-0 rounded bg-curtn-coral/20 px-2 py-0.5 text-curtn-coral font-medium">
+                    Show
+                  </span>
+                  <span className="text-curtn-cream/70">
+                    Credit Type is &quot;creator&quot; or &quot;creative&quot;, OR
+                    the row has no venue/run/performance data. Use for
+                    playwrights, composers, lyricists.
+                  </span>
+                </div>
+                <div className="flex gap-3 items-start">
+                  <span className="shrink-0 rounded bg-curtn-coral/20 px-2 py-0.5 text-curtn-coral font-medium">
+                    Run
+                  </span>
+                  <span className="text-curtn-cream/70">
+                    Row has venue, run title, or company data but no
+                    date/time. Use for this production&apos;s cast and crew.
+                  </span>
+                </div>
+                <div className="flex gap-3 items-start">
+                  <span className="shrink-0 rounded bg-curtn-coral/20 px-2 py-0.5 text-curtn-coral font-medium">
+                    Performance
+                  </span>
+                  <span className="text-curtn-cream/70">
+                    Row has a date (and a performance is created). Use for
+                    understudies or one-night-only performers.
+                  </span>
+                </div>
+              </div>
+            </Card>
+          )}
 
           {/* Preview first 3 rows */}
           <Card>
@@ -421,6 +524,20 @@ export default function CsvImportPage() {
                     </span>
                   </div>
                   <div>
+                    <span className="text-curtn-muted">Venues: </span>
+                    <span className="text-curtn-cream">
+                      {importResult.venuesCreated} new,{" "}
+                      {importResult.venuesMatched} matched
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-curtn-muted">Companies: </span>
+                    <span className="text-curtn-cream">
+                      {importResult.companiesCreated} new,{" "}
+                      {importResult.companiesMatched} matched
+                    </span>
+                  </div>
+                  <div>
                     <span className="text-curtn-muted">Runs: </span>
                     <span className="text-curtn-cream">
                       {importResult.runsCreated} new,{" "}
@@ -433,6 +550,14 @@ export default function CsvImportPage() {
                       {importResult.performancesCreated} new
                       {importResult.performancesMatched > 0 &&
                         `, ${importResult.performancesMatched} matched`}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-curtn-muted">Credits: </span>
+                    <span className="text-curtn-cream">
+                      {importResult.creditsCreated} new,{" "}
+                      {importResult.personsCreated} new people,{" "}
+                      {importResult.personsMatched} matched
                     </span>
                   </div>
                 </div>
@@ -527,53 +652,35 @@ export default function CsvImportPage() {
               Import Complete
             </h2>
 
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-              <div className="rounded-lg bg-curtn-deep p-4 text-center">
-                <p className="text-2xl font-bold text-curtn-cream">
-                  {importResult.showsCreated}
-                </p>
-                <p className="text-xs text-curtn-muted">Shows Created</p>
-              </div>
-              <div className="rounded-lg bg-curtn-deep p-4 text-center">
-                <p className="text-2xl font-bold text-curtn-cream">
-                  {importResult.showsMatched}
-                </p>
-                <p className="text-xs text-curtn-muted">Shows Matched</p>
-              </div>
-              <div className="rounded-lg bg-curtn-deep p-4 text-center">
-                <p className="text-2xl font-bold text-curtn-cream">
-                  {importResult.runsCreated}
-                </p>
-                <p className="text-xs text-curtn-muted">Runs Created</p>
-              </div>
-              <div className="rounded-lg bg-curtn-deep p-4 text-center">
-                <p className="text-2xl font-bold text-curtn-cream">
-                  {importResult.runsMatched}
-                </p>
-                <p className="text-xs text-curtn-muted">Runs Matched</p>
-              </div>
-              <div className="rounded-lg bg-curtn-deep p-4 text-center">
-                <p className="text-2xl font-bold text-curtn-cream">
-                  {importResult.performancesCreated}
-                </p>
-                <p className="text-xs text-curtn-muted">
-                  Performances Created
-                </p>
-              </div>
-              <div className="rounded-lg bg-curtn-deep p-4 text-center">
-                <p className="text-2xl font-bold text-curtn-cream">
-                  {importResult.performancesMatched}
-                </p>
-                <p className="text-xs text-curtn-muted">
-                  Performances Matched
-                </p>
-              </div>
-              <div className="rounded-lg bg-curtn-deep p-4 text-center">
-                <p className="text-2xl font-bold text-curtn-cream">
-                  {importResult.totalRows}
-                </p>
-                <p className="text-xs text-curtn-muted">Total Rows</p>
-              </div>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {[
+                { label: "Total Rows", value: importResult.totalRows },
+                { label: "Shows Created", value: importResult.showsCreated },
+                { label: "Shows Matched", value: importResult.showsMatched },
+                { label: "Venues Created", value: importResult.venuesCreated },
+                { label: "Venues Matched", value: importResult.venuesMatched },
+                { label: "Companies Created", value: importResult.companiesCreated },
+                { label: "Companies Matched", value: importResult.companiesMatched },
+                { label: "Runs Created", value: importResult.runsCreated },
+                { label: "Runs Matched", value: importResult.runsMatched },
+                { label: "Performances Created", value: importResult.performancesCreated },
+                { label: "Performances Matched", value: importResult.performancesMatched },
+                { label: "Credits Created", value: importResult.creditsCreated },
+                { label: "People Created", value: importResult.personsCreated },
+                { label: "People Matched", value: importResult.personsMatched },
+              ]
+                .filter((item) => item.value > 0)
+                .map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-lg bg-curtn-deep p-4 text-center"
+                  >
+                    <p className="text-2xl font-bold text-curtn-cream">
+                      {item.value}
+                    </p>
+                    <p className="text-xs text-curtn-muted">{item.label}</p>
+                  </div>
+                ))}
             </div>
 
             {importResult.errors.length > 0 && (

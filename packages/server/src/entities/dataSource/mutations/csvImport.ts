@@ -18,26 +18,64 @@ import { ProductionCompanyModel } from '../../productionCompany/productionCompan
 import { DataSourceModel } from '../dataSourceModel'
 import { ensureDefaultStage } from '../../stage/ensureDefaultStage'
 import { StageModel } from '../../stage/stageModel'
+import { PersonModel } from '../../person/personModel'
+import { CreditModel } from '../../credit/creditModel'
+import { ShowCreditModel } from '../../showCredit/showCreditModel'
 
 const CsvRowInput = new GraphQLInputObjectType({
   name: 'CsvRowInput',
   fields: {
+    // Show fields
     title: { type: new GraphQLNonNull(GraphQLString) },
-    description: { type: GraphQLString },        // alias for showDescription (backwards compat)
     showDescription: { type: GraphQLString },
-    runDescription: { type: GraphQLString },
-    performanceDescription: { type: GraphQLString },
-    performanceTypes: { type: GraphQLString },  // comma-separated
-    duration: { type: GraphQLString },           // minutes as string
-    date: { type: GraphQLString },               // ISO date or parseable date string
-    time: { type: GraphQLString },               // e.g. "7:30 PM"
-    startTime: { type: GraphQLString },          // e.g. "7:30 PM" — alias for time
-    endTime: { type: GraphQLString },            // e.g. "9:00 PM" — used to infer duration
+    performanceTypes: { type: GraphQLString },    // comma-separated
+    duration: { type: GraphQLString },             // minutes as string
+    showUrl: { type: GraphQLString },              // show website
+    showImageUrl: { type: GraphQLString },         // show poster/image URL
+    languages: { type: GraphQLString },            // comma-separated
+
+    // Venue fields
     venueName: { type: GraphQLString },
-    stageName: { type: GraphQLString },          // e.g. "LuEsther Hall" — optional, creates named stage on venue
-    runTitle: { type: GraphQLString },            // e.g. "Inwood Shakespeare Festival's Annual: King Lear"
+    stageName: { type: GraphQLString },
+    venueDescription: { type: GraphQLString },
+    venueAddress: { type: GraphQLString },
+    venueCity: { type: GraphQLString },            // NYC, Minneapolis, LA
+    venueState: { type: GraphQLString },           // NY, MN, CA
+    venueZipCode: { type: GraphQLString },
+    venueCapacity: { type: GraphQLString },        // number as string
+    venueType: { type: GraphQLString },            // theater, concert-hall, etc.
+    venueWebsite: { type: GraphQLString },
+    venuePhone: { type: GraphQLString },
+    venueEmail: { type: GraphQLString },
+    venueImageUrl: { type: GraphQLString },
+
+    // Run fields
+    runTitle: { type: GraphQLString },
+    runDescription: { type: GraphQLString },
+    runStartDate: { type: GraphQLString },
+    runEndDate: { type: GraphQLString },
+    intermissions: { type: GraphQLString },        // number as string
+    runImageUrl: { type: GraphQLString },
+
+    // Performance fields
+    date: { type: GraphQLString },                 // ISO date or parseable date string
+    time: { type: GraphQLString },                 // e.g. "7:30 PM"
+    startTime: { type: GraphQLString },            // alias for time
+    endTime: { type: GraphQLString },              // used to infer duration
+    ticketUrl: { type: GraphQLString },
+    performanceDescription: { type: GraphQLString },
+    soldOut: { type: GraphQLString },              // "true", "yes", "1"
+
+    // Company fields
     companyName: { type: GraphQLString },
-    ticketUrl: { type: GraphQLString }
+    companyDescription: { type: GraphQLString },
+    companyLogoUrl: { type: GraphQLString },
+
+    // Credit fields
+    personName: { type: GraphQLString },
+    personRole: { type: GraphQLString },           // e.g. "Hamlet", "Director", "Playwright"
+    creditType: { type: GraphQLString },           // cast, crew, or creator (show-level)
+    creditDepartment: { type: GraphQLString },     // cast, crew, creative, production, music
   }
 })
 
@@ -51,6 +89,13 @@ const ImportResultType = new GraphQLObjectType({
     runsMatched: { type: GraphQLInt },
     performancesCreated: { type: GraphQLInt },
     performancesMatched: { type: GraphQLInt },
+    venuesCreated: { type: GraphQLInt },
+    venuesMatched: { type: GraphQLInt },
+    companiesCreated: { type: GraphQLInt },
+    companiesMatched: { type: GraphQLInt },
+    personsCreated: { type: GraphQLInt },
+    personsMatched: { type: GraphQLInt },
+    creditsCreated: { type: GraphQLInt },
     errors: { type: new GraphQLList(GraphQLString) }
   }
 })
@@ -112,6 +157,13 @@ export const csvImport = mutationWithClientMutationId({
       runsMatched: 0,
       performancesCreated: 0,
       performancesMatched: 0,
+      venuesCreated: 0,
+      venuesMatched: 0,
+      companiesCreated: 0,
+      companiesMatched: 0,
+      personsCreated: 0,
+      personsMatched: 0,
+      creditsCreated: 0,
       errors: [] as string[]
     }
 
@@ -120,6 +172,16 @@ export const csvImport = mutationWithClientMutationId({
     if (dataSourceId) {
       const ds = await DataSourceModel.findById(dataSourceId)
       if (ds) sourceId = ds._id.toString()
+    }
+
+    // Helper: generate slug from string
+    const toSlug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+
+    // Helper: parse soldOut from various truthy strings
+    const parseSoldOut = (val?: string): boolean => {
+      if (!val) return false
+      const v = val.trim().toLowerCase()
+      return ['true', 'yes', '1', 'sold out', 'soldout'].includes(v)
     }
 
     for (let i = 0; i < rows.length; i++) {
@@ -153,15 +215,22 @@ export const csvImport = mutationWithClientMutationId({
             const start = parseTimeToMinutes(row.startTime.trim())
             const end = parseTimeToMinutes(row.endTime.trim())
             if (start !== null && end !== null) {
-              duration = end > start ? end - start : (end + 1440) - start // handle midnight crossing
+              duration = end > start ? end - start : (end + 1440) - start
             }
           }
 
+          const langs = row.languages
+            ? row.languages.split(',').map((l: string) => l.trim()).filter(Boolean)
+            : ['English']
+
           show = await new ShowModel({
             title: titleClean,
-            description: row.showDescription?.trim() || row.description?.trim() || '',
+            description: row.showDescription?.trim() || '',
             performanceTypes: types,
             duration,
+            languages: langs,
+            ...(row.showUrl?.trim() && { url: row.showUrl.trim() }),
+            ...(row.showImageUrl?.trim() && { imageUrl: row.showImageUrl.trim() }),
             submittedBy: ctx.user.id,
             ...(sourceId && { source: sourceId })
           }).save()
@@ -174,18 +243,29 @@ export const csvImport = mutationWithClientMutationId({
         let venueIds: string[] = []
         let stageId: string | undefined
         if (row.venueName?.trim()) {
-          const venueSlug = row.venueName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+          const venueSlug = toSlug(row.venueName.trim())
           let venue = await VenueModel.findOne({ slug: venueSlug })
           if (!venue) {
             venue = await new VenueModel({
               name: row.venueName.trim(),
               slug: venueSlug,
-              address: 'TBD',
-              city: 'NYC',
-              state: 'NY',
+              address: row.venueAddress?.trim() || 'TBD',
+              city: row.venueCity?.trim() || 'NYC',
+              state: row.venueState?.trim() || 'NY',
               coordinates: { lat: 40.7128, lng: -74.0060 },
+              ...(row.venueDescription?.trim() && { description: row.venueDescription.trim() }),
+              ...(row.venueZipCode?.trim() && { zipCode: row.venueZipCode.trim() }),
+              ...(row.venueCapacity?.trim() && { capacity: parseInt(row.venueCapacity, 10) || undefined }),
+              ...(row.venueType?.trim() && { venueType: row.venueType.trim().toLowerCase() }),
+              ...(row.venueWebsite?.trim() && { website: row.venueWebsite.trim() }),
+              ...(row.venuePhone?.trim() && { phone: row.venuePhone.trim() }),
+              ...(row.venueEmail?.trim() && { email: row.venueEmail.trim() }),
+              ...(row.venueImageUrl?.trim() && { imageUrl: row.venueImageUrl.trim() }),
               submittedBy: ctx.user.id
             }).save()
+            result.venuesCreated++
+          } else {
+            result.venuesMatched++
           }
           venueIds = [venue._id.toString()]
           // Ensure venue has a default stage
@@ -193,7 +273,7 @@ export const csvImport = mutationWithClientMutationId({
 
           // Find or create a named stage if provided
           if (row.stageName?.trim()) {
-            const stageSlug = row.stageName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+            const stageSlug = toSlug(row.stageName.trim())
             let stage = await StageModel.findOne({ venue: venue._id, slug: stageSlug })
             if (!stage) {
               stage = await new StageModel({
@@ -213,14 +293,19 @@ export const csvImport = mutationWithClientMutationId({
         // 3. Find or create ProductionCompany (if provided)
         let companyId: string | undefined
         if (row.companyName?.trim()) {
-          const companySlug = row.companyName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+          const companySlug = toSlug(row.companyName.trim())
           let company = await ProductionCompanyModel.findOne({ slug: companySlug })
           if (!company) {
             company = await new ProductionCompanyModel({
               name: row.companyName.trim(),
               slug: companySlug,
+              ...(row.companyDescription?.trim() && { description: row.companyDescription.trim() }),
+              ...(row.companyLogoUrl?.trim() && { logoUrl: row.companyLogoUrl.trim() }),
               submittedBy: ctx.user.id
             }).save()
+            result.companiesCreated++
+          } else {
+            result.companiesMatched++
           }
           companyId = company._id.toString()
         }
@@ -242,6 +327,10 @@ export const csvImport = mutationWithClientMutationId({
           }
           result.runsMatched++
         } else {
+          // Parse explicit run dates if provided
+          const runStartDate = row.runStartDate?.trim() ? new Date(row.runStartDate.trim()) : undefined
+          const runEndDate = row.runEndDate?.trim() ? new Date(row.runEndDate.trim()) : undefined
+
           run = await new RunModel({
             show: show._id,
             ...(row.runTitle?.trim() && { title: row.runTitle.trim() }),
@@ -249,6 +338,10 @@ export const csvImport = mutationWithClientMutationId({
             productionCompany: companyId,
             venues: venueIds,
             ...(stageId && { stage: stageId }),
+            ...(row.intermissions?.trim() && { intermissions: parseInt(row.intermissions, 10) || 0 }),
+            ...(runStartDate && !isNaN(runStartDate.getTime()) && { startDate: runStartDate }),
+            ...(runEndDate && !isNaN(runEndDate.getTime()) && { endDate: runEndDate }),
+            ...(row.runImageUrl?.trim() && { imageUrl: row.runImageUrl.trim() }),
             submittedBy: ctx.user.id,
             ...(sourceId && { source: sourceId })
           }).save()
@@ -256,6 +349,7 @@ export const csvImport = mutationWithClientMutationId({
         }
 
         // 5. Create Performance (if date provided)
+        let performance: any = null
         if (row.date?.trim()) {
           if (venueIds.length === 0) {
             result.errors.push(`Row ${rowNum}: Cannot create performance without a venue`)
@@ -276,13 +370,15 @@ export const csvImport = mutationWithClientMutationId({
 
               if (existingPerf) {
                 result.performancesMatched++
+                performance = existingPerf
               } else {
-                await new PerformanceModel({
+                performance = await new PerformanceModel({
                   run: run._id,
                   date: perfDate,
                   time: row.time?.trim() || row.startTime?.trim() || '',
                   venueId: venueIds[0],
                   ticketUrl: row.ticketUrl?.trim() || '',
+                  soldOut: parseSoldOut(row.soldOut),
                   ...(row.performanceDescription?.trim() && {
                     metadataOverrides: { description: row.performanceDescription.trim() }
                   }),
@@ -300,6 +396,101 @@ export const csvImport = mutationWithClientMutationId({
                 run.endDate = perfDate
               }
               await run.save()
+            }
+          }
+        }
+
+        // 6. Create Credit (if personName provided)
+        // Inference rules:
+        //   - creditType "creator" or no run/performance context → ShowCredit (show-level)
+        //   - Has date/time (performance exists) → performance-level credit (creditOverrides.added)
+        //   - Has venue/run/company context but no date → run-level Credit
+        //   - Fallback: run-level Credit (if run exists)
+        if (row.personName?.trim() && row.personRole?.trim()) {
+          const personSlug = toSlug(row.personName.trim())
+          let person = await PersonModel.findOne({ slug: personSlug })
+          if (!person) {
+            person = await new PersonModel({
+              name: row.personName.trim(),
+              slug: personSlug,
+              submittedBy: ctx.user.id
+            }).save()
+            result.personsCreated++
+          } else {
+            result.personsMatched++
+          }
+
+          const creditTypeRaw = (row.creditType || row.creditDepartment || 'cast').trim().toLowerCase()
+          const isCreator = creditTypeRaw === 'creator' || creditTypeRaw === 'creative'
+          const hasPerformanceContext = !!(row.date?.trim() && performance)
+          const hasRunContext = !!(row.venueName?.trim() || row.runTitle?.trim() || row.companyName?.trim())
+
+          if (isCreator || (!hasRunContext && !hasPerformanceContext)) {
+            // Show-level credit (ShowCredit)
+            const existing = await ShowCreditModel.findOne({
+              person: person._id,
+              show: show._id,
+              role: row.personRole.trim()
+            })
+            if (!existing) {
+              await new ShowCreditModel({
+                person: person._id,
+                show: show._id,
+                role: row.personRole.trim(),
+                order: 0,
+                submittedBy: ctx.user.id
+              }).save()
+              result.creditsCreated++
+            }
+          } else if (hasPerformanceContext && performance) {
+            // Performance-level: create a run credit, then add to performance's creditOverrides.added
+            const runCreditType = ['crew', 'production', 'music'].includes(creditTypeRaw) ? 'crew' : 'cast'
+            let credit = await CreditModel.findOne({
+              person: person._id,
+              run: run._id,
+              role: row.personRole.trim()
+            })
+            if (!credit) {
+              credit = await new CreditModel({
+                person: person._id,
+                run: run._id,
+                creditType: runCreditType,
+                role: row.personRole.trim(),
+                order: 0,
+                submittedBy: ctx.user.id
+              }).save()
+              result.creditsCreated++
+            }
+            // Add to performance creditOverrides if not already there
+            if (!performance.creditOverrides) {
+              performance.creditOverrides = { added: [], removed: [] }
+            }
+            const creditIdStr = credit._id.toString()
+            const alreadyAdded = performance.creditOverrides.added?.some(
+              (id: any) => id.toString() === creditIdStr
+            )
+            if (!alreadyAdded) {
+              performance.creditOverrides.added.push(credit._id)
+              await performance.save()
+            }
+          } else {
+            // Run-level credit (default)
+            const runCreditType = ['crew', 'production', 'music'].includes(creditTypeRaw) ? 'crew' : 'cast'
+            const existing = await CreditModel.findOne({
+              person: person._id,
+              run: run._id,
+              role: row.personRole.trim()
+            })
+            if (!existing) {
+              await new CreditModel({
+                person: person._id,
+                run: run._id,
+                creditType: runCreditType,
+                role: row.personRole.trim(),
+                order: 0,
+                submittedBy: ctx.user.id
+              }).save()
+              result.creditsCreated++
             }
           }
         }

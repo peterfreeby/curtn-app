@@ -11,6 +11,13 @@ export const CSV_IMPORT_MUTATION = gql`
         runsMatched
         performancesCreated
         performancesMatched
+        venuesCreated
+        venuesMatched
+        companiesCreated
+        companiesMatched
+        personsCreated
+        personsMatched
+        creditsCreated
         errors
       }
       error
@@ -164,6 +171,63 @@ export const AUTO_VALIDATE_MUTATION = gql`
     }
   }
 `;
+
+// --- Wikidata Import ---
+
+export const WIKIDATA_SEARCH_MUTATION = gql`
+  mutation WikidataSearch($input: wikidataSearchInput!) {
+    wikidataSearch(input: $input) {
+      shows {
+        wikidataId
+        title
+        description
+        performanceType
+        premiereDate
+        venueLabel
+        directorLabel
+        composerLabel
+        duration
+        existsInCurtn
+      }
+      venues {
+        wikidataId
+        name
+        capacity
+        coordinates
+        website
+        architectLabel
+        ownerLabel
+        openedDate
+        existsInCurtn
+      }
+      error
+    }
+  }
+`;
+
+// Note: wikidataSearchInput accepts optional yearFrom/yearTo for SHOWS_BY_REGION searches
+
+export const WIKIDATA_IMPORT_MUTATION = gql`
+  mutation WikidataImport($input: wikidataImportInput!) {
+    wikidataImport(input: $input) {
+      result {
+        totalProcessed
+        showsCreated
+        showsEnriched
+        showsSkipped
+        venuesCreated
+        venuesEnriched
+        venuesSkipped
+        companiesCreated
+        personsCreated
+        creditsCreated
+        errors
+      }
+      error
+    }
+  }
+`;
+
 
 // --- Admin Editor Queries & Mutations ---
 

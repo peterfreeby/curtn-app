@@ -7,12 +7,12 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
+    <div className="h-dvh w-full flex flex-col md:block">
       <DesktopNav />
-      <main className="pt-16 md:pt-16 pb-20 md:pb-0 min-h-screen">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden pt-[env(safe-area-inset-top)] md:pt-16 md:pb-0">
         {children}
       </main>
       <MobileNav />
-    </>
+    </div>
   );
 }

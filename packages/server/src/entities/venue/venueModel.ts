@@ -29,6 +29,7 @@ export interface IVenue {
   imageUrl?: string
 
   // External references
+  wikidataId?: string
   eventbriteVenueId?: string
   googlePlaceId?: string
   
@@ -113,6 +114,10 @@ const venueSchema = new Schema<IVenue>({
     lowercase: true
   },
   imageUrl: String,
+  wikidataId: {
+    type: String,
+    trim: true
+  },
   eventbriteVenueId: {
     type: String,
     trim: true

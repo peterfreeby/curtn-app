@@ -9,7 +9,7 @@ export function MobileNav() {
   const { isAuthenticated, user } = useAuth();
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-curtn-deep/95 backdrop-blur-sm border-t border-curtn-dark/20 pb-safe">
+    <nav className="md:hidden shrink-0 bg-curtn-deep/95 backdrop-blur-sm border-t border-curtn-dark/20 pb-safe">
       <div className="flex items-center justify-around h-16">
         <NavLink
           href="/feed"

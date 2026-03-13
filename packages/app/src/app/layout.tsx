@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -16,6 +16,10 @@ const inter = Inter({
   display: "swap",
 });
 
+export const viewport: Viewport = {
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
   title: "Curtn",
   description: "The stage is yours.",
@@ -28,7 +32,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${neueRegrade.variable} ${inter.variable}`}>
-      <body className="font-sans min-h-screen">
+      <body className="font-sans min-h-dvh overflow-x-hidden">
         <Providers>{children}</Providers>
       </body>
     </html>
