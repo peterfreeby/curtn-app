@@ -19,11 +19,11 @@ interface ShowResult {
 
 interface ShowSearchProps {
   onSelect: (show: ShowResult) => void;
-  canCreate: boolean;
-  onCreateNew: (query: string) => void;
+  canCreate?: boolean;
+  onCreateNew?: (query: string) => void;
 }
 
-export function ShowSearch({ onSelect, canCreate, onCreateNew }: ShowSearchProps) {
+export function ShowSearch({ onSelect, canCreate = false, onCreateNew }: ShowSearchProps) {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
