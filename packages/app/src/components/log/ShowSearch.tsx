@@ -101,7 +101,7 @@ export function ShowSearch({ onSelect, canCreate = false, onCreateNew }: ShowSea
                     type="button"
                     onClick={() => {
                       setIsOpen(false);
-                      onCreateNew(query);
+                      onCreateNew?.(query);
                     }}
                     className="text-curtn-coral hover:text-curtn-red transition-colors cursor-pointer underline"
                   >
