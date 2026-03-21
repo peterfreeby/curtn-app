@@ -11,6 +11,7 @@ import { globalIdField, connectionDefinitions } from 'graphql-relay'
 import { entityRegister } from '../../graphql/entityHelpers'
 import { PersonModel } from './personModel'
 import { CreditModel } from '../credit/creditModel'
+import { ShowCreditModel } from '../showCredit/showCreditModel'
 import { RunModel } from '../run/runModel'
 import { ProductionCompanyModel } from '../productionCompany/productionCompanyModel'
 
@@ -20,6 +21,7 @@ export const personType: GraphQLObjectType = new GraphQLObjectType({
   interfaces: () => [nodeInterface],
   fields: () => {
     const { creditType } = require('../credit/creditType')
+    const { showCreditType } = require('../showCredit/showCreditTypes')
     const { productionCompanyType } = require('../productionCompany/productionCompanyTypes')
     return {
       id: globalIdField('Person', person => person.id),
@@ -50,6 +52,11 @@ export const personType: GraphQLObjectType = new GraphQLObjectType({
       crewCredits: {
         type: new GraphQLList(creditType),
         resolve: async person => await CreditModel.find({ person: person._id, creditType: 'crew' }).sort({ order: 1 })
+      },
+      showCredits: {
+        type: new GraphQLList(showCreditType),
+        description: 'Show-level credits (e.g. playwright, composer, lyricist)',
+        resolve: async person => await ShowCreditModel.find({ person: person._id }).sort({ order: 1 })
       },
       productionCompanies: {
         type: new GraphQLList(productionCompanyType),

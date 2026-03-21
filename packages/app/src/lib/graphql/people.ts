@@ -52,6 +52,15 @@ export const PERSON_BY_SLUG_QUERY = gql`
           endDate
         }
       }
+      showCredits {
+        id
+        role
+        order
+        show {
+          id
+          title
+        }
+      }
       productionCompanies {
         id
         name

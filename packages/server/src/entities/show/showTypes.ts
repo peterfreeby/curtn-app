@@ -50,9 +50,17 @@ export const showType: GraphQLObjectType = new GraphQLObjectType({
         type: GraphQLString,
         resolve: show => show.imageUrl
       },
+      posterUrl: {
+        type: GraphQLString,
+        resolve: show => show.posterUrl
+      },
       wikidataId: {
         type: GraphQLString,
         resolve: show => show.wikidataId
+      },
+      verificationStatus: {
+        type: GraphQLString,
+        resolve: show => show.verificationStatus
       },
       runs: {
         type: RunConnection,

@@ -21,7 +21,7 @@ export function PersonHero({ name, bio, headshotUrl }: PersonHeroProps) {
         />
       )}
       <div className="min-w-0">
-        <h1 className="text-2xl font-bold text-curtn-cream leading-tight">{name}</h1>
+        <h1 className="text-2xl font-bold text-curtn-cream leading-tight normal-case">{name}</h1>
 
         {bio && (
           <div className="mt-3">

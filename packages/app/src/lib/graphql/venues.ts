@@ -27,6 +27,7 @@ export const VENUE_LIST_QUERY = gql`
           capacity
           venueType
           imageUrl
+          permanentlyClosed
         }
       }
       pageInfo {
@@ -68,6 +69,22 @@ export const VENUE_BY_SLUG_QUERY = gql`
       phone
       email
       imageUrl
+      permanentlyClosed
+      closedDate
+    }
+  }
+`;
+
+export const VENUE_FIND_OR_CREATE_MUTATION = gql`
+  mutation VenueFindOrCreate($input: venueFindOrCreateInput!) {
+    venueFindOrCreate(input: $input) {
+      venue {
+        id
+        name
+        city
+      }
+      created
+      error
     }
   }
 `;
@@ -84,6 +101,7 @@ export const VENUE_RUNS_QUERY = gql`
             title
             performanceTypes
             imageUrl
+            posterUrl
           }
           productionCompany {
             name

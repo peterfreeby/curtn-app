@@ -77,11 +77,7 @@ export function AddShowCreditForm({ showId, onAdded }: AddShowCreditFormProps) {
             key={r}
             type="button"
             onClick={() => setRole(r)}
-            className={`rounded-full px-3 py-1 text-xs transition-colors cursor-pointer ${
-              role === r
-                ? "bg-curtn-coral text-white"
-                : "border border-curtn-dark text-curtn-muted hover:border-curtn-muted/50"
-            }`}
+            className={`chip-stamp cursor-pointer ${role === r ? "active" : ""}`}
           >
             {r}
           </button>

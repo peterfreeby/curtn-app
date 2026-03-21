@@ -31,7 +31,8 @@ const CsvRowInput = new GraphQLInputObjectType({
     performanceTypes: { type: GraphQLString },    // comma-separated
     duration: { type: GraphQLString },             // minutes as string
     showUrl: { type: GraphQLString },              // show website
-    showImageUrl: { type: GraphQLString },         // show poster/image URL
+    showImageUrl: { type: GraphQLString },         // show backdrop/cover image URL
+    showPosterUrl: { type: GraphQLString },        // show portrait poster URL
     languages: { type: GraphQLString },            // comma-separated
 
     // Venue fields
@@ -56,6 +57,7 @@ const CsvRowInput = new GraphQLInputObjectType({
     runEndDate: { type: GraphQLString },
     intermissions: { type: GraphQLString },        // number as string
     runImageUrl: { type: GraphQLString },
+    runPosterUrl: { type: GraphQLString },
 
     // Performance fields
     date: { type: GraphQLString },                 // ISO date or parseable date string
@@ -231,6 +233,7 @@ export const csvImport = mutationWithClientMutationId({
             languages: langs,
             ...(row.showUrl?.trim() && { url: row.showUrl.trim() }),
             ...(row.showImageUrl?.trim() && { imageUrl: row.showImageUrl.trim() }),
+            ...(row.showPosterUrl?.trim() && { posterUrl: row.showPosterUrl.trim() }),
             submittedBy: ctx.user.id,
             ...(sourceId && { source: sourceId })
           }).save()
@@ -342,6 +345,7 @@ export const csvImport = mutationWithClientMutationId({
             ...(runStartDate && !isNaN(runStartDate.getTime()) && { startDate: runStartDate }),
             ...(runEndDate && !isNaN(runEndDate.getTime()) && { endDate: runEndDate }),
             ...(row.runImageUrl?.trim() && { imageUrl: row.runImageUrl.trim() }),
+            ...(row.runPosterUrl?.trim() && { posterUrl: row.runPosterUrl.trim() }),
             submittedBy: ctx.user.id,
             ...(sourceId && { source: sourceId })
           }).save()

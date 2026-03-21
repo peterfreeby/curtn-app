@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useQuery } from "urql";
 import { FEED_REVIEWS_QUERY } from "@/lib/graphql/follows";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
-import { Card } from "@/components/Card";
 import { useAuth } from "@/lib/auth/useAuth";
 
 const PAGE_SIZE = 12;
@@ -41,18 +40,18 @@ export default function FeedPage() {
         <h2 className="text-xs uppercase tracking-widest text-curtn-muted mb-8">
           Feed
         </h2>
-        <Card className="text-center py-16 space-y-3">
-          <p className="text-curtn-cream font-medium">Sign in to see your feed</p>
-          <p className="text-xs text-curtn-muted/60">
+        <div className="empty-state">
+          <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">Sign In to See Your Feed</p>
+          <p className="text-xs text-curtn-muted max-w-[260px] mx-auto mb-4">
             Follow people to see their reviews here.
           </p>
           <Link
             href="/login"
-            className="inline-block mt-2 rounded-lg bg-curtn-coral px-6 py-2.5 text-sm font-semibold text-curtn-deep transition-colors hover:bg-curtn-red"
+            className="inline-block dog-ear dog-ear-dark bg-curtn-coral px-6 py-2.5 text-sm font-semibold text-curtn-deep transition-colors hover:bg-curtn-red"
           >
             Sign in
           </Link>
-        </Card>
+        </div>
       </div>
     );
   }
@@ -80,18 +79,18 @@ export default function FeedPage() {
       </h2>
 
       {displayEdges.length === 0 ? (
-        <Card className="text-center py-16 space-y-3">
-          <p className="text-curtn-cream font-medium">Your feed is empty</p>
-          <p className="text-xs text-curtn-muted/60">
+        <div className="empty-state">
+          <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">Your Feed Is Empty</p>
+          <p className="text-xs text-curtn-muted max-w-[260px] mx-auto mb-4">
             Follow people to see their reviews here.
           </p>
           <Link
             href="/browse"
-            className="inline-block mt-2 rounded-lg border border-curtn-dark px-6 py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream"
+            className="inline-block border border-curtn-dark px-6 py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream"
           >
             Browse performances
           </Link>
-        </Card>
+        </div>
       ) : (
         <div className="space-y-3">
           {displayEdges.map((edge: any) => (

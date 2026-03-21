@@ -2,6 +2,7 @@ import { GraphQLNonNull, GraphQLString, GraphQLList, GraphQLInt, GraphQLBoolean 
 import { mutationWithClientMutationId } from 'graphql-relay'
 import { showType } from '../showTypes'
 import { ShowModel } from '../showModel'
+import { ReviewModel } from '../../review/reviewModel'
 import { errorField } from '../../../graphql/errorField'
 
 function escapeRegex(str: string) {
@@ -63,6 +64,12 @@ export const showFindOrCreate = mutationWithClientMutationId({
         return { show: existing, created: false }
       }
 
+      // Autoconfirmed gate: require 3+ reviews to create new shows
+      const reviewCount = await ReviewModel.countDocuments({ user: ctx.user.id })
+      if (reviewCount < 3) {
+        return { error: 'Log at least 3 shows before adding new ones', show: null, created: false }
+      }
+
       const show = await new ShowModel({
         title: input.title.trim(),
         description: input.description || '',
@@ -70,6 +77,7 @@ export const showFindOrCreate = mutationWithClientMutationId({
         duration: input.duration || 0,
         languages: input.languages || ['English'],
         url: input.url,
+        verificationStatus: 'community',
         submittedBy: ctx.user.id
       }).save()
 

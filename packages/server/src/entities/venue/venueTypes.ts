@@ -1,4 +1,5 @@
 import {
+    GraphQLBoolean,
     GraphQLList,
     GraphQLFloat,
     GraphQLString,
@@ -107,6 +108,16 @@ import {
         description: 'Venue image URL',
         resolve: venue => venue.imageUrl
       },
+      permanentlyClosed: {
+        type: new GraphQLNonNull(GraphQLBoolean),
+        description: 'Whether this venue is permanently closed',
+        resolve: venue => venue.permanentlyClosed ?? false
+      },
+      closedDate: {
+        type: GraphQLString,
+        description: 'Date the venue permanently closed (ISO string)',
+        resolve: venue => venue.closedDate?.toISOString()
+      },
       wikidataId: {
         type: GraphQLString,
         description: 'Wikidata entity identifier (e.g. Q12345)',
@@ -121,6 +132,11 @@ import {
         type: GraphQLString,
         description: 'Google Places identifier',
         resolve: venue => venue.googlePlaceId
+      },
+      verificationStatus: {
+        type: GraphQLString,
+        description: 'Whether this venue is verified or community-submitted',
+        resolve: venue => venue.verificationStatus
       },
       stages: {
         type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(

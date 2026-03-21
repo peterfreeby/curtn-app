@@ -17,6 +17,8 @@ interface VenueHeroProps {
   phone: string | null;
   email: string | null;
   imageUrl?: string | null;
+  permanentlyClosed?: boolean;
+  closedDate?: string | null;
 }
 
 export function VenueHero({
@@ -32,6 +34,8 @@ export function VenueHero({
   phone,
   email,
   imageUrl,
+  permanentlyClosed,
+  closedDate,
 }: VenueHeroProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -45,24 +49,24 @@ export function VenueHero({
     <div>
       {imageUrl ? (
         <div className="relative -mx-6 -mt-8 mb-6">
-          <div className="relative h-[220px] sm:h-[280px] overflow-hidden">
+          <div className="relative h-[220px] sm:h-[280px] overflow-hidden torn-bottom">
             <img src={imageUrl} alt="" className="h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-curtn-deep via-curtn-deep/50 to-curtn-deep/10" />
           </div>
 
           <div className="relative -mt-16 px-6">
-            <span className="inline-block rounded-full bg-curtn-deep/60 backdrop-blur-sm px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted">
+            <span className="inline-block bg-curtn-deep/60 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted">
               {VENUE_TYPE_LABELS[venueType] ?? venueType}
             </span>
-            <h1 className="mt-2 text-2xl sm:text-3xl font-bold text-curtn-cream leading-tight">{name}</h1>
+            <h1 className="mt-2 text-2xl sm:text-3xl font-bold text-curtn-cream leading-tight normal-case">{name}</h1>
           </div>
         </div>
       ) : (
         <>
-          <span className="inline-block rounded-full bg-curtn-dark/60 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted">
+          <span className="inline-block bg-curtn-dark/60 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted">
             {VENUE_TYPE_LABELS[venueType] ?? venueType}
           </span>
-          <h1 className="mt-3 text-2xl font-bold text-curtn-cream leading-tight">{name}</h1>
+          <h1 className="mt-3 text-2xl font-bold text-curtn-cream leading-tight normal-case">{name}</h1>
         </>
       )}
 
@@ -97,6 +101,20 @@ export function VenueHero({
               {expanded ? "Show less" : "Read more"}
             </button>
           )}
+        </div>
+      )}
+
+      {permanentlyClosed && (
+        <div className="mt-4 flex items-center gap-2 border border-curtn-dark/50 bg-curtn-surface px-3 py-2">
+          <Icon name="ghost" weight="duotone" size={18} className="shrink-0 text-curtn-muted" />
+          <div className="text-sm text-curtn-muted">
+            <span className="font-semibold text-curtn-cream">Permanently Closed</span>
+            {closedDate && (
+              <span className="ml-1.5 text-curtn-muted/70">
+                — {new Date(closedDate).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+              </span>
+            )}
+          </div>
         </div>
       )}
 

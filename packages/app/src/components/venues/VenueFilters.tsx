@@ -60,30 +60,25 @@ export function VenueFilters({
 
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-          <Icon name="magnifying-glass" size={16} className="text-curtn-muted" />
-        </div>
+      {/* Search input — dog-ear search bar */}
+      <div className="dog-ear dog-ear-sm flex items-center bg-curtn-surface border border-curtn-dark/50 px-4">
+        <Icon name="magnifying-glass" size={14} className="text-curtn-muted shrink-0" />
         <input
           ref={inputRef}
           type="text"
           placeholder="Search venues..."
           defaultValue={search}
           onChange={(e) => handleSearchInput(e.target.value)}
-          className="w-full rounded-lg border border-curtn-dark bg-curtn-surface py-2.5 pl-9 pr-4 text-sm text-curtn-cream placeholder:text-curtn-muted/50 focus:border-curtn-muted/50 focus:outline-none transition-colors"
+          className="flex-1 bg-transparent border-none py-2.5 pl-2 pr-4 text-sm text-curtn-cream placeholder:text-curtn-muted/50 focus:outline-none"
         />
       </div>
 
-      {/* City chips (single-select, "All" to clear) */}
+      {/* City chips — stamp edge */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
         <button
           type="button"
           onClick={() => onCityChange("")}
-          className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-            selectedCity === ""
-              ? "border-curtn-coral bg-curtn-coral/10 text-curtn-coral"
-              : "border-curtn-dark text-curtn-muted hover:border-curtn-muted/50"
-          }`}
+          className={`shrink-0 chip-stamp cursor-pointer ${selectedCity === "" ? "active" : ""}`}
         >
           All Cities
         </button>
@@ -92,29 +87,21 @@ export function VenueFilters({
             key={city}
             type="button"
             onClick={() => onCityChange(selectedCity === city ? "" : city)}
-            className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-              selectedCity === city
-                ? "border-curtn-coral bg-curtn-coral/10 text-curtn-coral"
-                : "border-curtn-dark text-curtn-muted hover:border-curtn-muted/50"
-            }`}
+            className={`shrink-0 chip-stamp cursor-pointer ${selectedCity === city ? "active" : ""}`}
           >
             {city}
           </button>
         ))}
       </div>
 
-      {/* Venue type chips (single-select) */}
+      {/* Venue type chips — stamp edge */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
         {VENUE_TYPES.map((type) => (
           <button
             key={type}
             type="button"
             onClick={() => onTypeChange(selectedType === type ? "" : type)}
-            className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-              selectedType === type
-                ? "border-curtn-coral bg-curtn-coral/10 text-curtn-coral"
-                : "border-curtn-dark text-curtn-muted hover:border-curtn-muted/50"
-            }`}
+            className={`shrink-0 chip-stamp cursor-pointer ${selectedType === type ? "active" : ""}`}
           >
             {VENUE_TYPE_LABELS[type]}
           </button>

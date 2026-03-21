@@ -43,7 +43,12 @@ export function ReviewsList({ runId }: ReviewsListProps) {
     return (
       <div>
         <h2 className="mb-3 text-xs uppercase tracking-widest text-curtn-muted">Reviews</h2>
-        <p className="text-sm text-curtn-muted">No reviews yet.</p>
+        <div className="empty-state">
+          <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">No Reviews Yet</p>
+          <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">
+            Be the first to share your thoughts.
+          </p>
+        </div>
       </div>
     );
   }
@@ -74,7 +79,7 @@ export function ReviewsList({ runId }: ReviewsListProps) {
         <button
           type="button"
           onClick={loadMore}
-          className="mt-4 w-full rounded-lg border border-curtn-dark py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer"
+          className="mt-4 w-full border border-curtn-dark py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer"
         >
           Load more reviews
         </button>

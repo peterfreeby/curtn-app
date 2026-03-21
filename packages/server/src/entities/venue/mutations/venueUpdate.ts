@@ -1,4 +1,4 @@
-import { GraphQLNonNull, GraphQLString } from 'graphql'
+import { GraphQLBoolean, GraphQLNonNull, GraphQLString } from 'graphql'
 import { mutationWithClientMutationId } from 'graphql-relay'
 import { venueType } from '../venueTypes'
 import { VenueModel } from '../venueModel'
@@ -60,6 +60,14 @@ export const venueUpdate = mutationWithClientMutationId({
     imageUrl: {
       type: GraphQLString,
       description: 'Image URL (from Vercel Blob)'
+    },
+    permanentlyClosed: {
+      type: GraphQLBoolean,
+      description: 'Whether this venue is permanently closed'
+    },
+    closedDate: {
+      type: GraphQLString,
+      description: 'Date the venue permanently closed (ISO string)'
     }
   },
   outputFields: {
@@ -93,6 +101,8 @@ export const venueUpdate = mutationWithClientMutationId({
       if (input.phone !== undefined) updates.phone = input.phone
       if (input.email !== undefined) updates.email = input.email
       if (input.imageUrl !== undefined && input.imageUrl !== '') updates.imageUrl = input.imageUrl
+      if (input.permanentlyClosed !== undefined) updates.permanentlyClosed = input.permanentlyClosed
+      if (input.closedDate !== undefined) updates.closedDate = input.closedDate ? new Date(input.closedDate) : null
 
       if (Object.keys(updates).length === 0) {
         return { venue }

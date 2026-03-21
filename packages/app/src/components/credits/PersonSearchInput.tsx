@@ -50,7 +50,7 @@ export function PersonSearchInput({ onSelect, onNewName }: PersonSearchInputProp
       />
 
       {open && query.length >= 2 && (
-        <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-lg border border-curtn-dark bg-curtn-surface shadow-lg">
+        <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto border border-curtn-dark bg-curtn-surface shadow-lg dog-ear dog-ear-sm">
           {results.map((edge: any) => (
             <button
               key={edge.node.id}

@@ -3,21 +3,28 @@
 import Link from "next/link";
 
 interface CreditRowProps {
+  index: number;
   personName: string;
   personSlug: string;
   role: string;
+  headshotUrl?: string | null;
 }
 
-export function CreditRow({ personName, personSlug, role }: CreditRowProps) {
+export function CreditRow({ index, personName, personSlug, role, headshotUrl }: CreditRowProps) {
   return (
-    <div className="flex items-center justify-between py-1.5 text-sm">
-      <Link
-        href={`/people/${personSlug}`}
-        className="text-curtn-cream hover:text-curtn-coral transition-colors truncate"
-      >
-        {personName}
-      </Link>
-      <span className="ml-3 shrink-0 text-curtn-muted/70 text-xs">{role}</span>
-    </div>
+    <Link href={`/people/${personSlug}`} className="list-item">
+      <span className="li-num">{String(index).padStart(2, "0")}</span>
+      <span className="li-thumb">
+        {headshotUrl ? (
+          <img src={headshotUrl} alt="" />
+        ) : (
+          <span className="block h-full w-full bg-curtn-dark/40" />
+        )}
+      </span>
+      <span className="li-content">
+        <span className="li-title">{personName}</span>
+        <span className="li-sub">{role}</span>
+      </span>
+    </Link>
   );
 }

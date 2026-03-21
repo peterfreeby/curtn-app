@@ -85,7 +85,7 @@ export function PerformanceSearch({ onSelect }: PerformanceSearchProps) {
       />
 
       {isOpen && debouncedQuery.length >= 2 && (
-        <div className="absolute z-50 mt-1 w-full rounded-lg border border-curtn-dark/50 bg-curtn-surface shadow-xl max-h-64 overflow-y-auto">
+        <div className="absolute z-50 mt-1 w-full border border-curtn-dark/50 bg-curtn-surface shadow-xl max-h-64 overflow-y-auto dog-ear dog-ear-sm">
           {fetching && (
             <div className="px-4 py-3 text-sm text-curtn-muted">Searching...</div>
           )}

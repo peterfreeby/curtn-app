@@ -69,7 +69,7 @@ export function AddCreditForm({ runId, onAdded }: AddCreditFormProps) {
         <button
           type="button"
           onClick={() => setCreditType("cast")}
-          className={`rounded-full px-3 py-1 text-xs transition-colors ${
+          className={`px-3 py-1 text-xs transition-colors ${
             creditType === "cast"
               ? "bg-curtn-coral text-white"
               : "border border-curtn-dark text-curtn-muted hover:border-curtn-muted/50"
@@ -80,7 +80,7 @@ export function AddCreditForm({ runId, onAdded }: AddCreditFormProps) {
         <button
           type="button"
           onClick={() => setCreditType("crew")}
-          className={`rounded-full px-3 py-1 text-xs transition-colors ${
+          className={`px-3 py-1 text-xs transition-colors ${
             creditType === "crew"
               ? "bg-curtn-coral text-white"
               : "border border-curtn-dark text-curtn-muted hover:border-curtn-muted/50"

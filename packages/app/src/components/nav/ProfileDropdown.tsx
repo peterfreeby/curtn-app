@@ -38,7 +38,7 @@ export function ProfileDropdown() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-48 bg-curtn-surface border border-curtn-dark/30 rounded-xl py-2 shadow-lg z-50">
+        <div className="absolute right-0 top-full mt-2 w-48 bg-curtn-surface border border-curtn-dark/30 dog-ear py-2 shadow-lg z-50">
           <Link
             href={`/u/${user.username}`}
             onClick={() => setOpen(false)}

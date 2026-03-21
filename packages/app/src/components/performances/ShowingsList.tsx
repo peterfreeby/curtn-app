@@ -28,42 +28,47 @@ export function ShowingsList({ showings, label }: ShowingsListProps) {
   const hasMore = showings.length > INITIAL_COUNT;
 
   return (
-    <div className="rounded-lg border border-curtn-dark/50 bg-curtn-surface p-4">
+    <div>
       <h2 className="mb-3 text-xs uppercase tracking-widest text-curtn-muted">{label}</h2>
 
-      <div className="divide-y divide-curtn-dark/50">
+      <div className="space-y-2">
         {visible.map((showing, i) => {
           const isSoldOut = showing.soldOut === true || showing.soldOut === "true";
+          const dateObj = new Date(showing.date);
+          const day = dateObj.getDate().toString().padStart(2, "0");
+          const month = dateObj.toLocaleString("en-US", { month: "short" });
           return (
             <div
               key={`${showing.date}-${i}`}
-              className="flex items-center gap-3 py-2.5 text-sm"
+              className="card-ticket"
             >
-              <span className="w-24 shrink-0 text-curtn-cream">
-                {formatShowDate(showing.date)}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-curtn-muted">
-                {showing.venue?.name ?? "TBA"}
-              </span>
-              <span className="shrink-0 text-curtn-muted/70">
-                {formatShowTime(showing.time)}
-              </span>
-              <span className="shrink-0">
-                {isSoldOut ? (
-                  <span className="text-xs text-curtn-muted/50">Sold Out</span>
-                ) : showing.ticketUrl ? (
-                  <a
-                    href={showing.ticketUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 rounded-full border border-curtn-coral/30 px-2.5 py-0.5 text-xs text-curtn-coral transition-colors hover:bg-curtn-coral/10"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Icon name="ticket" size={12} />
-                    Tickets
-                  </a>
-                ) : null}
-              </span>
+              <div className={`ticket-stub ${isSoldOut ? "!bg-curtn-muted" : ""}`}>
+                <div className="ticket-date">{day}</div>
+                <div className="ticket-month">{month}</div>
+              </div>
+              <div className="ticket-body">
+                <div className="ticket-title text-curtn-cream">
+                  {showing.venue?.name ?? "TBA"}
+                </div>
+                <div className="ticket-time">
+                  {formatShowTime(showing.time)}
+                  {isSoldOut && (
+                    <span className="badge badge-muted ml-2">Sold Out</span>
+                  )}
+                  {!isSoldOut && showing.ticketUrl && (
+                    <a
+                      href={showing.ticketUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 ml-2 text-curtn-coral hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Icon name="ticket" size={12} />
+                      Tickets
+                    </a>
+                  )}
+                </div>
+              </div>
             </div>
           );
         })}
@@ -73,7 +78,7 @@ export function ShowingsList({ showings, label }: ShowingsListProps) {
         <button
           type="button"
           onClick={() => setShowAll(!showAll)}
-          className="mt-2 text-xs text-curtn-coral hover:underline"
+          className="mt-3 text-xs text-curtn-coral hover:underline"
         >
           {showAll ? "Show fewer" : `Show all ${showings.length} dates`}
         </button>

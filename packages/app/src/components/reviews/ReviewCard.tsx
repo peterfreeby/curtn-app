@@ -17,7 +17,7 @@ interface ReviewCardProps {
     attendedAt?: string | null;
     createdAt?: string | null;
     user?: { id: string; username: string; fullName?: string; avatarUrl?: string | null } | null;
-    run?: { id: string; show: { id: string; title: string; imageUrl?: string | null } } | null;
+    run?: { id: string; show: { id: string; title: string; imageUrl?: string | null; posterUrl?: string | null } } | null;
   };
   showPerformanceLink?: boolean;
   onDeleted?: () => void;
@@ -46,19 +46,19 @@ export function ReviewCard({ review, showPerformanceLink = false, onDeleted }: R
     : "";
 
   const showTitle = review.run?.show?.title;
-  const showImageUrl = review.run?.show?.imageUrl;
+  const showImageUrl = review.run?.show?.posterUrl || review.run?.show?.imageUrl;
   const runId = review.run?.id;
   const reviewerName = review.user?.fullName || review.user?.username || "Anonymous";
 
   return (
-    <div className="flex gap-[var(--spacing-2)] rounded-xl border border-curtn-dark/50 bg-curtn-surface p-[var(--spacing-2)]">
+    <div className="flex gap-[var(--spacing-2)] binding-left bg-curtn-surface p-[var(--spacing-2)]">
       {/* Poster thumbnail */}
       {showPerformanceLink && (
         <Link
           href={runId ? `/runs/${encodeURIComponent(runId)}` : "#"}
           className="w-[var(--spacing-9)] shrink-0"
         >
-          <div className="aspect-[2/3] overflow-hidden rounded-[var(--spacing-0_5)] bg-curtn-dark/30 border border-curtn-dark/50">
+          <div className="aspect-[2/3] overflow-hidden dog-ear bg-curtn-dark/30 border border-curtn-dark/50">
             {showImageUrl ? (
               <img src={showImageUrl} alt={showTitle || ""} className="h-full w-full object-cover" />
             ) : (

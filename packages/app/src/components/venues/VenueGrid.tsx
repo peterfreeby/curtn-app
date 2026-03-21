@@ -13,6 +13,7 @@ interface VenueNode {
   capacity: number | null;
   venueType: string;
   imageUrl?: string | null;
+  permanentlyClosed?: boolean;
 }
 
 interface VenueGridProps {
@@ -52,6 +53,7 @@ export function VenueGrid({ venues, loading }: VenueGridProps) {
           state={v.state}
           capacity={v.capacity}
           imageUrl={v.imageUrl}
+          permanentlyClosed={v.permanentlyClosed}
         />
       ))}
     </div>

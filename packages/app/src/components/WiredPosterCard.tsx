@@ -147,7 +147,7 @@ export function WiredPosterCard({
             className="fixed inset-0 z-40"
             onClick={() => setShowRunPicker(null)}
           />
-          <div className="absolute bottom-full left-0 right-0 z-50 mb-1 rounded-lg border border-curtn-dark/50 bg-curtn-surface shadow-xl overflow-hidden">
+          <div className="absolute bottom-full left-0 right-0 z-50 mb-1 dog-ear border border-curtn-dark/50 bg-curtn-surface shadow-xl overflow-hidden">
             <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-curtn-muted">
               Which production?
             </p>

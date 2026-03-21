@@ -62,8 +62,8 @@ export function WatchlistButton({
         onClick={handleToggle}
         className={
           isOn
-            ? "flex items-center gap-2 rounded-lg border border-curtn-coral/30 bg-curtn-coral/10 px-4 py-2 text-sm text-curtn-coral transition-colors hover:bg-curtn-coral/20 cursor-pointer"
-            : "flex items-center gap-2 rounded-lg border border-curtn-dark px-4 py-2 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer"
+            ? "flex items-center gap-2 border border-curtn-coral/30 bg-curtn-coral/10 px-4 py-2 text-sm text-curtn-coral transition-colors hover:bg-curtn-coral/20 cursor-pointer"
+            : "flex items-center gap-2 border border-curtn-dark px-4 py-2 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer"
         }
       >
         <Icon

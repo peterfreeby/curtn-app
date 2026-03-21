@@ -5,6 +5,7 @@ export const SINGLE_RUN_QUERY = gql`
     singleRun(id: $id) {
       id
       imageUrl
+      posterUrl
       show {
         id
         title
@@ -13,6 +14,7 @@ export const SINGLE_RUN_QUERY = gql`
         duration
         languages
         imageUrl
+        posterUrl
         creators {
           edges {
             node {
@@ -51,6 +53,7 @@ export const SINGLE_RUN_QUERY = gql`
           id
           name
           slug
+          headshotUrl
         }
         role
         order
@@ -61,6 +64,7 @@ export const SINGLE_RUN_QUERY = gql`
           id
           name
           slug
+          headshotUrl
         }
         role
         order

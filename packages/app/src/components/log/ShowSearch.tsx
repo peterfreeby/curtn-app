@@ -19,9 +19,11 @@ interface ShowResult {
 
 interface ShowSearchProps {
   onSelect: (show: ShowResult) => void;
+  canCreate: boolean;
+  onCreateNew: (query: string) => void;
 }
 
-export function ShowSearch({ onSelect }: ShowSearchProps) {
+export function ShowSearch({ onSelect, canCreate, onCreateNew }: ShowSearchProps) {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -86,12 +88,30 @@ export function ShowSearch({ onSelect }: ShowSearchProps) {
       />
 
       {isOpen && debouncedQuery.length >= 2 && (
-        <div className="absolute z-50 mt-1 w-full rounded-lg border border-curtn-dark/50 bg-curtn-surface shadow-xl max-h-64 overflow-y-auto">
+        <div className="absolute z-50 mt-1 w-full border border-curtn-dark/50 bg-curtn-surface shadow-xl max-h-64 overflow-y-auto dog-ear dog-ear-sm">
           {fetching && (
             <div className="px-4 py-3 text-sm text-curtn-muted">Searching...</div>
           )}
           {!fetching && results.length === 0 && (
-            <div className="px-4 py-3 text-sm text-curtn-muted">No results found.</div>
+            <div className="px-4 py-3 text-sm text-curtn-muted">
+              {canCreate ? (
+                <>
+                  No results found.{" "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOpen(false);
+                      onCreateNew(query);
+                    }}
+                    className="text-curtn-coral hover:text-curtn-red transition-colors cursor-pointer underline"
+                  >
+                    Add it
+                  </button>
+                </>
+              ) : (
+                "No results found. Log 3 shows to unlock adding new ones."
+              )}
+            </div>
           )}
           {!fetching &&
             results.map((show) => {

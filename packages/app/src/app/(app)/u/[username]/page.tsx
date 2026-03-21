@@ -10,7 +10,6 @@ import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { EditProfileModal } from "@/components/profile/EditProfileModal";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { WiredPosterCard } from "@/components/WiredPosterCard";
-import { Card } from "@/components/Card";
 import { useAuth } from "@/lib/auth/useAuth";
 
 const PAGE_SIZE = 12;
@@ -88,10 +87,10 @@ export default function ProfilePage() {
   if (userFetching) {
     return (
       <div className="px-6 py-8 max-w-2xl mx-auto space-y-6">
-        <div className="h-28 rounded-xl bg-curtn-dark/30 animate-pulse" />
+        <div className="h-28 bg-curtn-dark/30 animate-pulse" />
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-24 rounded-lg bg-curtn-dark/30 animate-pulse" />
+            <div key={i} className="h-24 bg-curtn-dark/30 animate-pulse" />
           ))}
         </div>
       </div>
@@ -102,12 +101,12 @@ export default function ProfilePage() {
   if (!profileUser) {
     return (
       <div className="px-6 py-8 max-w-2xl mx-auto">
-        <Card className="text-center py-16 space-y-2">
-          <p className="text-curtn-cream font-medium">User not found</p>
-          <p className="text-xs text-curtn-muted/60">
+        <div className="empty-state">
+          <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">User Not Found</p>
+          <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">
             @{username} doesn&apos;t exist or may have been removed.
           </p>
-        </Card>
+        </div>
       </div>
     );
   }
@@ -141,23 +140,19 @@ export default function ProfilePage() {
       )}
 
       {isOwnProfile && (
-        <div className="flex gap-1 rounded-lg bg-curtn-dark/30 p-1">
+        <div className="tabs-ledger">
           <button
             onClick={() => setActiveTab("reviews")}
-            className={`flex-1 rounded-md px-4 py-2 text-sm transition-colors cursor-pointer ${
-              activeTab === "reviews"
-                ? "bg-curtn-surface text-curtn-cream"
-                : "text-curtn-muted hover:text-curtn-cream"
+            className={`tab-ledger flex-1 cursor-pointer ${
+              activeTab === "reviews" ? "active" : ""
             }`}
           >
             Reviews
           </button>
           <button
             onClick={() => setActiveTab("watchlist")}
-            className={`flex-1 rounded-md px-4 py-2 text-sm transition-colors cursor-pointer ${
-              activeTab === "watchlist"
-                ? "bg-curtn-surface text-curtn-cream"
-                : "text-curtn-muted hover:text-curtn-cream"
+            className={`tab-ledger flex-1 cursor-pointer ${
+              activeTab === "watchlist" ? "active" : ""
             }`}
           >
             Watchlist
@@ -172,14 +167,14 @@ export default function ProfilePage() {
           </h2>
 
           {displayEdges.length === 0 && !reviewsFetching ? (
-            <Card className="text-center py-12 space-y-2">
-              <p className="text-curtn-muted">No reviews yet.</p>
-              <p className="text-xs text-curtn-muted/60">
+            <div className="empty-state">
+              <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">No Reviews Yet</p>
+              <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">
                 {isOwnProfile
                   ? "Log a performance to leave your first review."
                   : `@${username} hasn\u2019t reviewed anything yet.`}
               </p>
-            </Card>
+            </div>
           ) : (
             <div className="space-y-3">
               {displayEdges.map((edge: any) => (
@@ -203,7 +198,7 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={loadMore}
-              className="mt-4 w-full rounded-lg border border-curtn-dark py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer"
+              className="mt-4 w-full border border-curtn-dark py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer"
             >
               Load more reviews
             </button>
@@ -224,12 +219,12 @@ export default function ProfilePage() {
           )}
 
           {!watchlistFetching && (watchlistData?.myWatchlist?.edges?.length ?? 0) === 0 && (
-            <Card className="text-center py-12 space-y-2">
-              <p className="text-curtn-muted">Your watchlist is empty.</p>
-              <p className="text-xs text-curtn-muted/60">
+            <div className="empty-state">
+              <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">Your Watchlist Is Empty</p>
+              <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">
                 Browse performances and tap &ldquo;Want to see&rdquo; to add them here.
               </p>
-            </Card>
+            </div>
           )}
 
           {!watchlistFetching && (watchlistData?.myWatchlist?.edges?.length ?? 0) > 0 && (
@@ -240,7 +235,7 @@ export default function ProfilePage() {
                   <WiredPosterCard
                     key={show.id}
                     showId={show.id}
-                    imageUrl={show.imageUrl}
+                    imageUrl={show.posterUrl || show.imageUrl}
                     title={show.title}
                     href={`/performances/${encodeURIComponent(show.id)}`}
                     size="md"

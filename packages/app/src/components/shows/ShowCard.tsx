@@ -25,14 +25,14 @@ export function ShowCard({
   return (
     <Link
       href={`/performances/${id}`}
-      className="block rounded-lg border border-curtn-dark/50 bg-curtn-surface p-4 transition-colors duration-200 hover:border-curtn-muted/50"
+      className="block dog-ear border border-curtn-dark/50 bg-curtn-surface p-4 transition-colors duration-200 hover:border-curtn-muted/50"
     >
       {performanceTypes.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5">
           {performanceTypes.map((type) => (
             <span
               key={type}
-              className="rounded-full bg-curtn-dark/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted"
+              className="bg-curtn-dark/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted"
             >
               {type}
             </span>

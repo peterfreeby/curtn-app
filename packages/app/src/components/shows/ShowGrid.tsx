@@ -15,6 +15,7 @@ interface ShowNode {
   title: string;
   performanceTypes: string[];
   imageUrl?: string | null;
+  posterUrl?: string | null;
   averageRating: number | null;
   reviewCount: number;
   isOnMyWatchlist?: boolean;
@@ -49,7 +50,7 @@ export function ShowGrid({ shows, loading }: ShowGridProps) {
     return (
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-[var(--spacing-2)]">
         {Array.from({ length: 12 }).map((_, i) => (
-          <div key={i} className="aspect-[2/3] rounded-[var(--spacing-1)] bg-curtn-dark/30 animate-pulse" />
+          <div key={i} className="aspect-[2/3] dog-ear bg-curtn-dark/30 animate-pulse" />
         ))}
       </div>
     );
@@ -86,7 +87,7 @@ export function ShowGrid({ shows, loading }: ShowGridProps) {
           <WiredPosterCard
             key={show.id}
             showId={show.id}
-            imageUrl={show.imageUrl}
+            imageUrl={show.posterUrl || show.imageUrl}
             title={show.title}
             subtitle={firstRun?.productionCompany?.name ?? undefined}
             href={`/performances/${show.id}`}

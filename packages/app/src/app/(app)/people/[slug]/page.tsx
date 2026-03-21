@@ -55,6 +55,7 @@ export default function PersonDetailPage() {
       <PersonCredits
         castCredits={person.castCredits ?? []}
         crewCredits={person.crewCredits ?? []}
+        showCredits={person.showCredits ?? []}
       />
     </div>
   );

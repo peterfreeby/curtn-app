@@ -17,6 +17,7 @@ import { watchlistMutations } from '../entities/watchlist/mutations/watchlist'
 import { dataSourceMutations } from '../entities/dataSource/mutations/dataSource'
 import { pendingImportMutations } from '../entities/pendingImport/mutations/pendingImport'
 import { venueMutations } from '../entities/venue/mutations/venue'
+import { personMutations } from '../entities/person/mutations/person'
 
 export const mutation = new GraphQLObjectType({
   name: 'Mutation',
@@ -36,6 +37,7 @@ export const mutation = new GraphQLObjectType({
     ...watchlistMutations,
     ...dataSourceMutations,
     ...pendingImportMutations,
-    ...venueMutations
+    ...venueMutations,
+    ...personMutations
   }
 })

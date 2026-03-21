@@ -12,11 +12,11 @@ interface ButtonProps {
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    "bg-curtn-coral text-curtn-deep hover:bg-curtn-red active:scale-[0.98] font-semibold",
+    "bg-curtn-coral text-curtn-deep hover:bg-curtn-red active:scale-[0.98] font-bold dog-ear dog-ear-dark",
   secondary:
-    "bg-curtn-surface text-curtn-cream border border-curtn-dark hover:border-curtn-muted",
+    "bg-transparent text-curtn-cream border border-curtn-cream/30 hover:border-curtn-cream/60",
   ghost:
-    "bg-transparent text-curtn-muted hover:text-curtn-cream",
+    "bg-transparent text-curtn-muted hover:text-curtn-cream border border-dashed border-curtn-dark hover:border-curtn-muted",
 };
 
 export function Button({
@@ -29,7 +29,7 @@ export function Button({
   return (
     <button
       className={`
-        rounded-[var(--spacing-1)] px-[var(--spacing-3)] py-[var(--spacing-1_5)] text-sm tracking-wide
+        px-[var(--spacing-3)] py-[var(--spacing-1_5)] text-[13px] uppercase font-display tracking-wide
         transition-all duration-150 cursor-pointer
         disabled:opacity-40 disabled:cursor-not-allowed
         ${variants[variant]}

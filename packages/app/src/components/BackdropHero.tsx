@@ -20,7 +20,7 @@ export function BackdropHero({
   return (
     <div className="relative -mx-[var(--spacing-3)] -mt-[var(--spacing-4)]">
       {/* Backdrop image */}
-      <div className="relative h-[var(--spacing-40)] sm:h-[var(--spacing-48)] overflow-hidden">
+      <div className="relative h-[var(--spacing-40)] sm:h-[var(--spacing-48)] overflow-hidden torn-bottom">
         {backdropUrl ? (
           <img
             src={backdropUrl}
@@ -39,7 +39,7 @@ export function BackdropHero({
       <div className="relative -mt-[var(--spacing-16)] sm:-mt-[var(--spacing-20)] px-[var(--spacing-3)] flex gap-[var(--spacing-2_5)] items-end">
         {/* Poster */}
         <div className="w-[var(--spacing-16)] sm:w-[var(--spacing-20)] shrink-0">
-          <div className="aspect-[2/3] overflow-hidden rounded-[var(--spacing-1)] border-2 border-curtn-dark/50 bg-curtn-surface shadow-2xl">
+          <div className="dog-ear relative aspect-[2/3] border-2 border-curtn-dark/50 bg-curtn-surface shadow-2xl">
             {posterUrl ? (
               <img src={posterUrl} alt={title} className="h-full w-full object-cover" />
             ) : (
@@ -52,7 +52,7 @@ export function BackdropHero({
 
         {/* Info */}
         <div className="flex-1 min-w-0 pb-[var(--spacing-0_5)]">
-          <h1 className="text-2xl sm:text-3xl font-bold text-curtn-cream leading-tight">{title}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-curtn-cream leading-tight normal-case">{title}</h1>
           {subtitle && (
             <p className="mt-[var(--spacing-0_5)] text-sm text-curtn-muted">{subtitle}</p>
           )}

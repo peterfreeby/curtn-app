@@ -12,6 +12,7 @@ import { nodeInterface } from '../../graphql/nodeInterface'
 import { entityRegister } from '../../graphql/entityHelpers'
 import { UserModel } from './userModel'
 import { FollowModel } from '../follow/followModel'
+import { ReviewModel } from '../review/reviewModel'
 
 export const userType = new GraphQLObjectType({
   name: 'User',
@@ -66,6 +67,11 @@ export const userType = new GraphQLObjectType({
     isAdmin: {
       type: GraphQLBoolean,
       resolve: user => !!user.isAdmin
+    },
+    reviewCount: {
+      type: GraphQLInt,
+      description: 'Number of reviews this user has written',
+      resolve: async user => ReviewModel.countDocuments({ user: user._id })
     }
   })
 })

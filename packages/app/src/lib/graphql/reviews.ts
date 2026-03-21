@@ -62,6 +62,7 @@ export const REVIEW_LIST_QUERY = gql`
               id
               title
               imageUrl
+              posterUrl
             }
           }
         }

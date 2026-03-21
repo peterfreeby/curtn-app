@@ -27,7 +27,7 @@ export function PerformanceCard({
   return (
     <Link
       href={`/performances/${id}`}
-      className="group block rounded-xl border border-curtn-dark/50 bg-curtn-surface overflow-hidden transition-colors duration-200 hover:border-curtn-muted/50"
+      className="group block dog-ear border border-curtn-dark/50 bg-curtn-surface overflow-hidden transition-colors duration-200 hover:border-curtn-muted/50"
     >
       {/* Poster image */}
       <div className="relative aspect-[3/2] overflow-hidden bg-curtn-dark/20">
@@ -43,7 +43,7 @@ export function PerformanceCard({
           </div>
         )}
         {upcomingCount > 0 && (
-          <span className="absolute top-2 right-2 rounded-full bg-curtn-coral px-2 py-0.5 text-[10px] font-medium text-curtn-deep">
+          <span className="absolute top-2 right-2 bg-curtn-coral px-2 py-0.5 text-[10px] font-medium text-curtn-deep">
             {upcomingCount} upcoming
           </span>
         )}
@@ -56,7 +56,7 @@ export function PerformanceCard({
             {performanceTypes.map((type) => (
               <span
                 key={type}
-                className="rounded-full bg-curtn-dark/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted"
+                className="bg-curtn-dark/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted"
               >
                 {type}
               </span>

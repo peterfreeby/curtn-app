@@ -28,6 +28,10 @@ export interface IVenue {
   // Image
   imageUrl?: string
 
+  // Closure status
+  permanentlyClosed?: boolean
+  closedDate?: Date
+
   // External references
   wikidataId?: string
   eventbriteVenueId?: string
@@ -36,6 +40,7 @@ export interface IVenue {
   // Metadata
   createdAt: Date
   updatedAt: Date
+  verificationStatus: 'verified' | 'community'
   submittedBy: Types.ObjectId // User who added this venue
 }
 
@@ -114,6 +119,13 @@ const venueSchema = new Schema<IVenue>({
     lowercase: true
   },
   imageUrl: String,
+  permanentlyClosed: {
+    type: Boolean,
+    default: false
+  },
+  closedDate: {
+    type: Date
+  },
   wikidataId: {
     type: String,
     trim: true
@@ -125,6 +137,11 @@ const venueSchema = new Schema<IVenue>({
   googlePlaceId: {
     type: String,
     trim: true
+  },
+  verificationStatus: {
+    type: String,
+    enum: ['verified', 'community'],
+    default: 'verified'
   },
   submittedBy: {
     type: Schema.Types.ObjectId,

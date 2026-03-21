@@ -11,11 +11,13 @@ export interface IRun {
   endDate?: Date
   description?: string
   imageUrl?: string
+  posterUrl?: string
   wikidataId?: string
   eventbriteId?: string
   source?: Types.ObjectId
   createdAt: Date
   updatedAt: Date
+  verificationStatus: 'verified' | 'community'
   submittedBy: Types.ObjectId
 }
 
@@ -53,11 +55,17 @@ const runSchema = new Schema<IRun>({
     trim: true
   },
   imageUrl: String,
+  posterUrl: String,
   wikidataId: String,
   eventbriteId: String,
   source: {
     type: Schema.Types.ObjectId,
     ref: 'dataSource'
+  },
+  verificationStatus: {
+    type: String,
+    enum: ['verified', 'community'],
+    default: 'verified'
   },
   submittedBy: {
     type: Schema.Types.ObjectId,

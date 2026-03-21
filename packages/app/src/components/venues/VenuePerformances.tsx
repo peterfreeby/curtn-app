@@ -40,9 +40,12 @@ export function VenuePerformances({ venueName }: VenuePerformancesProps) {
         <h2 className="mb-3 text-xs uppercase tracking-widest text-curtn-muted">
           Productions
         </h2>
-        <p className="text-sm text-curtn-muted">
-          No productions at this venue yet.
-        </p>
+        <div className="empty-state">
+          <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">No Productions Yet</p>
+          <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">
+            No productions at this venue yet.
+          </p>
+        </div>
       </div>
     );
   }
@@ -62,7 +65,7 @@ export function VenuePerformances({ venueName }: VenuePerformancesProps) {
             performanceTypes={run.show.performanceTypes}
             companyName={run.productionCompany?.name}
             companySlug={run.productionCompany?.slug}
-            imageUrl={run.show.imageUrl}
+            imageUrl={run.show.posterUrl || run.show.imageUrl}
             startDate={run.startDate}
             endDate={run.endDate}
             averageRating={run.averageRating}
@@ -81,7 +84,7 @@ export function VenuePerformances({ venueName }: VenuePerformancesProps) {
         <button
           type="button"
           onClick={loadMore}
-          className="mt-4 w-full rounded-lg border border-curtn-dark py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream"
+          className="mt-4 w-full border border-curtn-dark py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream"
         >
           Load more productions
         </button>

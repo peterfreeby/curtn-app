@@ -32,6 +32,7 @@ export const FEED_REVIEWS_QUERY = gql`
               id
               title
               imageUrl
+              posterUrl
             }
           }
         }

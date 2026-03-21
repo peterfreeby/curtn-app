@@ -15,8 +15,8 @@ export function NavLink({
   href,
   children,
   className = "",
-  activeClassName = "text-curtn-cream",
-  inactiveClassName = "text-curtn-muted hover:text-curtn-cream",
+  activeClassName = "text-curtn-cream border-b-2 border-curtn-coral",
+  inactiveClassName = "text-curtn-muted hover:text-curtn-cream border-b-2 border-transparent",
 }: NavLinkProps) {
   const pathname = usePathname();
   const isActive = pathname === href || pathname.startsWith(href + "/");

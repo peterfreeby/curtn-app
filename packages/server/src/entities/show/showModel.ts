@@ -8,10 +8,12 @@ export interface IShow {
   languages: string[]
   url?: string
   imageUrl?: string
+  posterUrl?: string
   wikidataId?: string
   source?: Types.ObjectId
   createdAt: Date
   updatedAt: Date
+  verificationStatus: 'verified' | 'community'
   submittedBy: Types.ObjectId
 }
 
@@ -43,10 +45,16 @@ const showSchema = new Schema<IShow>({
     trim: true
   },
   imageUrl: String,
+  posterUrl: String,
   wikidataId: String,
   source: {
     type: Schema.Types.ObjectId,
     ref: 'dataSource'
+  },
+  verificationStatus: {
+    type: String,
+    enum: ['verified', 'community'],
+    default: 'verified'
   },
   submittedBy: {
     type: Schema.Types.ObjectId,

@@ -11,33 +11,33 @@ export function DesktopNav() {
   const { user, isAuthenticated, isLoading } = useAuth();
 
   return (
-    <nav className="hidden md:flex fixed top-0 left-0 right-0 z-50 h-16 items-center justify-between px-6 bg-curtn-deep/95 backdrop-blur-sm border-b border-curtn-dark/20">
+    <nav className="hidden md:flex fixed top-0 left-0 right-0 z-50 h-16 items-center justify-between px-6 bg-curtn-deep border-b border-curtn-dark/20">
       {/* Left: Logo */}
       <Link
         href={isAuthenticated ? "/feed" : "/"}
-        className="text-xl font-bold tracking-tight text-curtn-cream hover:text-curtn-coral transition-colors duration-200 font-display"
+        className="text-xl font-bold tracking-tight text-curtn-cream hover:text-curtn-coral transition-colors duration-200 font-display uppercase"
       >
         Curtn
       </Link>
 
       {/* Center: Nav links */}
       <div className="flex items-center gap-8">
-        <NavLink href="/performances" className="text-sm font-medium">
+        <NavLink href="/performances" className="text-[12px] font-display font-semibold uppercase tracking-[0.5px]">
           Browse
         </NavLink>
-        <NavLink href="/venues" className="text-sm font-medium">
+        <NavLink href="/venues" className="text-[12px] font-display font-semibold uppercase tracking-[0.5px]">
           Venues
         </NavLink>
         {isAuthenticated && (
           <>
-            <NavLink href="/feed" className="text-sm font-medium">
+            <NavLink href="/feed" className="text-[12px] font-display font-semibold uppercase tracking-[0.5px]">
               Feed
             </NavLink>
-            <NavLink href="/add" className="text-sm font-medium">
+            <NavLink href="/add" className="text-[12px] font-display font-semibold uppercase tracking-[0.5px]">
               Add
             </NavLink>
             {user?.isAdmin && (
-              <NavLink href="/admin" className="text-sm font-medium text-curtn-muted/50 hover:text-curtn-muted">
+              <NavLink href="/admin" className="text-[12px] font-display font-semibold uppercase tracking-[0.5px] text-curtn-muted/50 hover:text-curtn-muted">
                 Admin
               </NavLink>
             )}
@@ -58,7 +58,7 @@ export function DesktopNav() {
             ) : (
               <Link
                 href="/login"
-                className="text-sm font-medium text-curtn-muted hover:text-curtn-cream transition-colors duration-200"
+                className="text-[12px] font-display font-semibold uppercase tracking-[0.5px] text-curtn-muted hover:text-curtn-cream transition-colors duration-200"
               >
                 Sign In
               </Link>

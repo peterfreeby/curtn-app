@@ -16,7 +16,7 @@ export function Input({ label, className = "", id, ...props }: InputProps) {
     <div className="flex flex-col gap-[var(--spacing-1)]">
       <label
         htmlFor={inputId}
-        className="text-xs uppercase tracking-widest text-curtn-muted"
+        className="font-mono text-[10px] uppercase tracking-[1px] text-curtn-muted"
       >
         {label}
       </label>

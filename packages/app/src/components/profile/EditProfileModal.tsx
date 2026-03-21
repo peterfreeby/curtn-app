@@ -149,7 +149,7 @@ export function EditProfileModal({
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="w-full rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream placeholder:text-curtn-muted/40 focus:border-curtn-coral focus:outline-none"
+              className="w-full border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream placeholder:text-curtn-muted/40 focus:border-curtn-coral focus:outline-none"
             />
           </div>
 
@@ -161,7 +161,7 @@ export function EditProfileModal({
               rows={3}
               maxLength={160}
               placeholder="Tell people a bit about yourself..."
-              className="w-full rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream placeholder:text-curtn-muted/40 focus:border-curtn-coral focus:outline-none resize-none"
+              className="w-full border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream placeholder:text-curtn-muted/40 focus:border-curtn-coral focus:outline-none resize-none"
             />
             <p className="text-right text-[11px] text-curtn-muted/50">
               {bio.length}/160
@@ -177,7 +177,7 @@ export function EditProfileModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-curtn-dark px-4 py-2 text-sm text-curtn-muted hover:text-curtn-cream transition-colors cursor-pointer"
+            className="border border-curtn-dark px-4 py-2 text-sm text-curtn-muted hover:text-curtn-cream transition-colors cursor-pointer"
           >
             Cancel
           </button>

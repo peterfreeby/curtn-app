@@ -15,6 +15,7 @@ interface User {
   fullName: string;
   username: string;
   isAdmin: boolean;
+  reviewCount: number;
 }
 
 interface AuthContextValue {
@@ -33,7 +34,7 @@ export const AuthContext = createContext<AuthContextValue>({
   refreshUser: async () => {},
 });
 
-const ME_QUERY = `query { me { id fullName username isAdmin } }`;
+const ME_QUERY = `query { me { id fullName username isAdmin reviewCount } }`;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -59,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       const json = await res.json();
       const me = json.data?.me;
-      setUser(me ? { ...me, isAdmin: me.isAdmin ?? false } : null);
+      setUser(me ? { ...me, isAdmin: me.isAdmin ?? false, reviewCount: me.reviewCount ?? 0 } : null);
     } catch {
       setUser(null);
     } finally {

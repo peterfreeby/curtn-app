@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon, type IconName } from "@/components/icons/Icons";
+import { useDuotone } from "@/hooks/useDuotone";
 
 export interface PosterAction {
   icon: IconName;
@@ -44,29 +45,37 @@ export function PosterCard({
   const Wrapper = href ? "a" : "div";
   const wrapperProps = href ? { href } : {};
   const resolvedActions = actions ?? defaultActions;
+  const { canvasRef } = useDuotone(imageUrl);
 
   return (
     <div className={`${sizeClasses[size]} ${className}`}>
       <Wrapper
         {...wrapperProps}
-        className="group relative block aspect-[2/3] overflow-hidden rounded-[var(--spacing-1)] bg-curtn-surface border border-curtn-dark/30"
+        className="group relative block aspect-[2/3] overflow-hidden dog-ear bg-curtn-surface border border-curtn-dark/30"
       >
         {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={title}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-          />
+          <>
+            <img
+              src={imageUrl}
+              alt={title}
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+            {/* Duotone canvas overlay — fades out on hover to reveal full color */}
+            <canvas
+              ref={canvasRef}
+              className="absolute inset-0 w-full h-full opacity-100 group-hover:opacity-0 transition-opacity duration-400 pointer-events-none"
+            />
+          </>
         ) : (
           <div className="flex h-full w-full items-center justify-center p-[var(--spacing-2)]">
             <Icon name="ticket" weight="thin" size={40} className="text-curtn-dark" />
           </div>
         )}
 
-        {/* Hover overlay — always present */}
+        {/* Hover overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-curtn-deep/90 via-curtn-deep/20 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
 
-        {/* Action icons — always shown on hover */}
+        {/* Action icons */}
         <div className="absolute bottom-0 left-0 right-0 flex items-center gap-[var(--spacing-1)] p-[var(--spacing-1)] opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           {resolvedActions.map((action) => (
             <button
@@ -77,7 +86,7 @@ export function PosterCard({
                 e.stopPropagation();
                 action.onClick?.();
               }}
-              className="flex h-[var(--spacing-4)] w-[var(--spacing-4)] items-center justify-center rounded-full bg-curtn-deep/60 text-curtn-cream/70 transition-colors hover:text-curtn-cream cursor-pointer"
+              className="flex h-[var(--spacing-4)] w-[var(--spacing-4)] items-center justify-center bg-curtn-deep/60 text-curtn-cream/70 transition-colors hover:text-curtn-cream cursor-pointer"
               aria-label={action.label}
             >
               <Icon
@@ -94,9 +103,9 @@ export function PosterCard({
       {/* Title below poster */}
       {(title || subtitle) && (
         <div className="mt-[var(--spacing-0_5)] px-[var(--spacing-0_5)]">
-          <p className="text-xs font-medium text-curtn-cream truncate">{title}</p>
+          <p className="text-[13px] font-display font-bold uppercase text-curtn-cream truncate">{title}</p>
           {subtitle && (
-            <p className="text-[10px] text-curtn-muted truncate">{subtitle}</p>
+            <p className="text-[10px] uppercase tracking-[0.5px] font-mono text-curtn-muted truncate">{subtitle}</p>
           )}
         </div>
       )}

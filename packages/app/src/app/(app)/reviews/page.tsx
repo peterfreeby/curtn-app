@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useQuery } from "urql";
 import { REVIEW_LIST_QUERY } from "@/lib/graphql/reviews";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
-import { Card } from "@/components/Card";
 
 const PAGE_SIZE = 12;
 
@@ -62,12 +61,12 @@ export default function ReviewsPage() {
       </h2>
 
       {displayEdges.length === 0 ? (
-        <Card className="text-center py-16 space-y-4">
-          <p className="text-curtn-muted">No reviews yet.</p>
-          <p className="text-xs text-curtn-muted/60">
+        <div className="empty-state">
+          <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">No Reviews Yet</p>
+          <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">
             Be the first to share what moved you.
           </p>
-        </Card>
+        </div>
       ) : (
         <div className="space-y-3">
           {displayEdges.map((edge: any) => (

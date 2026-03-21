@@ -17,11 +17,11 @@ export function CompanyHero({ name, description, logoUrl }: CompanyHeroProps) {
         <img
           src={logoUrl}
           alt={name}
-          className="h-20 w-20 shrink-0 rounded-lg object-contain border border-curtn-dark/50 bg-curtn-dark/30 p-2"
+          className="h-20 w-20 shrink-0 object-contain border border-curtn-dark/50 bg-curtn-dark/30 p-2"
         />
       )}
       <div className="min-w-0">
-        <h1 className="text-2xl font-bold text-curtn-cream leading-tight">{name}</h1>
+        <h1 className="text-2xl font-bold text-curtn-cream leading-tight normal-case">{name}</h1>
 
         {description && (
           <div className="mt-3">

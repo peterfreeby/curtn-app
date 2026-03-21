@@ -21,6 +21,7 @@ export const SHOW_LIST_QUERY = gql`
           performanceTypes
           duration
           imageUrl
+          posterUrl
           averageRating
           reviewCount
           watchlistCount
@@ -62,6 +63,7 @@ export const SEARCH_SHOWS_QUERY = gql`
           title
           performanceTypes
           imageUrl
+          posterUrl
           averageRating
           reviewCount
           isOnMyWatchlist
@@ -109,6 +111,7 @@ export const SINGLE_SHOW_QUERY = gql`
       duration
       languages
       imageUrl
+      posterUrl
       wikidataId
       averageRating
       reviewCount
@@ -158,6 +161,7 @@ export const SINGLE_SHOW_QUERY = gql`
                 id
                 name
                 slug
+                headshotUrl
               }
               role
               order
@@ -168,6 +172,7 @@ export const SINGLE_SHOW_QUERY = gql`
                 id
                 name
                 slug
+                headshotUrl
               }
               role
               order

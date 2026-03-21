@@ -7,23 +7,27 @@ import {
   ADMIN_VENUE_LIST_QUERY,
   ADMIN_RUN_LIST_QUERY,
   ADMIN_PERFORMANCE_LIST_QUERY,
+  ADMIN_PERSON_LIST_QUERY,
   SHOW_UPDATE_MUTATION,
   VENUE_UPDATE_MUTATION,
   RUN_UPDATE_MUTATION,
   PERFORMANCE_UPDATE_MUTATION,
+  PERSON_UPDATE_MUTATION,
   SHOW_DELETE_MUTATION,
   VENUE_DELETE_MUTATION,
   RUN_DELETE_MUTATION,
   PERFORMANCE_DELETE_MUTATION,
+  PERSON_DELETE_MUTATION,
   SHOW_MERGE_MUTATION,
   VENUE_MERGE_MUTATION,
   RUN_MERGE_MUTATION,
   PERFORMANCE_MERGE_MUTATION,
+  PERSON_MERGE_MUTATION,
 } from "@/lib/graphql/admin";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 
-type EntityTab = "shows" | "venues" | "runs" | "performances";
+type EntityTab = "shows" | "venues" | "runs" | "performances" | "people";
 
 function decodeGlobalId(globalId: string): string {
   return atob(globalId).split(":")[1];
@@ -309,6 +313,7 @@ function ShowsEditor() {
       duration: String(show.duration || ""),
       url: show.url || "",
       imageUrl: show.imageUrl || "",
+      posterUrl: show.posterUrl || "",
     });
   }
 
@@ -388,6 +393,12 @@ function ShowsEditor() {
                     entityId={decodeGlobalId(show.id)}
                     currentImageUrl={fields.imageUrl || null}
                     onUploaded={(url) => setFields((f) => ({ ...f, imageUrl: url }))}
+                  />
+                  <ImageUpload
+                    entityType="show-poster"
+                    entityId={decodeGlobalId(show.id)}
+                    currentImageUrl={fields.posterUrl || null}
+                    onUploaded={(url) => setFields((f) => ({ ...f, posterUrl: url }))}
                   />
                   <div className="flex gap-2">
                     <Button variant="primary" onClick={handleSave}>Save</Button>
@@ -472,14 +483,22 @@ function VenuesEditor() {
       phone: venue.phone || "",
       email: venue.email || "",
       imageUrl: venue.imageUrl || "",
+      permanentlyClosed: venue.permanentlyClosed ? "true" : "false",
+      closedDate: venue.closedDate ? venue.closedDate.split("T")[0] : "",
     });
   }
 
   async function handleSave() {
     if (!editingId) return;
     setMessage(null);
+    const { permanentlyClosed, closedDate, ...rest } = fields;
     const result = await executeUpdate({
-      input: { venueId: decodeGlobalId(editingId), ...fields },
+      input: {
+        venueId: decodeGlobalId(editingId),
+        ...rest,
+        permanentlyClosed: permanentlyClosed === "true",
+        closedDate: closedDate || null,
+      },
     });
     if (result.data?.venueUpdate?.error) {
       setMessage(result.data.venueUpdate.error);
@@ -552,6 +571,19 @@ function VenuesEditor() {
                     <FieldEditor label="Website" value={fields.website} onChange={(v) => setFields((f) => ({ ...f, website: v }))} />
                     <FieldEditor label="Phone" value={fields.phone} onChange={(v) => setFields((f) => ({ ...f, phone: v }))} />
                     <FieldEditor label="Email" value={fields.email} onChange={(v) => setFields((f) => ({ ...f, email: v }))} />
+                    <FieldEditor
+                      label="Permanently Closed"
+                      value={fields.permanentlyClosed}
+                      onChange={(v) => setFields((f) => ({ ...f, permanentlyClosed: v }))}
+                      type="select"
+                      options={[
+                        { value: "false", label: "No" },
+                        { value: "true", label: "Yes" },
+                      ]}
+                    />
+                    {fields.permanentlyClosed === "true" && (
+                      <FieldEditor label="Closed Date" value={fields.closedDate} onChange={(v) => setFields((f) => ({ ...f, closedDate: v }))} type="date" />
+                    )}
                     <div className="sm:col-span-2">
                       <FieldEditor label="Description" value={fields.description} onChange={(v) => setFields((f) => ({ ...f, description: v }))} type="textarea" />
                     </div>
@@ -570,7 +602,12 @@ function VenuesEditor() {
               ) : (
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="text-sm font-medium text-curtn-cream truncate">{venue.name}</h3>
+                    <h3 className="text-sm font-medium text-curtn-cream truncate">
+                      {venue.name}
+                      {venue.permanentlyClosed && (
+                        <span className="ml-2 text-[10px] uppercase tracking-wider text-curtn-muted/70">Closed</span>
+                      )}
+                    </h3>
                     <p className="text-xs text-curtn-muted mt-0.5">
                       {venue.address}{venue.city ? `, ${venue.city}` : ""}
                       {venue.capacity ? ` · ${venue.capacity} cap` : ""}
@@ -637,6 +674,7 @@ function RunsEditor() {
       startDate: run.startDate ? run.startDate.split("T")[0] : "",
       endDate: run.endDate ? run.endDate.split("T")[0] : "",
       imageUrl: run.imageUrl || "",
+      posterUrl: run.posterUrl || "",
     });
   }
 
@@ -721,6 +759,12 @@ function RunsEditor() {
                     entityId={decodeGlobalId(run.id)}
                     currentImageUrl={fields.imageUrl || null}
                     onUploaded={(url) => setFields((f) => ({ ...f, imageUrl: url }))}
+                  />
+                  <ImageUpload
+                    entityType="run-poster"
+                    entityId={decodeGlobalId(run.id)}
+                    currentImageUrl={fields.posterUrl || null}
+                    onUploaded={(url) => setFields((f) => ({ ...f, posterUrl: url }))}
                   />
                   <div className="flex gap-2">
                     <Button variant="primary" onClick={handleSave}>Save</Button>
@@ -956,6 +1000,166 @@ function PerformancesEditor() {
   );
 }
 
+// --- People Tab ---
+function PeopleEditor() {
+  const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [fields, setFields] = useState<Record<string, string>>({});
+  const [message, setMessage] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<any | null>(null);
+  const [mergeSource, setMergeSource] = useState<any | null>(null);
+
+  const [{ data, fetching }, reexecute] = useQuery({
+    query: ADMIN_PERSON_LIST_QUERY,
+    variables: { first: 50, search: search || undefined },
+  });
+  const [, executeUpdate] = useMutation(PERSON_UPDATE_MUTATION);
+  const [, executeDelete] = useMutation(PERSON_DELETE_MUTATION);
+  const [, executeMerge] = useMutation(PERSON_MERGE_MUTATION);
+
+  const people = data?.personList?.edges?.map((e: any) => e.node) || [];
+
+  function startEdit(person: any) {
+    setEditingId(person.id);
+    setFields({
+      name: person.name || "",
+      bio: person.bio || "",
+      headshotUrl: person.headshotUrl || "",
+      wikidataId: person.wikidataId || "",
+    });
+  }
+
+  async function handleSave() {
+    if (!editingId) return;
+    setMessage(null);
+    const result = await executeUpdate({
+      input: { personId: decodeGlobalId(editingId), ...fields },
+    });
+    if (result.data?.personUpdate?.error) {
+      setMessage(result.data.personUpdate.error);
+    } else {
+      setMessage("Person updated");
+      setEditingId(null);
+      reexecute({ requestPolicy: "network-only" });
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirmDelete) return;
+    setMessage(null);
+    const result = await executeDelete({
+      input: { personId: decodeGlobalId(confirmDelete.id) },
+    });
+    setConfirmDelete(null);
+    if (result.data?.personDelete?.error) {
+      setMessage(result.data.personDelete.error);
+    } else {
+      setMessage("Person deleted");
+      reexecute({ requestPolicy: "network-only" });
+    }
+  }
+
+  async function handleMerge(targetId: string) {
+    if (!mergeSource) return;
+    setMessage(null);
+    const result = await executeMerge({
+      input: { sourceId: decodeGlobalId(mergeSource.id), targetId },
+    });
+    setMergeSource(null);
+    if (result.data?.personMerge?.error) {
+      setMessage(result.data.personMerge.error);
+    } else {
+      setMessage(`Merged into "${result.data?.personMerge?.person?.name}"`);
+      reexecute({ requestPolicy: "network-only" });
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search people..."
+        className="w-full rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
+      />
+      {message && <p className="text-xs text-curtn-coral">{message}</p>}
+      {fetching && !data ? (
+        <p className="text-sm text-curtn-muted">Loading...</p>
+      ) : (
+        <div className="space-y-2">
+          {people.map((person: any) => (
+            <Card key={person.id} className="space-y-3">
+              {editingId === person.id ? (
+                <div className="space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <FieldEditor label="Name" value={fields.name} onChange={(v) => setFields((f) => ({ ...f, name: v }))} />
+                    <FieldEditor label="Wikidata ID" value={fields.wikidataId} onChange={(v) => setFields((f) => ({ ...f, wikidataId: v }))} />
+                    <div className="sm:col-span-2">
+                      <FieldEditor label="Bio" value={fields.bio} onChange={(v) => setFields((f) => ({ ...f, bio: v }))} type="textarea" />
+                    </div>
+                  </div>
+                  <ImageUpload
+                    entityType="person"
+                    entityId={decodeGlobalId(person.id)}
+                    currentImageUrl={fields.headshotUrl || null}
+                    onUploaded={(url) => setFields((f) => ({ ...f, headshotUrl: url }))}
+                  />
+                  <div className="flex gap-2">
+                    <Button variant="primary" onClick={handleSave}>Save</Button>
+                    <Button variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {person.headshotUrl && (
+                      <img
+                        src={person.headshotUrl}
+                        alt=""
+                        className="h-8 w-8 rounded-full object-cover border border-curtn-dark shrink-0"
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-medium text-curtn-cream truncate">{person.name}</h3>
+                      {person.bio && (
+                        <p className="text-xs text-curtn-muted mt-0.5 truncate">{person.bio}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button variant="ghost" onClick={() => startEdit(person)}>Edit</Button>
+                    <EntityActions
+                      onDelete={() => setConfirmDelete(person)}
+                      onMerge={() => setMergeSource(person)}
+                    />
+                  </div>
+                </div>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
+      {confirmDelete && (
+        <ConfirmDialog
+          title={`Delete "${confirmDelete.name}"?`}
+          message="This will permanently delete this person and all their credits."
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+      {mergeSource && (
+        <MergePicker
+          items={people}
+          excludeId={mergeSource.id}
+          labelFn={(p) => p.name}
+          onSelect={handleMerge}
+          onCancel={() => setMergeSource(null)}
+        />
+      )}
+    </div>
+  );
+}
+
 // --- Main Editor Page ---
 export default function AdminEditorPage() {
   const [tab, setTab] = useState<EntityTab>("shows");
@@ -965,13 +1169,13 @@ export default function AdminEditorPage() {
       <div>
         <h1 className="text-xl font-bold text-curtn-cream">Data Editor</h1>
         <p className="mt-1 text-sm text-curtn-muted">
-          Browse, edit, delete, and merge shows, venues, runs, and performances.
+          Browse, edit, delete, and merge shows, venues, runs, performances, and people.
         </p>
       </div>
 
       {/* Tab bar */}
       <div className="flex gap-1 rounded-lg bg-curtn-surface p-1">
-        {(["shows", "venues", "runs", "performances"] as EntityTab[]).map(
+        {(["shows", "venues", "runs", "performances", "people"] as EntityTab[]).map(
           (t) => (
             <button
               key={t}
@@ -992,6 +1196,7 @@ export default function AdminEditorPage() {
       {tab === "venues" && <VenuesEditor />}
       {tab === "runs" && <RunsEditor />}
       {tab === "performances" && <PerformancesEditor />}
+      {tab === "people" && <PeopleEditor />}
     </div>
   );
 }

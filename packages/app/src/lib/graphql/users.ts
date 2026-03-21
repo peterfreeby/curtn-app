@@ -54,6 +54,7 @@ export const USER_REVIEWS_QUERY = gql`
               id
               title
               imageUrl
+              posterUrl
             }
           }
         }

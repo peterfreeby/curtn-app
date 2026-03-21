@@ -83,6 +83,10 @@ export const runType: GraphQLObjectType = new GraphQLObjectType({
         type: GraphQLString,
         resolve: run => run.imageUrl
       },
+      posterUrl: {
+        type: GraphQLString,
+        resolve: run => run.posterUrl
+      },
       wikidataId: {
         type: GraphQLString,
         resolve: run => run.wikidataId
@@ -90,6 +94,10 @@ export const runType: GraphQLObjectType = new GraphQLObjectType({
       eventbriteId: {
         type: GraphQLString,
         resolve: run => run.eventbriteId
+      },
+      verificationStatus: {
+        type: GraphQLString,
+        resolve: run => run.verificationStatus
       },
       performances: {
         type: PerformanceConnection,

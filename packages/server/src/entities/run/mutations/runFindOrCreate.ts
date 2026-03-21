@@ -95,6 +95,7 @@ export const runFindOrCreate = mutationWithClientMutationId({
         startDate: input.startDate ? new Date(input.startDate) : undefined,
         endDate: input.endDate ? new Date(input.endDate) : undefined,
         description: input.description,
+        verificationStatus: 'community',
         submittedBy: ctx.user.id
       }).save()
 

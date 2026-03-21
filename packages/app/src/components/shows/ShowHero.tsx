@@ -19,6 +19,7 @@ interface ShowHeroProps {
   duration: number;
   languages: string[] | null;
   imageUrl?: string | null;
+  posterUrl?: string | null;
   creators?: Creator[];
   averageRating: number | null;
   reviewCount: number;
@@ -31,6 +32,7 @@ export function ShowHero({
   duration,
   languages,
   imageUrl,
+  posterUrl,
   creators,
   averageRating,
   reviewCount,
@@ -42,25 +44,29 @@ export function ShowHero({
 
   return (
     <div>
-      {/* Backdrop + poster layout when image exists */}
-      {imageUrl ? (
+      {/* Backdrop + poster layout when any image exists */}
+      {(imageUrl || posterUrl) ? (
         <div className="relative -mx-6 -mt-8 mb-6">
-          {/* Backdrop */}
-          <div className="relative h-[240px] sm:h-[300px] overflow-hidden">
-            <img
-              src={imageUrl}
-              alt=""
-              className="h-full w-full object-cover"
-            />
+          {/* Backdrop — only show cover image when a separate poster exists */}
+          <div className="relative h-[240px] sm:h-[300px] overflow-hidden torn-bottom">
+            {imageUrl && posterUrl ? (
+              <img
+                src={imageUrl}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="h-full w-full bg-curtn-surface" />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-curtn-deep via-curtn-deep/60 to-curtn-deep/20" />
             <div className="absolute inset-0 bg-gradient-to-r from-curtn-deep/80 to-transparent" />
           </div>
 
-          {/* Poster overlay */}
+          {/* Poster overlay — falls back to imageUrl */}
           <div className="relative -mt-28 sm:-mt-36 px-6 flex gap-5 items-end">
             <div className="w-[110px] sm:w-[140px] shrink-0">
-              <div className="aspect-[2/3] overflow-hidden rounded-lg border-2 border-curtn-dark/50 bg-curtn-surface shadow-2xl">
-                <img src={imageUrl} alt={title} className="h-full w-full object-cover" />
+              <div className="dog-ear relative aspect-[2/3] border-2 border-curtn-dark/50 bg-curtn-surface shadow-2xl">
+                <img src={(posterUrl || imageUrl)!} alt={title} className="h-full w-full object-cover" />
               </div>
             </div>
             <div className="flex-1 min-w-0 pb-1">
@@ -69,14 +75,14 @@ export function ShowHero({
                   {performanceTypes.map((type) => (
                     <span
                       key={type}
-                      className="rounded-full bg-curtn-deep/60 backdrop-blur-sm px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted"
+                      className="bg-curtn-deep/60 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted"
                     >
                       {type}
                     </span>
                   ))}
                 </div>
               )}
-              <h1 className="text-2xl sm:text-3xl font-bold text-curtn-cream leading-tight">{title}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-curtn-cream leading-tight normal-case">{title}</h1>
               {creators && creators.length > 0 && (
                 <p className="mt-1 text-sm text-curtn-muted">
                   {creators.map((c, i) => (
@@ -101,7 +107,7 @@ export function ShowHero({
               {performanceTypes.map((type) => (
                 <span
                   key={type}
-                  className="rounded-full bg-curtn-dark/60 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted"
+                  className="bg-curtn-dark/60 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted"
                 >
                   {type}
                 </span>
@@ -109,7 +115,7 @@ export function ShowHero({
             </div>
           )}
 
-          <h1 className="text-2xl font-bold text-curtn-cream leading-tight">{title}</h1>
+          <h1 className="text-2xl font-bold text-curtn-cream leading-tight normal-case">{title}</h1>
 
           {creators && creators.length > 0 && (
             <p className="mt-1 text-sm text-curtn-muted">
@@ -150,17 +156,45 @@ export function ShowHero({
         </div>
       )}
 
-      {(averageRating !== null || reviewCount > 0) && (
-        <div className="mt-4 flex items-center gap-1.5 text-sm">
-          <Icon name="star" weight="fill" size={16} className="text-curtn-coral" />
-          <span className="text-curtn-cream">
-            {averageRating !== null ? `${averageRating.toFixed(1)} average` : "No ratings yet"}
-          </span>
-          <span className="text-curtn-muted/70">
-            · {reviewCount} {reviewCount === 1 ? "review" : "reviews"}
-          </span>
+      {/* Obra Dinn ledger — show metadata */}
+      <div className="mt-6 dinn-panel">
+        <div className="dinn-header">
+          <span className="dinn-title">Show Record</span>
+          {(averageRating !== null || reviewCount > 0) && (
+            <span className="dinn-ref flex items-center gap-1">
+              <Icon name="star" weight="fill" size={12} className="text-curtn-coral" />
+              {averageRating !== null ? averageRating.toFixed(1) : "—"}
+              <span className="text-curtn-muted/50">({reviewCount})</span>
+            </span>
+          )}
         </div>
-      )}
+        <div className="dinn-grid">
+          {performanceTypes.length > 0 && (
+            <>
+              <span className="dinn-label">Type</span>
+              <span className="dinn-value capitalize">{performanceTypes.join(", ")}</span>
+            </>
+          )}
+          <span className="dinn-label">Duration</span>
+          <span className="dinn-value">{metaParts.join(" · ")}</span>
+          {creators && creators.length > 0 && (
+            <>
+              <span className="dinn-label">Creators</span>
+              <span className="dinn-value">
+                {creators.map((c, i) => (
+                  <span key={c.id}>
+                    {i > 0 && ", "}
+                    <Link href={`/people/${c.person.slug}`} className="text-curtn-coral hover:underline">
+                      {c.person.name}
+                    </Link>
+                    <span className="text-curtn-muted/50"> ({c.role})</span>
+                  </span>
+                ))}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

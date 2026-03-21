@@ -63,31 +63,25 @@ export function PerformanceFilters({
 
   return (
     <div className="space-y-4">
-      {/* Search input */}
-      <div className="relative">
-        <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-          <Icon name="magnifying-glass" size={16} className="text-curtn-muted" />
-        </div>
+      {/* Search input — dog-ear search bar */}
+      <div className="dog-ear dog-ear-sm flex items-center bg-curtn-surface border border-curtn-dark/50 px-4">
+        <Icon name="magnifying-glass" size={14} className="text-curtn-muted shrink-0" />
         <input
           ref={inputRef}
           type="text"
           placeholder="Search performances..."
           defaultValue={search}
           onChange={(e) => handleSearchInput(e.target.value)}
-          className="w-full rounded-lg border border-curtn-dark bg-curtn-surface py-2.5 pl-9 pr-4 text-sm text-curtn-cream placeholder:text-curtn-muted/50 focus:border-curtn-muted/50 focus:outline-none transition-colors"
+          className="flex-1 bg-transparent border-none py-2.5 pl-2 pr-4 text-sm text-curtn-cream placeholder:text-curtn-muted/50 focus:outline-none"
         />
       </div>
 
-      {/* Type chips + upcoming toggle */}
+      {/* Type chips + upcoming toggle — stamp edge */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
         <button
           type="button"
           onClick={() => onUpcomingChange(!upcoming)}
-          className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-            upcoming
-              ? "border-curtn-coral bg-curtn-coral/10 text-curtn-coral"
-              : "border-curtn-dark text-curtn-muted hover:border-curtn-muted/50"
-          }`}
+          className={`shrink-0 chip-stamp cursor-pointer ${upcoming ? "active" : ""}`}
         >
           Upcoming
         </button>
@@ -99,11 +93,7 @@ export function PerformanceFilters({
               key={type}
               type="button"
               onClick={() => toggleType(type)}
-              className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium capitalize transition-colors ${
-                active
-                  ? "border-curtn-coral bg-curtn-coral/10 text-curtn-coral"
-                  : "border-curtn-dark text-curtn-muted hover:border-curtn-muted/50"
-              }`}
+              className={`shrink-0 chip-stamp capitalize cursor-pointer ${active ? "active" : ""}`}
             >
               {type}
             </button>

@@ -36,6 +36,10 @@ export const runUpdate = mutationWithClientMutationId({
     imageUrl: {
       type: GraphQLString,
       description: 'Image URL (from Vercel Blob)'
+    },
+    posterUrl: {
+      type: GraphQLString,
+      description: 'Poster URL — portrait poster image (from Vercel Blob)'
     }
   },
   outputFields: {
@@ -63,6 +67,7 @@ export const runUpdate = mutationWithClientMutationId({
       if (input.startDate !== undefined && input.startDate !== '') updates.startDate = new Date(input.startDate)
       if (input.endDate !== undefined && input.endDate !== '') updates.endDate = new Date(input.endDate)
       if (input.imageUrl !== undefined && input.imageUrl !== '') updates.imageUrl = input.imageUrl
+      if (input.posterUrl !== undefined && input.posterUrl !== '') updates.posterUrl = input.posterUrl
 
       if (Object.keys(updates).length === 0) {
         return { run }

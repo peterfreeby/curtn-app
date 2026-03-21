@@ -243,6 +243,7 @@ export const ADMIN_SHOW_LIST_QUERY = gql`
           description
           url
           imageUrl
+          posterUrl
           createdAt
         }
       }
@@ -268,6 +269,8 @@ export const ADMIN_VENUE_LIST_QUERY = gql`
           email
           description
           imageUrl
+          permanentlyClosed
+          closedDate
           createdAt
         }
       }
@@ -298,6 +301,7 @@ export const ADMIN_RUN_LIST_QUERY = gql`
             name
           }
           imageUrl
+          posterUrl
           createdAt
         }
       }
@@ -334,6 +338,24 @@ export const ADMIN_PERFORMANCE_LIST_QUERY = gql`
   }
 `;
 
+export const ADMIN_PERSON_LIST_QUERY = gql`
+  query AdminPersonList($first: Int, $search: String) {
+    personList(first: $first, search: $search) {
+      edges {
+        node {
+          id
+          name
+          slug
+          bio
+          headshotUrl
+          wikidataId
+          createdAt
+        }
+      }
+    }
+  }
+`;
+
 export const SHOW_UPDATE_MUTATION = gql`
   mutation ShowUpdate($input: showUpdateInput!) {
     showUpdate(input: $input) {
@@ -345,6 +367,7 @@ export const SHOW_UPDATE_MUTATION = gql`
         duration
         url
         imageUrl
+        posterUrl
       }
       error
     }
@@ -368,6 +391,8 @@ export const VENUE_UPDATE_MUTATION = gql`
         phone
         email
         imageUrl
+        permanentlyClosed
+        closedDate
       }
       error
     }
@@ -385,6 +410,7 @@ export const RUN_UPDATE_MUTATION = gql`
         startDate
         endDate
         imageUrl
+        posterUrl
       }
       error
     }
@@ -481,6 +507,45 @@ export const PERFORMANCE_MERGE_MUTATION = gql`
   mutation PerformanceMerge($input: performanceMergeInput!) {
     performanceMerge(input: $input) {
       deletedId
+      error
+    }
+  }
+`;
+
+// --- Person Mutations ---
+
+export const PERSON_UPDATE_MUTATION = gql`
+  mutation PersonUpdate($input: personUpdateInput!) {
+    personUpdate(input: $input) {
+      person {
+        id
+        name
+        slug
+        bio
+        headshotUrl
+        wikidataId
+      }
+      error
+    }
+  }
+`;
+
+export const PERSON_DELETE_MUTATION = gql`
+  mutation PersonDelete($input: personDeleteInput!) {
+    personDelete(input: $input) {
+      deletedId
+      error
+    }
+  }
+`;
+
+export const PERSON_MERGE_MUTATION = gql`
+  mutation PersonMerge($input: personMergeInput!) {
+    personMerge(input: $input) {
+      person {
+        id
+        name
+      }
       error
     }
   }

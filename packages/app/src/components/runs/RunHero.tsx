@@ -21,6 +21,7 @@ interface RunHeroProps {
   intermissions: number | null;
   languages: string[] | null;
   imageUrl?: string | null;
+  posterUrl?: string | null;
   creators?: Creator[];
   companyName?: string | null;
   companySlug?: string | null;
@@ -46,6 +47,7 @@ export function RunHero({
   intermissions,
   languages,
   imageUrl,
+  posterUrl,
   creators,
   companyName,
   companySlug,
@@ -77,74 +79,45 @@ export function RunHero({
     return `${fmt(startDate)} – ${fmt(endDate)}`;
   })();
 
-  // Info block shared between both layouts
-  const infoBlock = (
+  // Compact info for hero overlay — full details go in the dinn-panel below
+  const heroSub = (
     <>
-      {creators && creators.length > 0 && (
-        <p className="mt-1 text-sm text-curtn-muted">
-          {creators.map((c, i) => (
-            <span key={c.id}>
-              {i > 0 && ", "}
-              <Link href={`/people/${c.person.slug}`} className="text-curtn-coral hover:underline">
-                {c.person.name}
-              </Link>
-              <span className="text-curtn-muted/60"> ({c.role})</span>
-            </span>
-          ))}
+      {venues.length > 0 && (
+        <p className="mt-1 text-xs text-curtn-muted/70 flex items-center gap-1">
+          <Icon name="map-pin" size={12} />
+          {venues[0].name}, {venues[0].city}
         </p>
       )}
-
-      {companyName && (
-        <p className="mt-1 text-sm text-curtn-muted">
-          by{" "}
-          <Link
-            href={`/companies/${companySlug}`}
-            className="text-curtn-coral hover:underline"
-          >
-            {companyName}
-          </Link>
+      {dateRange && (
+        <p className="mt-0.5 text-xs text-curtn-muted/70 flex items-center gap-1">
+          <Icon name="calendar" size={12} />
+          {dateRange}
         </p>
       )}
-
-      <div className="mt-2 flex flex-col gap-0.5 text-xs text-curtn-muted/70">
-        {venues.map((v) => (
-          <Link
-            key={v.slug}
-            href={`/venues/${v.slug}`}
-            className="flex items-center gap-1 hover:text-curtn-cream transition-colors"
-          >
-            <Icon name="map-pin" size={12} />
-            {v.name}, {v.city}
-          </Link>
-        ))}
-        {dateRange && (
-          <span className="flex items-center gap-1">
-            <Icon name="calendar" size={12} />
-            {dateRange}
-          </span>
-        )}
-      </div>
-
-      <p className="mt-1 text-xs text-curtn-muted/70">{metaParts.join(" · ")}</p>
+      <p className="mt-0.5 text-xs text-curtn-muted/70">{metaParts.join(" · ")}</p>
     </>
   );
 
   return (
     <div>
-      {imageUrl ? (
+      {(imageUrl || posterUrl) ? (
         <div className="relative -mx-6 -mt-8 mb-6">
-          {/* Backdrop */}
-          <div className="relative h-[240px] sm:h-[300px] overflow-hidden">
-            <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+          {/* Backdrop — only show cover image when a separate poster exists */}
+          <div className="relative h-[240px] sm:h-[300px] overflow-hidden torn-bottom">
+            {imageUrl && posterUrl ? (
+              <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="h-full w-full bg-curtn-surface" />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-curtn-deep via-curtn-deep/60 to-curtn-deep/20" />
             <div className="absolute inset-0 bg-gradient-to-r from-curtn-deep/80 to-transparent" />
           </div>
 
-          {/* Poster overlay */}
+          {/* Poster overlay — falls back to imageUrl */}
           <div className="relative -mt-28 sm:-mt-36 px-6 flex gap-5 items-end">
             <div className="w-[110px] sm:w-[140px] shrink-0">
-              <div className="aspect-[2/3] overflow-hidden rounded-lg border-2 border-curtn-dark/50 bg-curtn-surface shadow-2xl">
-                <img src={imageUrl} alt={showTitle} className="h-full w-full object-cover" />
+              <div className="dog-ear relative aspect-[2/3] border-2 border-curtn-dark/50 bg-curtn-surface shadow-2xl">
+                <img src={(posterUrl || imageUrl)!} alt={showTitle} className="h-full w-full object-cover" />
               </div>
             </div>
             <div className="flex-1 min-w-0 pb-1">
@@ -153,15 +126,15 @@ export function RunHero({
                   {performanceTypes.map((type) => (
                     <span
                       key={type}
-                      className="rounded-full bg-curtn-deep/60 backdrop-blur-sm px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted"
+                      className="bg-curtn-deep/60 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted"
                     >
                       {type}
                     </span>
                   ))}
                 </div>
               )}
-              <h1 className="text-2xl sm:text-3xl font-bold text-curtn-cream leading-tight">{showTitle}</h1>
-              {infoBlock}
+              <h1 className="text-2xl sm:text-3xl font-bold text-curtn-cream leading-tight normal-case">{showTitle}</h1>
+              {heroSub}
             </div>
           </div>
         </div>
@@ -172,7 +145,7 @@ export function RunHero({
               {performanceTypes.map((type) => (
                 <span
                   key={type}
-                  className="rounded-full bg-curtn-dark/60 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted"
+                  className="bg-curtn-dark/60 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted"
                 >
                   {type}
                 </span>
@@ -180,8 +153,8 @@ export function RunHero({
             </div>
           )}
 
-          <h1 className="text-2xl font-bold text-curtn-cream leading-tight">{showTitle}</h1>
-          {infoBlock}
+          <h1 className="text-2xl font-bold text-curtn-cream leading-tight normal-case">{showTitle}</h1>
+          {heroSub}
         </>
       )}
 
@@ -206,48 +179,116 @@ export function RunHero({
         </div>
       )}
 
-      {(averageRating !== null || reviewCount > 0) && (
-        <div className="mt-4 flex items-center gap-1.5 text-sm">
-          <Icon name="star" weight="fill" size={16} className="text-curtn-coral" />
-          <span className="text-curtn-cream">
-            {averageRating !== null ? `${averageRating.toFixed(1)} average` : "No ratings yet"}
-          </span>
-          <span className="text-curtn-muted/70">
-            · {reviewCount} {reviewCount === 1 ? "review" : "reviews"}
-          </span>
-        </div>
-      )}
-
-      {/* Scenario A: single-performance date/time/ticket inline */}
-      {performanceDate && (
-        <div className="mt-4 flex items-center gap-3 rounded-lg border border-curtn-dark/50 bg-curtn-surface px-4 py-3">
-          <div className="flex-1 flex items-center gap-3 text-sm">
-            <span className="flex items-center gap-1 text-curtn-cream">
-              <Icon name="calendar" size={14} />
-              {formatShowDate(performanceDate)}
-            </span>
-            {performanceTime && (
-              <span className="text-curtn-muted">
-                {formatShowTime(performanceTime)}
-              </span>
-            )}
-            {soldOut && (
-              <span className="text-xs text-curtn-muted/50">Sold Out</span>
-            )}
+      {/* Scenario A: single-performance date/time/ticket — ticket card style */}
+      {performanceDate && (() => {
+        const dateObj = new Date(performanceDate);
+        const day = dateObj.getDate().toString().padStart(2, "0");
+        const month = dateObj.toLocaleString("en-US", { month: "short" });
+        return (
+          <div className="mt-6 card-ticket">
+            <div className={`ticket-stub ${soldOut ? "!bg-curtn-muted" : ""}`}>
+              <div className="ticket-date">{day}</div>
+              <div className="ticket-month">{month}</div>
+            </div>
+            <div className="ticket-body flex items-center justify-between">
+              <div>
+                <div className="ticket-title text-curtn-cream">
+                  {formatShowDate(performanceDate)}
+                </div>
+                <div className="ticket-time">
+                  {performanceTime && formatShowTime(performanceTime)}
+                  {soldOut && (
+                    <span className="badge badge-muted ml-2">Sold Out</span>
+                  )}
+                </div>
+              </div>
+              {!soldOut && ticketUrl && (
+                <a
+                  href={ticketUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 border border-curtn-coral/30 px-3 py-1.5 text-xs text-curtn-coral transition-colors hover:bg-curtn-coral/10"
+                >
+                  <Icon name="ticket" size={12} />
+                  Tickets
+                </a>
+              )}
+            </div>
           </div>
-          {!soldOut && ticketUrl && (
-            <a
-              href={ticketUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded-full border border-curtn-coral/30 px-3 py-1 text-xs text-curtn-coral transition-colors hover:bg-curtn-coral/10"
-            >
-              <Icon name="ticket" size={12} />
-              Tickets
-            </a>
+        );
+      })()}
+
+      {/* Obra Dinn ledger — show metadata */}
+      <div className="mt-6 dinn-panel">
+        <div className="dinn-header">
+          <span className="dinn-title">Record of Performance</span>
+          {(averageRating !== null || reviewCount > 0) && (
+            <span className="dinn-ref flex items-center gap-1">
+              <Icon name="star" weight="fill" size={12} className="text-curtn-coral" />
+              {averageRating !== null ? averageRating.toFixed(1) : "—"}
+              <span className="text-curtn-muted/50">({reviewCount})</span>
+            </span>
           )}
         </div>
-      )}
+        <div className="dinn-grid">
+          {venues.length > 0 && (
+            <>
+              <span className="dinn-label">Venue</span>
+              <span className="dinn-value">
+                {venues.map((v, i) => (
+                  <span key={v.slug}>
+                    {i > 0 && ", "}
+                    <Link href={`/venues/${v.slug}`} className="text-curtn-coral hover:underline">
+                      {v.name}
+                    </Link>
+                    <span className="text-curtn-muted/60">, {v.city}</span>
+                  </span>
+                ))}
+              </span>
+            </>
+          )}
+          {performanceTypes.length > 0 && (
+            <>
+              <span className="dinn-label">Type</span>
+              <span className="dinn-value capitalize">{performanceTypes.join(", ")}</span>
+            </>
+          )}
+          <span className="dinn-label">Duration</span>
+          <span className="dinn-value">{metaParts.join(" · ")}</span>
+          {dateRange && !performanceDate && (
+            <>
+              <span className="dinn-label">Dates</span>
+              <span className="dinn-value">{dateRange}</span>
+            </>
+          )}
+          {companyName && (
+            <>
+              <span className="dinn-label">Company</span>
+              <span className="dinn-value">
+                <Link href={`/companies/${companySlug}`} className="text-curtn-coral hover:underline">
+                  {companyName}
+                </Link>
+              </span>
+            </>
+          )}
+          {creators && creators.length > 0 && (
+            <>
+              <span className="dinn-label">Creators</span>
+              <span className="dinn-value">
+                {creators.map((c, i) => (
+                  <span key={c.id}>
+                    {i > 0 && ", "}
+                    <Link href={`/people/${c.person.slug}`} className="text-curtn-coral hover:underline">
+                      {c.person.name}
+                    </Link>
+                    <span className="text-curtn-muted/50"> ({c.role})</span>
+                  </span>
+                ))}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

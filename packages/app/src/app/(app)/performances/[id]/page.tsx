@@ -58,13 +58,13 @@ export default function ShowDetailPage() {
     return (
       <div className="px-6 py-8 max-w-2xl mx-auto animate-pulse space-y-4">
         <div className="flex gap-1.5">
-          <div className="h-4 w-14 rounded-full bg-curtn-dark/60" />
-          <div className="h-4 w-18 rounded-full bg-curtn-dark/60" />
+          <div className="h-4 w-14 bg-curtn-dark/60" />
+          <div className="h-4 w-18 bg-curtn-dark/60" />
         </div>
-        <div className="h-8 w-3/4 rounded bg-curtn-dark/60" />
-        <div className="h-4 w-1/3 rounded bg-curtn-dark/60" />
-        <div className="h-4 w-1/2 rounded bg-curtn-dark/60" />
-        <div className="mt-6 h-24 rounded-lg bg-curtn-dark/60" />
+        <div className="h-8 w-3/4 bg-curtn-dark/60" />
+        <div className="h-4 w-1/3 bg-curtn-dark/60" />
+        <div className="h-4 w-1/2 bg-curtn-dark/60" />
+        <div className="mt-6 h-24 bg-curtn-dark/60" />
       </div>
     );
   }
@@ -117,6 +117,7 @@ export default function ShowDetailPage() {
           intermissions={singleRun.intermissions}
           languages={show.languages}
           imageUrl={show.imageUrl}
+          posterUrl={show.posterUrl}
           creators={creators}
           companyName={company?.name}
           companySlug={company?.slug}
@@ -143,7 +144,7 @@ export default function ShowDetailPage() {
 
         <Link
           href={`/log?run=${singleRun.id}`}
-          className="block w-full rounded-lg bg-curtn-coral py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-curtn-red"
+          className="block w-full dog-ear dog-ear-dark bg-curtn-coral py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-curtn-deep transition-colors hover:bg-curtn-red"
         >
           Log This Show
         </Link>
@@ -152,8 +153,8 @@ export default function ShowDetailPage() {
 
         {user?.isAdmin && (
           <Link
-            href={`/admin/edit/performance/${id}`}
-            className="flex items-center justify-center gap-2 rounded-lg border border-curtn-dark px-4 py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream"
+            href="/admin/editor"
+            className="flex items-center justify-center gap-2 border border-curtn-dark px-4 py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream"
           >
             <Icon name="pencil" size={14} />
             Edit Performance
@@ -194,6 +195,7 @@ export default function ShowDetailPage() {
           intermissions={singleRun.intermissions}
           languages={show.languages}
           imageUrl={show.imageUrl}
+          posterUrl={show.posterUrl}
           creators={creators}
           companyName={company?.name}
           companySlug={company?.slug}
@@ -220,7 +222,7 @@ export default function ShowDetailPage() {
 
         <Link
           href={`/log?run=${singleRun.id}`}
-          className="block w-full rounded-lg bg-curtn-coral py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-curtn-red"
+          className="block w-full dog-ear dog-ear-dark bg-curtn-coral py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-curtn-deep transition-colors hover:bg-curtn-red"
         >
           Log This Show
         </Link>
@@ -229,8 +231,8 @@ export default function ShowDetailPage() {
 
         {user?.isAdmin && (
           <Link
-            href={`/admin/edit/performance/${id}`}
-            className="flex items-center justify-center gap-2 rounded-lg border border-curtn-dark px-4 py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream"
+            href="/admin/editor"
+            className="flex items-center justify-center gap-2 border border-curtn-dark px-4 py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream"
           >
             <Icon name="pencil" size={14} />
             Edit Performance
@@ -262,6 +264,7 @@ export default function ShowDetailPage() {
         duration={show.duration}
         languages={show.languages}
         imageUrl={show.imageUrl}
+        posterUrl={show.posterUrl}
         creators={creators}
         averageRating={show.averageRating}
         reviewCount={show.reviewCount}
@@ -275,7 +278,7 @@ export default function ShowDetailPage() {
 
       {user?.isAdmin && (
         <Link
-          href={`/admin/edit/performance/${id}`}
+          href="/admin/editor"
           className="flex items-center justify-center gap-2 rounded-lg border border-curtn-dark px-4 py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream"
         >
           <Icon name="pencil" size={14} />
@@ -332,7 +335,10 @@ function ReviewsSection({
       </h2>
 
       {!fetching && edges.length === 0 && (
-        <p className="text-sm text-curtn-muted">No reviews yet.</p>
+        <div className="empty-state">
+          <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">No Reviews Yet</p>
+          <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">Be the first to share your thoughts.</p>
+        </div>
       )}
 
       <div className="space-y-3">
@@ -355,7 +361,7 @@ function ReviewsSection({
         <button
           type="button"
           onClick={onLoadMore}
-          className="mt-4 w-full rounded-lg border border-curtn-dark py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer"
+          className="mt-4 w-full border border-curtn-dark py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer"
         >
           Load more reviews
         </button>

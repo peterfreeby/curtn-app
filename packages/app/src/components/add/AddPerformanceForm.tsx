@@ -202,7 +202,7 @@ export function AddPerformanceForm() {
   return (
     <div className="max-w-lg mx-auto space-y-8">
       {error && (
-        <div className="rounded-lg border border-curtn-red/30 bg-curtn-red/10 px-4 py-3 text-sm text-curtn-red">
+        <div className="border border-curtn-red/30 bg-curtn-red/10 px-4 py-3 text-sm text-curtn-red">
           {error}
         </div>
       )}
@@ -258,10 +258,8 @@ export function AddPerformanceForm() {
                     key={type}
                     type="button"
                     onClick={() => toggleShowType(type)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                      newShowTypes.includes(type)
-                        ? "bg-curtn-coral text-curtn-deep"
-                        : "bg-curtn-dark/30 text-curtn-muted hover:text-curtn-cream"
+                    className={`chip-stamp capitalize cursor-pointer ${
+                      newShowTypes.includes(type) ? "active" : ""
                     }`}
                   >
                     {type}
@@ -278,7 +276,7 @@ export function AddPerformanceForm() {
                 onChange={(e) => setNewShowDescription(e.target.value)}
                 placeholder="Brief description (optional)"
                 rows={3}
-                className="w-full bg-transparent border border-curtn-dark rounded-lg text-curtn-cream placeholder:text-curtn-dark p-3 text-sm outline-none focus:border-curtn-coral transition-colors duration-200 resize-none"
+                className="w-full bg-transparent border border-curtn-dark text-curtn-cream placeholder:text-curtn-dark p-3 text-sm outline-none focus:border-curtn-coral transition-colors duration-200 resize-none"
               />
             </div>
             <div>
@@ -420,7 +418,7 @@ export function AddPerformanceForm() {
         type="button"
         onClick={handleSubmit}
         disabled={!canSubmit}
-        className="w-full rounded-lg bg-curtn-coral py-3 text-sm font-semibold text-curtn-deep hover:bg-curtn-coral/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-full dog-ear dog-ear-dark bg-curtn-coral py-3 text-sm font-display font-bold uppercase tracking-wide text-curtn-deep hover:bg-curtn-coral/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {submitting ? "Adding..." : "Add Performance"}
       </button>

@@ -42,13 +42,13 @@ export default function RunDetailPage() {
     return (
       <div className="px-6 py-8 max-w-2xl mx-auto animate-pulse space-y-4">
         <div className="flex gap-1.5">
-          <div className="h-4 w-14 rounded-full bg-curtn-dark/60" />
-          <div className="h-4 w-18 rounded-full bg-curtn-dark/60" />
+          <div className="h-4 w-14 bg-curtn-dark/60" />
+          <div className="h-4 w-18 bg-curtn-dark/60" />
         </div>
-        <div className="h-8 w-3/4 rounded bg-curtn-dark/60" />
-        <div className="h-4 w-1/3 rounded bg-curtn-dark/60" />
-        <div className="h-4 w-1/2 rounded bg-curtn-dark/60" />
-        <div className="mt-6 h-24 rounded-lg bg-curtn-dark/60" />
+        <div className="h-8 w-3/4 bg-curtn-dark/60" />
+        <div className="h-4 w-1/3 bg-curtn-dark/60" />
+        <div className="h-4 w-1/2 bg-curtn-dark/60" />
+        <div className="mt-6 h-24 bg-curtn-dark/60" />
       </div>
     );
   }
@@ -56,7 +56,10 @@ export default function RunDetailPage() {
   if (!run) {
     return (
       <div className="px-6 py-8 max-w-2xl mx-auto">
-        <p className="text-curtn-muted text-sm">Run not found.</p>
+        <div className="empty-state">
+          <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">Run Not Found</p>
+          <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">This production may have been removed.</p>
+        </div>
       </div>
     );
   }
@@ -65,6 +68,7 @@ export default function RunDetailPage() {
   const company = run.productionCompany;
   const creators = show?.creators?.edges?.map((e: any) => e.node) ?? [];
   const heroImage = run.imageUrl || show?.imageUrl || null;
+  const heroPoster = run.posterUrl || show?.posterUrl || null;
   const allShowings = run.performances?.edges?.map((e: any) => e.node) ?? [];
   const upcomingShowings = run.upcomingPerformances?.edges?.map((e: any) => e.node) ?? [];
   const pastShowings = allShowings.filter((s: any) => new Date(s.date) <= new Date());
@@ -95,6 +99,9 @@ export default function RunDetailPage() {
   // --- Single performance: absorb into run page ---
   if (singlePerf) {
     const isSoldOut = singlePerf.soldOut === true || singlePerf.soldOut === "true";
+    const dateObj = new Date(singlePerf.date);
+    const day = dateObj.getDate().toString().padStart(2, "0");
+    const month = dateObj.toLocaleString("en-US", { month: "short" });
 
     return (
       <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
@@ -108,6 +115,7 @@ export default function RunDetailPage() {
           intermissions={run.intermissions}
           languages={show.languages}
           imageUrl={heroImage}
+          posterUrl={heroPoster}
           creators={creators}
           companyName={company?.name}
           companySlug={company?.slug}
@@ -118,38 +126,39 @@ export default function RunDetailPage() {
           reviewCount={run.reviewCount}
         />
 
-        {/* Single performance details inline */}
-        <div className="flex items-center gap-3 rounded-lg border border-curtn-dark/50 bg-curtn-surface px-4 py-3">
-          <div className="flex-1 flex items-center gap-3 text-sm">
-            <span className="flex items-center gap-1 text-curtn-cream">
-              <Icon name="calendar" size={14} />
-              {formatShowDate(singlePerf.date)}
-            </span>
-            {singlePerf.time && (
-              <span className="text-curtn-muted">
-                {formatShowTime(singlePerf.time)}
-              </span>
-            )}
-            {isSoldOut && (
-              <span className="text-xs text-curtn-muted/50">Sold Out</span>
+        {/* Single performance — ticket card */}
+        <div className="card-ticket">
+          <div className={`ticket-stub ${isSoldOut ? "!bg-curtn-muted" : ""}`}>
+            <div className="ticket-date">{day}</div>
+            <div className="ticket-month">{month}</div>
+          </div>
+          <div className="ticket-body flex items-center justify-between">
+            <div>
+              <div className="ticket-title text-curtn-cream">
+                {formatShowDate(singlePerf.date)}
+              </div>
+              <div className="ticket-time">
+                {singlePerf.time && formatShowTime(singlePerf.time)}
+                {isSoldOut && <span className="badge badge-muted ml-2">Sold Out</span>}
+              </div>
+            </div>
+            {!isSoldOut && singlePerf.ticketUrl && (
+              <a
+                href={singlePerf.ticketUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 border border-curtn-coral/30 px-3 py-1.5 text-xs text-curtn-coral transition-colors hover:bg-curtn-coral/10"
+              >
+                <Icon name="ticket" size={12} />
+                Tickets
+              </a>
             )}
           </div>
-          {!isSoldOut && singlePerf.ticketUrl && (
-            <a
-              href={singlePerf.ticketUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded-full border border-curtn-coral/30 px-3 py-1 text-xs text-curtn-coral transition-colors hover:bg-curtn-coral/10"
-            >
-              <Icon name="ticket" size={12} />
-              Tickets
-            </a>
-          )}
         </div>
 
         <Link
           href={`/log?run=${id}`}
-          className="block w-full rounded-lg bg-curtn-coral py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-curtn-red"
+          className="block w-full dog-ear dog-ear-dark bg-curtn-coral py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-curtn-deep transition-colors hover:bg-curtn-red"
         >
           Log This Show
         </Link>
@@ -157,7 +166,7 @@ export default function RunDetailPage() {
         <CreditsList cast={run.cast ?? []} crew={run.crew ?? []} />
 
         {isAuthenticated && (
-          <div className="rounded-lg border border-curtn-dark/50 bg-curtn-surface p-4 space-y-6">
+          <div className="card-ledger space-y-6">
             <AddShowCreditForm showId={show.id} onAdded={handleCreditAdded} />
             <AddCreditForm runId={id} onAdded={handleCreditAdded} />
           </div>
@@ -169,7 +178,10 @@ export default function RunDetailPage() {
             Reviews{displayReviewEdges.length > 0 && ` (${displayReviewEdges.length}${reviewPageInfo?.hasNextPage ? "+" : ""})`}
           </h2>
           {!reviewsFetching && displayReviewEdges.length === 0 && (
-            <p className="text-sm text-curtn-muted">No reviews yet.</p>
+            <div className="empty-state">
+              <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">No Reviews Yet</p>
+              <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">Be the first to share your thoughts.</p>
+            </div>
           )}
           <div className="space-y-3">
             {displayReviewEdges.map((edge: any) => (
@@ -182,7 +194,7 @@ export default function RunDetailPage() {
             </div>
           )}
           {!reviewsFetching && reviewPageInfo?.hasNextPage && (
-            <button type="button" onClick={loadMoreReviews} className="mt-4 w-full rounded-lg border border-curtn-dark py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer">
+            <button type="button" onClick={loadMoreReviews} className="mt-4 w-full border border-curtn-dark py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer">
               Load more reviews
             </button>
           )}
@@ -220,7 +232,7 @@ export default function RunDetailPage() {
 
       <Link
         href={`/log?run=${id}`}
-        className="block w-full rounded-lg bg-curtn-coral py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-curtn-red"
+        className="block w-full dog-ear dog-ear-dark bg-curtn-coral py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-curtn-deep transition-colors hover:bg-curtn-red"
       >
         Log This Show
       </Link>
@@ -228,7 +240,7 @@ export default function RunDetailPage() {
       <CreditsList cast={run.cast ?? []} crew={run.crew ?? []} />
 
       {isAuthenticated && (
-        <div className="rounded-lg border border-curtn-dark/50 bg-curtn-surface p-4 space-y-6">
+        <div className="card-ledger space-y-6">
           <AddShowCreditForm showId={show.id} onAdded={handleCreditAdded} />
           <AddCreditForm runId={id} onAdded={handleCreditAdded} />
         </div>
@@ -240,7 +252,10 @@ export default function RunDetailPage() {
           Reviews{displayReviewEdges.length > 0 && ` (${displayReviewEdges.length}${reviewPageInfo?.hasNextPage ? "+" : ""})`}
         </h2>
         {!reviewsFetching && displayReviewEdges.length === 0 && (
-          <p className="text-sm text-curtn-muted">No reviews yet.</p>
+          <div className="empty-state">
+            <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">No Reviews Yet</p>
+            <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">Be the first to share your thoughts.</p>
+          </div>
         )}
         <div className="space-y-3">
           {displayReviewEdges.map((edge: any) => (
@@ -253,7 +268,7 @@ export default function RunDetailPage() {
           </div>
         )}
         {!reviewsFetching && reviewPageInfo?.hasNextPage && (
-          <button type="button" onClick={loadMoreReviews} className="mt-4 w-full rounded-lg border border-curtn-dark py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer">
+          <button type="button" onClick={loadMoreReviews} className="mt-4 w-full border border-curtn-dark py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer">
             Load more reviews
           </button>
         )}

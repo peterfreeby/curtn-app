@@ -52,6 +52,8 @@ export default function VenueDetailPage() {
         phone={venue.phone}
         email={venue.email}
         imageUrl={venue.imageUrl}
+        permanentlyClosed={venue.permanentlyClosed}
+        closedDate={venue.closedDate}
       />
 
       <VenuePerformances venueName={venue.name} />

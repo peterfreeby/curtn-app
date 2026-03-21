@@ -1,18 +1,17 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/lib/providers";
 
-const neueRegrade = localFont({
-  src: "../fonts/NeueRegrade-Variable.ttf",
-  variable: "--font-neue-regrade",
+const workSans = localFont({
+  src: "../fonts/WorkSans-Variable.ttf",
+  variable: "--font-work-sans",
   display: "swap",
 });
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
+const jetbrainsMono = localFont({
+  src: "../fonts/JetBrainsMono-Variable.ttf",
+  variable: "--font-jetbrains-mono",
   display: "swap",
 });
 
@@ -31,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${neueRegrade.variable} ${inter.variable}`}>
+    <html lang="en" className={`${workSans.variable} ${jetbrainsMono.variable}`}>
       <body className="font-sans min-h-dvh overflow-x-hidden">
         <Providers>{children}</Providers>
       </body>

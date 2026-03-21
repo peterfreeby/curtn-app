@@ -33,11 +33,11 @@ export function ReviewCard({
   return (
     <Wrapper
       {...wrapperProps}
-      className={`flex gap-[var(--spacing-2)] rounded-xl bg-curtn-surface border border-curtn-dark/30 p-[var(--spacing-2)] transition-colors hover:border-curtn-muted/30 ${className}`}
+      className={`flex gap-[var(--spacing-2)] binding-left bg-curtn-surface p-[var(--spacing-2)] transition-colors hover:bg-curtn-surface-2 ${className}`}
     >
       {/* Poster thumbnail */}
       <div className="w-[var(--spacing-10)] shrink-0">
-        <div className="aspect-[2/3] overflow-hidden rounded-[var(--spacing-0_5)] bg-curtn-dark/30 border border-curtn-dark/50">
+        <div className="aspect-[2/3] overflow-hidden dog-ear bg-curtn-dark/30 border border-curtn-dark/50">
           {posterUrl ? (
             <img src={posterUrl} alt={title} className="h-full w-full object-cover" />
           ) : (

@@ -45,11 +45,11 @@ export function RunCard({
   return (
     <Link
       href={`/runs/${id}`}
-      className="group flex gap-[var(--spacing-2)] rounded-xl border border-curtn-dark/50 bg-curtn-surface overflow-hidden p-[var(--spacing-2)] transition-colors duration-200 hover:border-curtn-muted/50"
+      className="group flex gap-[var(--spacing-2)] dog-ear border border-curtn-dark/50 bg-curtn-surface overflow-hidden p-[var(--spacing-2)] transition-colors duration-200 hover:border-curtn-muted/50"
     >
       {/* Poster thumbnail */}
       <div className="w-[var(--spacing-9)] shrink-0">
-        <div className="aspect-[2/3] overflow-hidden rounded-[var(--spacing-0_5)] bg-curtn-dark/30 border border-curtn-dark/50">
+        <div className="aspect-[2/3] overflow-hidden dog-ear bg-curtn-dark/30 border border-curtn-dark/50">
           {imageUrl ? (
             <img src={imageUrl} alt={showTitle} className="h-full w-full object-cover" />
           ) : (
@@ -67,7 +67,7 @@ export function RunCard({
             {performanceTypes.map((type) => (
               <span
                 key={type}
-                className="rounded-full bg-curtn-dark/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted"
+                className="bg-curtn-dark/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted"
               >
                 {type}
               </span>

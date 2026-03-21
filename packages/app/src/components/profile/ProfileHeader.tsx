@@ -60,7 +60,7 @@ export function ProfileHeader({
         <button
           type="button"
           onClick={onEditProfile}
-          className="shrink-0 rounded-lg border border-curtn-dark px-4 py-2 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer"
+          className="shrink-0 border border-curtn-dark px-4 py-2 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer"
         >
           Edit Profile
         </button>
