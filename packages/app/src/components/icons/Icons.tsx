@@ -32,6 +32,7 @@ const ICONS = {
   clock: "\uE19C",
   "clock-countdown": "\uE1A8",
   pencil: "\uE3A4",
+  ghost: "\uE278",
 } as const;
 
 export type IconName = keyof typeof ICONS;
