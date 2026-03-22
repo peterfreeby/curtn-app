@@ -62,6 +62,11 @@ export function RunHero({
   soldOut,
 }: RunHeroProps) {
   const [expanded, setExpanded] = useState(false);
+  const [posterFailed, setPosterFailed] = useState(false);
+  const [backdropFailed, setBackdropFailed] = useState(false);
+  const effectivePoster = posterFailed ? null : posterUrl;
+  const effectiveImage = backdropFailed ? null : imageUrl;
+  const hasHeroMedia = !!(effectiveImage || effectivePoster);
 
   const effectiveDescription = description || showDescription;
 
@@ -100,12 +105,12 @@ export function RunHero({
 
   return (
     <div>
-      {(imageUrl || posterUrl) ? (
+      {hasHeroMedia ? (
         <div className="relative -mx-6 -mt-8 mb-6">
           {/* Backdrop — only show cover image when a separate poster exists */}
           <div className="relative h-[240px] sm:h-[300px] overflow-hidden torn-bottom">
-            {imageUrl && posterUrl ? (
-              <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+            {effectiveImage && effectivePoster ? (
+              <img src={effectiveImage} alt="" className="h-full w-full object-cover" onError={() => setBackdropFailed(true)} />
             ) : (
               <div className="h-full w-full bg-curtn-surface" />
             )}
@@ -117,7 +122,7 @@ export function RunHero({
           <div className="relative -mt-28 sm:-mt-36 px-6 flex gap-5 items-end">
             <div className="w-[110px] sm:w-[140px] shrink-0">
               <div className="dog-ear relative aspect-[2/3] border-2 border-curtn-dark/50 bg-curtn-surface shadow-2xl">
-                <img src={(posterUrl || imageUrl)!} alt={showTitle} className="h-full w-full object-cover" />
+                <img src={(effectivePoster || effectiveImage)!} alt={showTitle} className="h-full w-full object-cover" onError={() => setPosterFailed(true)} />
               </div>
             </div>
             <div className="flex-1 min-w-0 pb-1">

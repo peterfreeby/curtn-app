@@ -142,9 +142,6 @@ export class DuotoneExtractor {
     const h = parent ? parent.offsetHeight : w * 1.5;
     canvas.width = w;
     canvas.height = h;
-    canvas.style.width = "100%";
-    canvas.style.height = "100%";
-    canvas.style.display = "block";
 
     // Cover-crop logic
     const imgAspect = img.naturalWidth / img.naturalHeight;

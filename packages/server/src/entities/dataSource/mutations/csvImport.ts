@@ -73,6 +73,12 @@ const CsvRowInput = new GraphQLInputObjectType({
     companyDescription: { type: GraphQLString },
     companyLogoUrl: { type: GraphQLString },
 
+    // Performance image
+    performanceImageUrl: { type: GraphQLString },  // performance-specific image
+
+    // Person fields
+    personHeadshotUrl: { type: GraphQLString },    // person headshot image
+
     // Credit fields
     personName: { type: GraphQLString },
     personRole: { type: GraphQLString },           // e.g. "Hamlet", "Director", "Playwright"
@@ -386,6 +392,7 @@ export const csvImport = mutationWithClientMutationId({
                   ...(row.performanceDescription?.trim() && {
                     metadataOverrides: { description: row.performanceDescription.trim() }
                   }),
+                  ...(row.performanceImageUrl?.trim() && { imageUrl: row.performanceImageUrl.trim() }),
                   submittedBy: ctx.user.id,
                   ...(sourceId && { source: sourceId })
                 }).save()
@@ -417,6 +424,7 @@ export const csvImport = mutationWithClientMutationId({
             person = await new PersonModel({
               name: row.personName.trim(),
               slug: personSlug,
+              ...(row.personHeadshotUrl?.trim() && { headshotUrl: row.personHeadshotUrl.trim() }),
               submittedBy: ctx.user.id
             }).save()
             result.personsCreated++

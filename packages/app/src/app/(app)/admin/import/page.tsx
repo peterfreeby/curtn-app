@@ -1,10 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation } from "urql";
+import JSZip from "jszip";
 import { CSV_IMPORT_MUTATION } from "@/lib/graphql/admin";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
+
+// All fields that can contain image filenames or URLs
+const IMAGE_FIELDS = new Set([
+  "showImageUrl",
+  "showPosterUrl",
+  "venueImageUrl",
+  "runImageUrl",
+  "runPosterUrl",
+  "companyLogoUrl",
+  "personHeadshotUrl",
+  "performanceImageUrl",
+]);
 
 // Field options for column mapping, organized by entity
 const CURTN_FIELDS = [
@@ -16,6 +29,7 @@ const CURTN_FIELDS = [
   { value: "duration", label: "Duration (minutes)", group: "Show" },
   { value: "showUrl", label: "Show URL", group: "Show" },
   { value: "showImageUrl", label: "Show Image URL", group: "Show" },
+  { value: "showPosterUrl", label: "Show Poster URL", group: "Show" },
   { value: "languages", label: "Languages", group: "Show" },
   // Venue
   { value: "venueName", label: "Venue Name", group: "Venue" },
@@ -38,18 +52,34 @@ const CURTN_FIELDS = [
   { value: "runEndDate", label: "Run End Date", group: "Run" },
   { value: "intermissions", label: "Intermissions", group: "Run" },
   { value: "runImageUrl", label: "Run Image URL", group: "Run" },
+  { value: "runPosterUrl", label: "Run Poster URL", group: "Run" },
   // Performance
   { value: "date", label: "Date", group: "Performance" },
   { value: "time", label: "Time", group: "Performance" },
   { value: "startTime", label: "Start Time", group: "Performance" },
   { value: "endTime", label: "End Time", group: "Performance" },
   { value: "ticketUrl", label: "Ticket URL", group: "Performance" },
-  { value: "performanceDescription", label: "Performance Description", group: "Performance" },
+  {
+    value: "performanceDescription",
+    label: "Performance Description",
+    group: "Performance",
+  },
   { value: "soldOut", label: "Sold Out", group: "Performance" },
+  {
+    value: "performanceImageUrl",
+    label: "Performance Image",
+    group: "Performance",
+  },
   // Company
   { value: "companyName", label: "Company Name", group: "Company" },
-  { value: "companyDescription", label: "Company Description", group: "Company" },
+  {
+    value: "companyDescription",
+    label: "Company Description",
+    group: "Company",
+  },
   { value: "companyLogoUrl", label: "Company Logo URL", group: "Company" },
+  // Person
+  { value: "personHeadshotUrl", label: "Person Headshot", group: "Credit" },
   // Credits
   { value: "personName", label: "Person Name", group: "Credit" },
   { value: "personRole", label: "Person Role", group: "Credit" },
@@ -58,7 +88,14 @@ const CURTN_FIELDS = [
 ];
 
 // Group labels for optgroup rendering
-const FIELD_GROUPS = ["Show", "Venue", "Run", "Performance", "Company", "Credit"];
+const FIELD_GROUPS = [
+  "Show",
+  "Venue",
+  "Run",
+  "Performance",
+  "Company",
+  "Credit",
+];
 
 type Step = "upload" | "map" | "preview" | "results";
 
@@ -124,6 +161,46 @@ function parseCsv(text: string): string[][] {
   return rows;
 }
 
+// Check if a value looks like a filename (not a URL)
+function isImageFilename(value: string): boolean {
+  if (!value || value.startsWith("http://") || value.startsWith("https://")) {
+    return false;
+  }
+  return /\.(jpe?g|png|webp|gif)$/i.test(value);
+}
+
+// Upload a single image file to Vercel Blob via /api/upload
+async function uploadImage(
+  file: Blob,
+  filename: string,
+  batchId: string
+): Promise<string> {
+  const formData = new FormData();
+  // Infer MIME type from extension
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
+  const mimeMap: Record<string, string> = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+    gif: "image/gif",
+  };
+  const mimeType = mimeMap[ext] || "image/jpeg";
+  const fileObj = new File([file], filename, { type: mimeType });
+
+  formData.append("file", fileObj);
+  formData.append("entityType", "import");
+  formData.append("entityId", batchId);
+
+  const res = await fetch("/api/upload", { method: "POST", body: formData });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Upload failed" }));
+    throw new Error(err.error || `Upload failed (${res.status})`);
+  }
+  const data = await res.json();
+  return data.url;
+}
+
 export default function CsvImportPage() {
   const [step, setStep] = useState<Step>("upload");
   const [headers, setHeaders] = useState<string[]>([]);
@@ -131,87 +208,259 @@ export default function CsvImportPage() {
   const [columnMap, setColumnMap] = useState<Record<number, string>>({});
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  // Unified progress state: progress bar + scrolling log
+  const [activity, setActivity] = useState<{
+    active: boolean;
+    progress: number; // 0-100
+    label: string;
+    log: string[];
+  } | null>(null);
+  const logEndRef = useRef<HTMLDivElement>(null);
 
-  const [{ fetching: importing }, executeCsvImport] = useMutation(CSV_IMPORT_MUTATION);
+  // Auto-scroll log to bottom
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [activity?.log.length]);
+
+  function startActivity(label: string) {
+    setActivity({ active: true, progress: 0, label, log: [] });
+  }
+  function updateActivity(label: string, progress: number, logLine?: string) {
+    setActivity((prev) => {
+      if (!prev) return { active: true, progress, label, log: logLine ? [logLine] : [] };
+      return {
+        ...prev,
+        label,
+        progress,
+        log: logLine ? [...prev.log, logLine] : prev.log,
+      };
+    });
+  }
+  function logActivity(line: string) {
+    setActivity((prev) => {
+      if (!prev) return null;
+      return { ...prev, log: [...prev.log, line] };
+    });
+  }
+  function endActivity() {
+    setActivity(null);
+  }
+
+  // Image files extracted from zip: filename (lowercase) → Blob
+  const imageFilesRef = useRef<Map<string, Blob>>(new Map());
+
+  const [{ fetching: importing }, executeCsvImport] =
+    useMutation(CSV_IMPORT_MUTATION);
+
+  function processCsvText(text: string) {
+    const parsed = parseCsv(text);
+    if (parsed.length < 2) {
+      setImportError("CSV must have a header row and at least one data row.");
+      return;
+    }
+
+    const csvHeaders = parsed[0];
+    const csvRows = parsed.slice(1);
+    setHeaders(csvHeaders);
+    setRows(csvRows);
+
+    // Auto-map columns by header name
+    const autoMap: Record<number, string> = {};
+    const aliasMap: Record<string, string> = {
+      // Show
+      name: "title",
+      showtitle: "title",
+      show: "title",
+      title: "title",
+      showdescription: "showDescription",
+      description: "showDescription",
+      type: "performanceTypes",
+      genre: "performanceTypes",
+      category: "performanceTypes",
+      performancetypes: "performanceTypes",
+      duration: "duration",
+      durationminutes: "duration",
+      runtime: "duration",
+      showurl: "showUrl",
+      showimageurl: "showImageUrl",
+      showimage: "showImageUrl",
+      showposterurl: "showPosterUrl",
+      showposter: "showPosterUrl",
+      poster: "showPosterUrl",
+      languages: "languages",
+      language: "languages",
+      // Venue
+      venue: "venueName",
+      location: "venueName",
+      venuename: "venueName",
+      stage: "stageName",
+      stagename: "stageName",
+      room: "stageName",
+      theater: "stageName",
+      hall: "stageName",
+      venuedescription: "venueDescription",
+      venueaddress: "venueAddress",
+      address: "venueAddress",
+      venuecity: "venueCity",
+      city: "venueCity",
+      venuestate: "venueState",
+      state: "venueState",
+      venuezipcode: "venueZipCode",
+      zipcode: "venueZipCode",
+      zip: "venueZipCode",
+      venuecapacity: "venueCapacity",
+      capacity: "venueCapacity",
+      seats: "venueCapacity",
+      venuetype: "venueType",
+      venuewebsite: "venueWebsite",
+      venuephone: "venuePhone",
+      venueemail: "venueEmail",
+      venueimageurl: "venueImageUrl",
+      venueimage: "venueImageUrl",
+      // Run
+      runtitle: "runTitle",
+      productiontitle: "runTitle",
+      productionname: "runTitle",
+      rundescription: "runDescription",
+      productiondescription: "runDescription",
+      runstartdate: "runStartDate",
+      openingnight: "runStartDate",
+      runenddate: "runEndDate",
+      closingnight: "runEndDate",
+      intermissions: "intermissions",
+      intermission: "intermissions",
+      runimageurl: "runImageUrl",
+      runimage: "runImageUrl",
+      runposterurl: "runPosterUrl",
+      runposter: "runPosterUrl",
+      // Performance
+      date: "date",
+      time: "time",
+      starttime: "startTime",
+      start: "startTime",
+      doortime: "startTime",
+      endtime: "endTime",
+      end: "endTime",
+      ticketurl: "ticketUrl",
+      tickets: "ticketUrl",
+      url: "ticketUrl",
+      link: "ticketUrl",
+      performancedescription: "performanceDescription",
+      showingdescription: "performanceDescription",
+      eventnotes: "performanceDescription",
+      soldout: "soldOut",
+      performanceimageurl: "performanceImageUrl",
+      performanceimage: "performanceImageUrl",
+      // Company
+      company: "companyName",
+      producer: "companyName",
+      productioncompany: "companyName",
+      companyname: "companyName",
+      companydescription: "companyDescription",
+      companylogourl: "companyLogoUrl",
+      companylogo: "companyLogoUrl",
+      // Credits
+      personname: "personName",
+      person: "personName",
+      performer: "personName",
+      actor: "personName",
+      artist: "personName",
+      castmember: "personName",
+      personrole: "personRole",
+      role: "personRole",
+      character: "personRole",
+      credittype: "creditType",
+      creditdepartment: "creditDepartment",
+      department: "creditDepartment",
+      personheadshoturl: "personHeadshotUrl",
+      headshot: "personHeadshotUrl",
+      personheadshot: "personHeadshotUrl",
+    };
+
+    csvHeaders.forEach((header, idx) => {
+      const normalized = header.toLowerCase().replace(/[^a-z]/g, "");
+      const match = aliasMap[normalized];
+      if (match) autoMap[idx] = match;
+    });
+    setColumnMap(autoMap);
+    setImportError(null);
+    setStep("map");
+  }
 
   function handleFileUpload(file: File) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      const parsed = parseCsv(text);
-      if (parsed.length < 2) {
-        setImportError("CSV must have a header row and at least one data row.");
+    if (file.name.endsWith(".zip")) {
+      handleZipUpload(file);
+    } else {
+      imageFilesRef.current = new Map();
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        processCsvText(text);
+      };
+      reader.readAsText(file);
+    }
+  }
+
+  async function handleZipUpload(file: File) {
+    setImportError(null);
+    startActivity("Extracting ZIP...");
+
+    try {
+      const zip = await JSZip.loadAsync(file);
+      const imageMap = new Map<string, Blob>();
+
+      // Find the CSV file (import.csv, or any .csv at root or one level deep)
+      let csvText: string | null = null;
+      const csvCandidates = Object.keys(zip.files).filter(
+        (name) =>
+          !zip.files[name].dir &&
+          name.toLowerCase().endsWith(".csv") &&
+          !name.startsWith("__MACOSX")
+      );
+
+      // Prefer import.csv, then first .csv found
+      const importCsv = csvCandidates.find((name) => {
+        const basename = name.split("/").pop()?.toLowerCase();
+        return basename === "import.csv";
+      });
+      const csvPath = importCsv || csvCandidates[0];
+
+      if (!csvPath) {
+        setImportError("No CSV file found in ZIP. Include an import.csv file.");
+        endActivity();
         return;
       }
 
-      const csvHeaders = parsed[0];
-      const csvRows = parsed.slice(1);
-      setHeaders(csvHeaders);
-      setRows(csvRows);
+      logActivity(`Found ${csvPath.split("/").pop()}`);
+      csvText = await zip.files[csvPath].async("string");
 
-      // Auto-map columns by header name
-      const autoMap: Record<number, string> = {};
-      const aliasMap: Record<string, string> = {
-        // Show
-        name: "title", showtitle: "title", show: "title", title: "title",
-        showdescription: "showDescription", description: "showDescription",
-        type: "performanceTypes", genre: "performanceTypes", category: "performanceTypes",
-        performancetypes: "performanceTypes",
-        duration: "duration", durationminutes: "duration", runtime: "duration",
-        showurl: "showUrl",
-        showimageurl: "showImageUrl", showimage: "showImageUrl", poster: "showImageUrl",
-        languages: "languages", language: "languages",
-        // Venue
-        venue: "venueName", location: "venueName", venuename: "venueName",
-        stage: "stageName", stagename: "stageName", room: "stageName", theater: "stageName", hall: "stageName",
-        venuedescription: "venueDescription",
-        venueaddress: "venueAddress", address: "venueAddress",
-        venuecity: "venueCity", city: "venueCity",
-        venuestate: "venueState", state: "venueState",
-        venuezipcode: "venueZipCode", zipcode: "venueZipCode", zip: "venueZipCode",
-        venuecapacity: "venueCapacity", capacity: "venueCapacity", seats: "venueCapacity",
-        venuetype: "venueType",
-        venuewebsite: "venueWebsite",
-        venuephone: "venuePhone",
-        venueemail: "venueEmail",
-        venueimageurl: "venueImageUrl", venueimage: "venueImageUrl",
-        // Run
-        runtitle: "runTitle", productiontitle: "runTitle", productionname: "runTitle",
-        rundescription: "runDescription", productiondescription: "runDescription",
-        runstartdate: "runStartDate", openingnight: "runStartDate",
-        runenddate: "runEndDate", closingnight: "runEndDate",
-        intermissions: "intermissions", intermission: "intermissions",
-        runimageurl: "runImageUrl", runimage: "runImageUrl",
-        // Performance
-        date: "date",
-        time: "time",
-        starttime: "startTime", start: "startTime", doortime: "startTime",
-        endtime: "endTime", end: "endTime",
-        ticketurl: "ticketUrl", tickets: "ticketUrl", url: "ticketUrl", link: "ticketUrl",
-        performancedescription: "performanceDescription", showingdescription: "performanceDescription", eventnotes: "performanceDescription",
-        soldout: "soldOut",
-        // Company
-        company: "companyName", producer: "companyName", productioncompany: "companyName", companyname: "companyName",
-        companydescription: "companyDescription",
-        companylogourl: "companyLogoUrl", companylogo: "companyLogoUrl",
-        // Credits
-        personname: "personName", person: "personName", performer: "personName",
-        actor: "personName", artist: "personName", castmember: "personName",
-        personrole: "personRole", role: "personRole", character: "personRole",
-        credittype: "creditType",
-        creditdepartment: "creditDepartment", department: "creditDepartment",
-      };
+      // Extract all image files
+      const imageExtensions = /\.(jpe?g|png|webp|gif)$/i;
+      const imageEntries = Object.entries(zip.files).filter(
+        ([path, entry]) => !entry.dir && !path.startsWith("__MACOSX") && imageExtensions.test(path)
+      );
 
-      csvHeaders.forEach((header, idx) => {
-        const normalized = header.toLowerCase().replace(/[^a-z]/g, "");
-        const match = aliasMap[normalized];
-        if (match) autoMap[idx] = match;
-      });
-      setColumnMap(autoMap);
-      setImportError(null);
-      setStep("map");
-    };
-    reader.readAsText(file);
+      for (let i = 0; i < imageEntries.length; i++) {
+        const [path, entry] = imageEntries[i];
+        const blob = await entry.async("blob");
+        const basename = path.split("/").pop()!.toLowerCase();
+        imageMap.set(basename, blob);
+        imageMap.set(path.toLowerCase(), blob);
+        updateActivity(
+          `Extracting images... ${i + 1}/${imageEntries.length}`,
+          ((i + 1) / imageEntries.length) * 100,
+          basename
+        );
+      }
+
+      imageFilesRef.current = imageMap;
+      endActivity();
+      processCsvText(csvText);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setImportError(`Failed to read ZIP: ${msg}`);
+      endActivity();
+    }
   }
 
   function getMappedRows(): Record<string, string>[] {
@@ -228,6 +477,139 @@ export default function CsvImportPage() {
       .filter((row) => row.title?.trim()); // Skip rows without a title
   }
 
+  // Count how many image filenames in the mapped rows reference files from the zip
+  function getImageFileCount(): number {
+    if (imageFilesRef.current.size === 0) return 0;
+    const mappedRows = getMappedRows();
+    const seen = new Set<string>();
+    for (const row of mappedRows) {
+      for (const [field, value] of Object.entries(row)) {
+        if (IMAGE_FIELDS.has(field) && isImageFilename(value)) {
+          seen.add(value.toLowerCase());
+        }
+      }
+    }
+    return seen.size;
+  }
+
+  // Upload all referenced images and return rows with filenames replaced by URLs
+  async function uploadImagesAndResolveRows(
+    mappedRows: Record<string, string>[]
+  ): Promise<Record<string, string>[]> {
+    if (imageFilesRef.current.size === 0) return mappedRows;
+
+    // Collect unique filenames that need uploading
+    const toUpload = new Map<string, Blob>();
+    for (const row of mappedRows) {
+      for (const [field, value] of Object.entries(row)) {
+        if (IMAGE_FIELDS.has(field) && isImageFilename(value)) {
+          const key = value.toLowerCase();
+          // Try basename match, then full path match
+          const basename = key.split("/").pop()!;
+          const blob =
+            imageFilesRef.current.get(basename) ||
+            imageFilesRef.current.get(key);
+          if (blob && !toUpload.has(key)) {
+            toUpload.set(key, blob);
+          }
+        }
+      }
+    }
+
+    if (toUpload.size === 0) return mappedRows;
+
+    // Upload all images with concurrency limit
+    const batchId = Date.now().toString();
+    const urlMap = new Map<string, string>();
+    const entries = Array.from(toUpload.entries());
+    const CONCURRENCY = 3;
+    let uploaded = 0;
+
+    for (let i = 0; i < entries.length; i += CONCURRENCY) {
+      const batch = entries.slice(i, i + CONCURRENCY);
+      const results = await Promise.allSettled(
+        batch.map(async ([key, blob]) => {
+          const filename = key.split("/").pop()!;
+          const url = await uploadImage(blob, filename, batchId);
+          return { key, url };
+        })
+      );
+      for (const result of results) {
+        if (result.status === "fulfilled") {
+          urlMap.set(result.value.key, result.value.url);
+          uploaded++;
+          const filename = result.value.key.split("/").pop()!;
+          updateActivity(
+            `Uploading images... ${uploaded}/${toUpload.size}`,
+            (uploaded / toUpload.size) * 50, // images are first half of progress
+            `Uploaded ${filename}`
+          );
+        } else {
+          uploaded++;
+          logActivity(`Failed to upload: ${batch[results.indexOf(result)]?.[0] || "unknown"}`);
+        }
+      }
+    }
+
+    // Replace filenames with URLs in rows
+    return mappedRows.map((row) => {
+      const resolved = { ...row };
+      for (const [field, value] of Object.entries(resolved)) {
+        if (IMAGE_FIELDS.has(field) && isImageFilename(value)) {
+          const key = value.toLowerCase();
+          const basename = key.split("/").pop()!;
+          const url = urlMap.get(key) || urlMap.get(basename);
+          if (url) {
+            resolved[field] = url;
+          }
+        }
+      }
+      return resolved;
+    });
+  }
+
+  const BATCH_SIZE = 50;
+
+  function mergeResults(base: ImportResult, chunk: ImportResult): ImportResult {
+    return {
+      totalRows: base.totalRows + chunk.totalRows,
+      showsCreated: base.showsCreated + chunk.showsCreated,
+      showsMatched: base.showsMatched + chunk.showsMatched,
+      runsCreated: base.runsCreated + chunk.runsCreated,
+      runsMatched: base.runsMatched + chunk.runsMatched,
+      performancesCreated: base.performancesCreated + chunk.performancesCreated,
+      performancesMatched: base.performancesMatched + chunk.performancesMatched,
+      venuesCreated: base.venuesCreated + chunk.venuesCreated,
+      venuesMatched: base.venuesMatched + chunk.venuesMatched,
+      companiesCreated: base.companiesCreated + chunk.companiesCreated,
+      companiesMatched: base.companiesMatched + chunk.companiesMatched,
+      personsCreated: base.personsCreated + chunk.personsCreated,
+      personsMatched: base.personsMatched + chunk.personsMatched,
+      creditsCreated: base.creditsCreated + chunk.creditsCreated,
+      errors: [...base.errors, ...chunk.errors],
+    };
+  }
+
+  const emptyResult: ImportResult = {
+    totalRows: 0, showsCreated: 0, showsMatched: 0, runsCreated: 0, runsMatched: 0,
+    performancesCreated: 0, performancesMatched: 0, venuesCreated: 0, venuesMatched: 0,
+    companiesCreated: 0, companiesMatched: 0, personsCreated: 0, personsMatched: 0,
+    creditsCreated: 0, errors: [],
+  };
+
+  // Summarize a batch result into a log line
+  function batchSummary(r: ImportResult): string {
+    const parts: string[] = [];
+    if (r.showsCreated) parts.push(`${r.showsCreated} show${r.showsCreated > 1 ? "s" : ""} created`);
+    if (r.showsMatched) parts.push(`${r.showsMatched} show${r.showsMatched > 1 ? "s" : ""} matched`);
+    if (r.venuesCreated) parts.push(`${r.venuesCreated} venue${r.venuesCreated > 1 ? "s" : ""} created`);
+    if (r.runsCreated) parts.push(`${r.runsCreated} run${r.runsCreated > 1 ? "s" : ""} created`);
+    if (r.performancesCreated) parts.push(`${r.performancesCreated} perf${r.performancesCreated > 1 ? "s" : ""} created`);
+    if (r.creditsCreated) parts.push(`${r.creditsCreated} credit${r.creditsCreated > 1 ? "s" : ""} created`);
+    if (r.errors.length) parts.push(`${r.errors.length} error${r.errors.length > 1 ? "s" : ""}`);
+    return parts.join(", ") || "no changes";
+  }
+
   async function handleImport(dryRun: boolean) {
     setImportError(null);
     const mappedRows = getMappedRows();
@@ -237,21 +619,94 @@ export default function CsvImportPage() {
       return;
     }
 
-    const result = await executeCsvImport({
-      input: {
-        rows: mappedRows,
-        dryRun,
-      },
-    });
+    const hasImages = !dryRun && imageFilesRef.current.size > 0;
+    startActivity(hasImages ? "Uploading images..." : dryRun ? "Running dry check..." : "Importing...");
 
-    if (result.error) {
-      setImportError(result.error.message);
-    } else if (result.data?.csvImport?.error) {
-      setImportError(result.data.csvImport.error);
-    } else if (result.data?.csvImport?.result) {
-      setImportResult(result.data.csvImport.result);
-      if (!dryRun) setStep("results");
+    // For real imports (not dry run), upload images first
+    let finalRows = mappedRows;
+    if (hasImages) {
+      try {
+        finalRows = await uploadImagesAndResolveRows(mappedRows);
+        logActivity("All images uploaded");
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        setImportError(`Image upload failed: ${msg}`);
+        endActivity();
+        return;
+      }
     }
+
+    // Small imports or dry runs: send all at once
+    if (dryRun || finalRows.length <= BATCH_SIZE) {
+      updateActivity(
+        dryRun ? "Running dry check..." : `Importing ${finalRows.length} rows...`,
+        hasImages ? 55 : 10,
+        dryRun ? "Sending to server for validation..." : `Sending ${finalRows.length} rows to server...`
+      );
+
+      const result = await executeCsvImport({ input: { rows: finalRows, dryRun } });
+      endActivity();
+
+      if (result.error) {
+        setImportError(result.error.message);
+      } else if (result.data?.csvImport?.error) {
+        setImportError(result.data.csvImport.error);
+      } else if (result.data?.csvImport?.result) {
+        setImportResult(result.data.csvImport.result);
+        if (!dryRun) setStep("results");
+      }
+      return;
+    }
+
+    // Large imports: batch into chunks to avoid timeouts
+    let accumulated = { ...emptyResult };
+    const totalRows = finalRows.length;
+    const totalBatches = Math.ceil(totalRows / BATCH_SIZE);
+    // Images took 0-50%, import takes 50-100%
+    const progressBase = hasImages ? 50 : 0;
+    const progressRange = hasImages ? 50 : 100;
+
+    for (let i = 0; i < totalBatches; i++) {
+      const batchStart = i * BATCH_SIZE + 1;
+      const batchEnd = Math.min((i + 1) * BATCH_SIZE, totalRows);
+      const batch = finalRows.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
+
+      updateActivity(
+        `Importing rows ${batchStart}\u2013${batchEnd} of ${totalRows}...`,
+        progressBase + (i / totalBatches) * progressRange,
+        `Batch ${i + 1}/${totalBatches}: rows ${batchStart}\u2013${batchEnd}`
+      );
+
+      const result = await executeCsvImport({ input: { rows: batch, dryRun: false } });
+
+      if (result.error) {
+        logActivity(`Batch ${i + 1} failed: ${result.error.message}`);
+        endActivity();
+        setImportError(`Batch ${i + 1}/${totalBatches} failed: ${result.error.message}`);
+        if (accumulated.totalRows > 0) {
+          setImportResult(accumulated);
+          setStep("results");
+        }
+        return;
+      } else if (result.data?.csvImport?.error) {
+        logActivity(`Batch ${i + 1} error: ${result.data.csvImport.error}`);
+        endActivity();
+        setImportError(`Batch ${i + 1}/${totalBatches}: ${result.data.csvImport.error}`);
+        if (accumulated.totalRows > 0) {
+          setImportResult(accumulated);
+          setStep("results");
+        }
+        return;
+      } else if (result.data?.csvImport?.result) {
+        const chunkResult = result.data.csvImport.result;
+        logActivity(`Batch ${i + 1} done: ${batchSummary(chunkResult)}`);
+        accumulated = mergeResults(accumulated, chunkResult);
+      }
+    }
+
+    endActivity();
+    setImportResult(accumulated);
+    setStep("results");
   }
 
   function handleReset() {
@@ -261,14 +716,18 @@ export default function CsvImportPage() {
     setColumnMap({});
     setImportResult(null);
     setImportError(null);
+    endActivity();
+    imageFilesRef.current = new Map();
   }
+
+  const imageFileCount = step === "preview" ? getImageFileCount() : 0;
 
   return (
     <div className="px-6 py-8 max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-bold text-curtn-cream">CSV Import</h1>
         <p className="mt-1 text-sm text-curtn-muted">
-          Upload a CSV file to bulk import shows, runs, and performances.
+          Upload a CSV or ZIP file to bulk import shows, runs, and performances.
         </p>
       </div>
 
@@ -297,6 +756,39 @@ export default function CsvImportPage() {
         </div>
       )}
 
+      {activity && (
+        <Card>
+          <div className="space-y-3">
+            {/* Current operation label */}
+            <div className="flex items-center gap-3">
+              <div className="h-2 w-2 rounded-full bg-curtn-coral animate-pulse shrink-0" />
+              <p className="text-sm font-medium text-curtn-cream">{activity.label}</p>
+            </div>
+
+            {/* Progress bar */}
+            <div className="w-full bg-curtn-dark rounded-full h-1.5 overflow-hidden">
+              <div
+                className="bg-curtn-coral h-1.5 rounded-full transition-all duration-300"
+                style={{ width: `${Math.max(2, activity.progress)}%` }}
+              />
+            </div>
+
+            {/* Scrolling activity log */}
+            {activity.log.length > 0 && (
+              <div className="max-h-40 overflow-y-auto rounded bg-curtn-deep border border-curtn-dark px-3 py-2 font-mono text-xs space-y-0.5">
+                {activity.log.map((line, i) => (
+                  <p key={i} className="text-curtn-muted">
+                    <span className="text-curtn-muted/40 mr-2 select-none">{String(i + 1).padStart(3, "\u2007")}</span>
+                    {line}
+                  </p>
+                ))}
+                <div ref={logEndRef} />
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
       {/* STEP: Upload */}
       {step === "upload" && (
         <Card>
@@ -310,18 +802,24 @@ export default function CsvImportPage() {
               e.preventDefault();
               e.stopPropagation();
               const file = e.dataTransfer.files[0];
-              if (file && file.name.endsWith(".csv")) handleFileUpload(file);
-              else setImportError("Please upload a .csv file");
+              if (
+                file &&
+                (file.name.endsWith(".csv") || file.name.endsWith(".zip"))
+              ) {
+                handleFileUpload(file);
+              } else {
+                setImportError("Please upload a .csv or .zip file");
+              }
             }}
           >
             <p className="text-sm text-curtn-muted">
-              Drag and drop a CSV file here, or
+              Drag and drop a CSV or ZIP file here, or
             </p>
             <label className="mt-3 cursor-pointer rounded-lg bg-curtn-coral px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-curtn-red">
               Browse Files
               <input
                 type="file"
-                accept=".csv"
+                accept=".csv,.zip"
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
@@ -329,6 +827,11 @@ export default function CsvImportPage() {
                 }}
               />
             </label>
+            <p className="mt-4 text-xs text-curtn-muted/60 max-w-md text-center">
+              ZIP files should contain an <code>import.csv</code> and image
+              files. Image columns in the CSV can reference filenames from the
+              ZIP (e.g. <code>hamlet-poster.jpg</code>).
+            </p>
           </div>
         </Card>
       )}
@@ -340,6 +843,13 @@ export default function CsvImportPage() {
             <h2 className="mb-4 text-sm font-medium text-curtn-cream">
               Map CSV columns to Curtn fields
             </h2>
+            {imageFilesRef.current.size > 0 && (
+              <p className="mb-3 text-xs text-curtn-coral">
+                {imageFilesRef.current.size} image
+                {imageFilesRef.current.size === 1 ? "" : "s"} available from ZIP
+                &mdash; map image columns to resolve filenames automatically
+              </p>
+            )}
             <div className="space-y-3">
               {headers.map((header, idx) => (
                 <div key={idx} className="flex items-center gap-4">
@@ -380,7 +890,12 @@ export default function CsvImportPage() {
 
           {/* Credit inference rules (show when credit fields are mapped) */}
           {Object.values(columnMap).some((v) =>
-            ["personName", "personRole", "creditType", "creditDepartment"].includes(v)
+            [
+              "personName",
+              "personRole",
+              "creditType",
+              "creditDepartment",
+            ].includes(v)
           ) && (
             <Card>
               <h2 className="mb-2 text-sm font-medium text-curtn-cream">
@@ -396,8 +911,8 @@ export default function CsvImportPage() {
                     Show
                   </span>
                   <span className="text-curtn-cream/70">
-                    Credit Type is &quot;creator&quot; or &quot;creative&quot;, OR
-                    the row has no venue/run/performance data. Use for
+                    Credit Type is &quot;creator&quot; or &quot;creative&quot;,
+                    OR the row has no venue/run/performance data. Use for
                     playwrights, composers, lyricists.
                   </span>
                 </div>
@@ -406,8 +921,8 @@ export default function CsvImportPage() {
                     Run
                   </span>
                   <span className="text-curtn-cream/70">
-                    Row has venue, run title, or company data but no
-                    date/time. Use for this production&apos;s cast and crew.
+                    Row has venue, run title, or company data but no date/time.
+                    Use for this production&apos;s cast and crew.
                   </span>
                 </div>
                 <div className="flex gap-3 items-start">
@@ -453,14 +968,28 @@ export default function CsvImportPage() {
                     >
                       {Object.entries(columnMap)
                         .filter(([, field]) => field)
-                        .map(([colIdx]) => (
-                          <td
-                            key={colIdx}
-                            className="px-3 py-2 text-curtn-cream/80 max-w-[200px] truncate"
-                          >
-                            {row[parseInt(colIdx)] || "\u2014"}
-                          </td>
-                        ))}
+                        .map(([colIdx, field]) => {
+                          const value = row[parseInt(colIdx)] || "";
+                          const isZipImage =
+                            IMAGE_FIELDS.has(field) &&
+                            isImageFilename(value) &&
+                            imageFilesRef.current.has(
+                              (value.split("/").pop() || "").toLowerCase()
+                            );
+                          return (
+                            <td
+                              key={colIdx}
+                              className={`px-3 py-2 max-w-[200px] truncate ${isZipImage ? "text-curtn-coral" : "text-curtn-cream/80"}`}
+                              title={
+                                isZipImage
+                                  ? `Will upload from ZIP: ${value}`
+                                  : value
+                              }
+                            >
+                              {value || "\u2014"}
+                            </td>
+                          );
+                        })}
                     </tr>
                   ))}
                 </tbody>
@@ -488,23 +1017,32 @@ export default function CsvImportPage() {
         <>
           <Card>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-medium text-curtn-cream">
-                Ready to import {getMappedRows().length} rows
-              </h2>
+              <div>
+                <h2 className="text-sm font-medium text-curtn-cream">
+                  Ready to import {getMappedRows().length} rows
+                </h2>
+                {imageFileCount > 0 && (
+                  <p className="text-xs text-curtn-coral mt-1">
+                    {imageFileCount} image
+                    {imageFileCount === 1 ? "" : "s"} will be uploaded from ZIP
+                    on import
+                  </p>
+                )}
+              </div>
               <div className="flex gap-2">
                 <Button
                   variant="ghost"
                   onClick={() => handleImport(true)}
-                  disabled={importing}
+                  disabled={!!activity}
                 >
-                  {importing ? "Checking..." : "Dry Run"}
+                  Dry Run
                 </Button>
                 <Button
                   variant="primary"
                   onClick={() => handleImport(false)}
-                  disabled={importing}
+                  disabled={!!activity}
                 >
-                  {importing ? "Importing..." : "Import"}
+                  Import
                 </Button>
               </div>
             </div>
@@ -615,14 +1153,19 @@ export default function CsvImportPage() {
                       </td>
                       {Object.entries(columnMap)
                         .filter(([, field]) => field)
-                        .map(([, field]) => (
-                          <td
-                            key={field}
-                            className="px-3 py-1.5 text-curtn-cream/80 max-w-[200px] truncate"
-                          >
-                            {row[field] || "\u2014"}
-                          </td>
-                        ))}
+                        .map(([, field]) => {
+                          const value = row[field] || "";
+                          const isZipImage =
+                            IMAGE_FIELDS.has(field) && isImageFilename(value);
+                          return (
+                            <td
+                              key={field}
+                              className={`px-3 py-1.5 max-w-[200px] truncate ${isZipImage ? "text-curtn-coral" : "text-curtn-cream/80"}`}
+                            >
+                              {value || "\u2014"}
+                            </td>
+                          );
+                        })}
                     </tr>
                   ))}
                 </tbody>
@@ -659,12 +1202,24 @@ export default function CsvImportPage() {
                 { label: "Shows Matched", value: importResult.showsMatched },
                 { label: "Venues Created", value: importResult.venuesCreated },
                 { label: "Venues Matched", value: importResult.venuesMatched },
-                { label: "Companies Created", value: importResult.companiesCreated },
-                { label: "Companies Matched", value: importResult.companiesMatched },
+                {
+                  label: "Companies Created",
+                  value: importResult.companiesCreated,
+                },
+                {
+                  label: "Companies Matched",
+                  value: importResult.companiesMatched,
+                },
                 { label: "Runs Created", value: importResult.runsCreated },
                 { label: "Runs Matched", value: importResult.runsMatched },
-                { label: "Performances Created", value: importResult.performancesCreated },
-                { label: "Performances Matched", value: importResult.performancesMatched },
+                {
+                  label: "Performances Created",
+                  value: importResult.performancesCreated,
+                },
+                {
+                  label: "Performances Matched",
+                  value: importResult.performancesMatched,
+                },
                 { label: "Credits Created", value: importResult.creditsCreated },
                 { label: "People Created", value: importResult.personsCreated },
                 { label: "People Matched", value: importResult.personsMatched },
