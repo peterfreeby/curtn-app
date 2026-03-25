@@ -13,6 +13,7 @@ import { ShowingsList } from "@/components/performances/ShowingsList";
 import { CreditsList } from "@/components/credits/CreditsList";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { WatchlistButton } from "@/components/watchlist/WatchlistButton";
+import { AddToListButton } from "@/components/lists/AddToListButton";
 import { Icon } from "@/components/icons/Icons";
 import { useAuth } from "@/lib/auth/useAuth";
 
@@ -136,11 +137,14 @@ export default function ShowDetailPage() {
           soldOut={isSoldOut}
         />
 
-        <WatchlistButton
-          showId={show.id}
-          initialIsOnWatchlist={show.isOnMyWatchlist ?? false}
-          initialWatchlistCount={show.watchlistCount ?? 0}
-        />
+        <div className="flex items-center gap-3">
+          <WatchlistButton
+            showId={show.id}
+            initialIsOnWatchlist={show.isOnMyWatchlist ?? false}
+            initialWatchlistCount={show.watchlistCount ?? 0}
+          />
+          <AddToListButton itemId={show.id} listType="shows" />
+        </div>
 
         <Link
           href={`/log?run=${singleRun.id}`}
@@ -210,11 +214,14 @@ export default function ShowDetailPage() {
           reviewCount={singleRun.reviewCount}
         />
 
-        <WatchlistButton
-          showId={show.id}
-          initialIsOnWatchlist={show.isOnMyWatchlist ?? false}
-          initialWatchlistCount={show.watchlistCount ?? 0}
-        />
+        <div className="flex items-center gap-3">
+          <WatchlistButton
+            showId={show.id}
+            initialIsOnWatchlist={show.isOnMyWatchlist ?? false}
+            initialWatchlistCount={show.watchlistCount ?? 0}
+          />
+          <AddToListButton itemId={show.id} listType="shows" />
+        </div>
 
         {upcomingShowings.length > 0 && (
           <ShowingsList showings={upcomingShowings} label="Upcoming Shows" />

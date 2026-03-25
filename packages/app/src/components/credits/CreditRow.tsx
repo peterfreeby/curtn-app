@@ -23,7 +23,7 @@ export function CreditRow({ index, personName, personSlug, role, headshotUrl }: 
       </span>
       <span className="li-content">
         <span className="li-title">{personName}</span>
-        <span className="li-sub">{role}</span>
+        <span className="li-sub ml-2">{role}</span>
       </span>
     </Link>
   );

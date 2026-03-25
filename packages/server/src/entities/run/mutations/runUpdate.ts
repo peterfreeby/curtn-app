@@ -40,6 +40,22 @@ export const runUpdate = mutationWithClientMutationId({
     posterUrl: {
       type: GraphQLString,
       description: 'Poster URL — portrait poster image (from Vercel Blob)'
+    },
+    showId: {
+      type: GraphQLString,
+      description: 'MongoDB ObjectId of the show this run belongs to'
+    },
+    venueIds: {
+      type: GraphQLString,
+      description: 'JSON array of venue MongoDB ObjectIds'
+    },
+    productionCompanyId: {
+      type: GraphQLString,
+      description: 'MongoDB ObjectId of the production company (empty string to clear)'
+    },
+    stageId: {
+      type: GraphQLString,
+      description: 'MongoDB ObjectId of the stage (empty string to clear)'
     }
   },
   outputFields: {
@@ -68,6 +84,20 @@ export const runUpdate = mutationWithClientMutationId({
       if (input.endDate !== undefined && input.endDate !== '') updates.endDate = new Date(input.endDate)
       if (input.imageUrl !== undefined && input.imageUrl !== '') updates.imageUrl = input.imageUrl
       if (input.posterUrl !== undefined && input.posterUrl !== '') updates.posterUrl = input.posterUrl
+      if (input.showId !== undefined && input.showId !== '') updates.show = input.showId
+      if (input.venueIds !== undefined) {
+        try {
+          updates.venues = JSON.parse(input.venueIds)
+        } catch {
+          return { error: 'Invalid venueIds JSON' }
+        }
+      }
+      if (input.productionCompanyId !== undefined) {
+        updates.productionCompany = input.productionCompanyId === '' ? null : input.productionCompanyId
+      }
+      if (input.stageId !== undefined) {
+        updates.stage = input.stageId === '' ? null : input.stageId
+      }
 
       if (Object.keys(updates).length === 0) {
         return { run }

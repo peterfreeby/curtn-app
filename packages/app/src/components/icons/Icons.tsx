@@ -31,8 +31,14 @@ const ICONS = {
   "eye-slash": "\uE224",
   clock: "\uE19C",
   "clock-countdown": "\uE1A8",
+  "list-plus": "\uE2F8",
   pencil: "\uE3A4",
   ghost: "\uE278",
+  "list-bullets": "\uE2F0",
+  "users-three": "\uE4D8",
+  "copy": "\uE1D0",
+  trash: "\uE4AC",
+  lightning: "\uE2DE",
 } as const;
 
 export type IconName = keyof typeof ICONS;

@@ -61,7 +61,7 @@ export function WiredPosterCard({
     }
     // Single run → go straight to log
     if (runId) {
-      router.push(`/log?run=${runId}`);
+      router.push(`/log?run=${runId}`, { scroll: false });
       return;
     }
     // Multiple runs → show picker
@@ -71,7 +71,7 @@ export function WiredPosterCard({
     }
     // Fallback: first run if available
     if (runs && runs.length === 1) {
-      router.push(`/log?run=${runs[0].id}`);
+      router.push(`/log?run=${runs[0].id}`, { scroll: false });
       return;
     }
     // No runs — go to detail page
@@ -115,8 +115,8 @@ export function WiredPosterCard({
       onClick: handleLog,
     },
     {
-      icon: "clock-countdown",
-      activeIcon: "clock-countdown",
+      icon: "list-plus",
+      activeIcon: "list-plus",
       active: isOnWatchlist,
       label: "Watchlist",
       onClick: handleWatchlistToggle,
@@ -157,7 +157,7 @@ export function WiredPosterCard({
                 type="button"
                 onClick={() => {
                   setShowRunPicker(null);
-                  router.push(`/log?run=${run.id}`);
+                  router.push(`/log?run=${run.id}`, { scroll: false });
                 }}
                 className="w-full px-3 py-2 text-left text-xs text-curtn-cream hover:bg-curtn-dark/30 transition-colors cursor-pointer"
               >

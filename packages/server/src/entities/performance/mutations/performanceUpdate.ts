@@ -36,6 +36,14 @@ export const performanceUpdate = mutationWithClientMutationId({
     imageUrl: {
       type: GraphQLString,
       description: 'Image URL (from Vercel Blob)'
+    },
+    runId: {
+      type: GraphQLString,
+      description: 'MongoDB ObjectId of the run this performance belongs to'
+    },
+    venueId: {
+      type: GraphQLString,
+      description: 'MongoDB ObjectId of the venue for this performance'
     }
   },
   outputFields: {
@@ -63,6 +71,8 @@ export const performanceUpdate = mutationWithClientMutationId({
       if (input.soldOut !== undefined) updates.soldOut = input.soldOut
       if (input.description !== undefined) updates['metadataOverrides.description'] = input.description
       if (input.imageUrl !== undefined && input.imageUrl !== '') updates['metadataOverrides.imageUrl'] = input.imageUrl
+      if (input.runId !== undefined && input.runId !== '') updates.run = input.runId
+      if (input.venueId !== undefined && input.venueId !== '') updates.venueId = input.venueId
 
       if (Object.keys(updates).length === 0) {
         return { performance }

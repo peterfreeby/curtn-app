@@ -6,10 +6,12 @@ import { useQuery, useMutation } from "urql";
 import { USER_BY_USERNAME_QUERY, USER_REVIEWS_QUERY } from "@/lib/graphql/users";
 import { FOLLOW_TOGGLE_MUTATION } from "@/lib/graphql/follows";
 import { MY_WATCHLIST_QUERY } from "@/lib/graphql/watchlist";
+import { USER_LISTS_QUERY } from "@/lib/graphql/lists";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { EditProfileModal } from "@/components/profile/EditProfileModal";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { WiredPosterCard } from "@/components/WiredPosterCard";
+import { ListGrid } from "@/components/lists/ListGrid";
 import { useAuth } from "@/lib/auth/useAuth";
 
 const PAGE_SIZE = 12;
@@ -18,7 +20,7 @@ export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
   const { user: currentUser } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<"reviews" | "watchlist">("reviews");
+  const [activeTab, setActiveTab] = useState<"reviews" | "watchlist" | "lists">("reviews");
   const [after, setAfter] = useState<string | null>(null);
   const [allEdges, setAllEdges] = useState<any[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -42,6 +44,12 @@ export default function ProfilePage() {
   });
 
   const profileUser = userData?.userList?.edges?.[0]?.node ?? null;
+
+  const [{ data: listsData, fetching: listsFetching }] = useQuery({
+    query: USER_LISTS_QUERY,
+    variables: { userId: profileUser?.id, first: 50 },
+    pause: activeTab !== "lists" || !profileUser,
+  });
   const connection = reviewData?.reviewList;
   const edges = (connection?.edges ?? []).filter((e: any) => e.node != null);
   const pageInfo = connection?.pageInfo;
@@ -139,16 +147,16 @@ export default function ProfilePage() {
         />
       )}
 
-      {isOwnProfile && (
-        <div className="tabs-ledger">
-          <button
-            onClick={() => setActiveTab("reviews")}
-            className={`tab-ledger flex-1 cursor-pointer ${
-              activeTab === "reviews" ? "active" : ""
-            }`}
-          >
-            Reviews
-          </button>
+      <div className="tabs-ledger">
+        <button
+          onClick={() => setActiveTab("reviews")}
+          className={`tab-ledger flex-1 cursor-pointer ${
+            activeTab === "reviews" ? "active" : ""
+          }`}
+        >
+          Reviews
+        </button>
+        {isOwnProfile && (
           <button
             onClick={() => setActiveTab("watchlist")}
             className={`tab-ledger flex-1 cursor-pointer ${
@@ -157,10 +165,18 @@ export default function ProfilePage() {
           >
             Watchlist
           </button>
-        </div>
-      )}
+        )}
+        <button
+          onClick={() => setActiveTab("lists")}
+          className={`tab-ledger flex-1 cursor-pointer ${
+            activeTab === "lists" ? "active" : ""
+          }`}
+        >
+          Lists
+        </button>
+      </div>
 
-      {(!isOwnProfile || activeTab === "reviews") && (
+      {activeTab === "reviews" && (
         <section>
           <h2 className="text-xs uppercase tracking-widest text-curtn-muted mb-4">
             Reviews
@@ -203,6 +219,19 @@ export default function ProfilePage() {
               Load more reviews
             </button>
           )}
+        </section>
+      )}
+
+      {activeTab === "lists" && (
+        <section>
+          <h2 className="text-xs uppercase tracking-widest text-curtn-muted mb-4">
+            Lists
+          </h2>
+          <ListGrid
+            lists={listsData?.userLists?.edges?.map((e: any) => e.node) ?? []}
+            loading={listsFetching}
+            emptyMessage={isOwnProfile ? "You haven\u2019t created any lists yet." : `@${username} hasn\u2019t created any public lists yet.`}
+          />
         </section>
       )}
 

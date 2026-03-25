@@ -72,6 +72,30 @@ export const userType = new GraphQLObjectType({
       type: GraphQLInt,
       description: 'Number of reviews this user has written',
       resolve: async user => ReviewModel.countDocuments({ user: user._id })
+    },
+    listCount: {
+      type: GraphQLInt,
+      description: 'Number of public lists this user has created',
+      resolve: async user => {
+        const { ListModel } = require('../list/listModel')
+        return ListModel.countDocuments({ owner: user._id, isPublic: true })
+      }
+    },
+    lists: {
+      type: require('../list/listTypes').ListConnection,
+      description: "User's public lists",
+      resolve: async (user: any, _args: any, ctx: any) => {
+        const { ListModel } = require('../list/listModel')
+        const filter: any = { owner: user._id }
+        if (!ctx.user || ctx.user.id !== String(user._id)) {
+          filter.isPublic = true
+        }
+        const lists = await ListModel.find(filter).sort({ createdAt: -1 })
+        return {
+          edges: lists.map((l: any) => ({ node: l, cursor: l._id.toString() })),
+          pageInfo: { hasNextPage: false, hasPreviousPage: false }
+        }
+      }
     }
   })
 })

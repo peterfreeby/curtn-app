@@ -21,9 +21,10 @@ export const personList: GraphQLFieldConfig<any, any, any> = {
     }
 
     try {
+      const limit = connArgs.first ?? 100
       const people = await PersonModel.find(filter)
         .sort(search ? { score: { $meta: 'textScore' } } : { name: 1 })
-        .limit(100)
+        .limit(limit)
       return connectionFromArray(people, connArgs)
     } catch (error) {
       console.error('Error fetching people:', error)

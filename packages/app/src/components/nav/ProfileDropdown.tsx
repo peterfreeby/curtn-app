@@ -47,6 +47,14 @@ export function ProfileDropdown() {
             <Icon name="user" size={16} className="text-curtn-muted" />
             Profile
           </Link>
+          <Link
+            href="/lists"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-3 px-4 py-2.5 text-sm text-curtn-cream hover:bg-curtn-deep/50 transition-colors"
+          >
+            <Icon name="list-bullets" size={16} className="text-curtn-muted" />
+            My Lists
+          </Link>
           <button
             type="button"
             onClick={() => {

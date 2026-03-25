@@ -57,6 +57,15 @@ export default function AdminPage() {
           </Card>
         </Link>
 
+        <Link href="/admin/lists">
+          <Card className="transition-colors hover:border-curtn-muted/30 cursor-pointer">
+            <h2 className="text-sm font-medium text-curtn-cream">Editorial Lists</h2>
+            <p className="mt-1 text-xs text-curtn-muted/60">
+              Curate lists that power the browse page.
+            </p>
+          </Card>
+        </Link>
+
         <Link href="/admin/styleguide">
           <Card className="transition-colors hover:border-curtn-muted/30 cursor-pointer">
             <h2 className="text-sm font-medium text-curtn-cream">Style Guide</h2>

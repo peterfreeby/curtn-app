@@ -85,9 +85,10 @@ export const venueList: GraphQLFieldConfig<any, any, VenueListArgs> = {
     }
 
     try {
+      const limit = connectionArgs.first ?? 100
       const venues = await VenueModel.find(filter)
         .sort(search ? { score: { $meta: 'textScore' } } : { name: 1 })
-        .limit(100)
+        .limit(limit)
 
       return connectionFromArray(venues, connectionArgs)
     } catch (error) {

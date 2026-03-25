@@ -47,9 +47,10 @@ export const showList: GraphQLFieldConfig<any, any, any> = {
     }
 
     try {
+      const limit = connArgs.first ?? 100
       const shows = await ShowModel.find(filter)
         .sort(search ? { score: { $meta: 'textScore' } } : { createdAt: -1 })
-        .limit(100)
+        .limit(limit)
 
       return connectionFromArray(shows, connArgs)
     } catch (error) {

@@ -5,6 +5,7 @@ import { useQuery } from "urql";
 import { PERSON_BY_SLUG_QUERY } from "@/lib/graphql/people";
 import { PersonHero } from "@/components/people/PersonHero";
 import { PersonCredits } from "@/components/people/PersonCredits";
+import { AddToListButton } from "@/components/lists/AddToListButton";
 
 export default function PersonDetailPage() {
   const params = useParams();
@@ -51,6 +52,8 @@ export default function PersonDetailPage() {
         bio={person.bio}
         headshotUrl={person.headshotUrl}
       />
+
+      <AddToListButton itemId={person.id} listType="people" />
 
       <PersonCredits
         castCredits={person.castCredits ?? []}

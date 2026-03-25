@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "urql";
 import {
   ADMIN_SHOW_LIST_QUERY,
@@ -23,9 +23,25 @@ import {
   RUN_MERGE_MUTATION,
   PERFORMANCE_MERGE_MUTATION,
   PERSON_MERGE_MUTATION,
+  PICKER_SHOWS_QUERY,
+  PICKER_VENUES_QUERY,
+  PICKER_COMPANIES_QUERY,
+  PICKER_RUNS_QUERY,
+  PICKER_PEOPLE_QUERY,
+  CREDIT_ADD_MUTATION,
+  CREDIT_REMOVE_MUTATION,
+  SHOW_FIND_OR_CREATE_MUTATION,
+  VENUE_FIND_OR_CREATE_MUTATION,
+  PRODUCTION_COMPANY_CREATE_MUTATION,
+  RUN_FIND_OR_CREATE_MUTATION,
+  PERFORMANCE_CREATE_MUTATION,
+  PERSON_CREATE_MUTATION,
 } from "@/lib/graphql/admin";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
+import { RelationPicker, type RelationOption } from "@/components/admin/RelationPicker";
+
+const PAGE_SIZE = 50;
 
 type EntityTab = "shows" | "venues" | "runs" | "performances" | "people";
 
@@ -285,6 +301,165 @@ function EntityActions({
   );
 }
 
+// --- Runs Section (inline within Show editing) ---
+function RunsSection({
+  showId,
+  runs,
+  onChanged,
+}: {
+  showId: string;
+  runs: any[];
+  onChanged: () => void;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [newCompanyId, setNewCompanyId] = useState<string | null>(null);
+  const [newVenueIds, setNewVenueIds] = useState<string[]>([]);
+  const [newStartDate, setNewStartDate] = useState("");
+  const [newEndDate, setNewEndDate] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
+
+  const [{ data: companiesData }, reexecuteCompanies] = useQuery({
+    query: PICKER_COMPANIES_QUERY,
+    variables: { first: 100 },
+    pause: !adding,
+  });
+  const [{ data: venuesData }, reexecuteVenues] = useQuery({
+    query: PICKER_VENUES_QUERY,
+    variables: { first: 100 },
+    pause: !adding,
+  });
+  const [, executeRunCreate] = useMutation(RUN_FIND_OR_CREATE_MUTATION);
+  const [, executeCompanyCreate] = useMutation(PRODUCTION_COMPANY_CREATE_MUTATION);
+  const [, executeVenueCreate] = useMutation(VENUE_FIND_OR_CREATE_MUTATION);
+
+  const companyOptions: RelationOption[] =
+    companiesData?.productionCompanyList?.edges?.map((e: any) => ({
+      id: e.node.id,
+      label: e.node.name,
+    })) || [];
+  const venueOptions: RelationOption[] =
+    venuesData?.venueList?.edges?.map((e: any) => ({
+      id: e.node.id,
+      label: e.node.name,
+      sublabel: e.node.city,
+    })) || [];
+
+  async function handleCreateCompany(name: string) {
+    const result = await executeCompanyCreate({ input: { name } });
+    if (result.data?.productionCompanyCreate?.productionCompany?.id) {
+      setNewCompanyId(result.data.productionCompanyCreate.productionCompany.id);
+      reexecuteCompanies({ requestPolicy: "network-only" });
+    }
+  }
+
+  async function handleCreateVenue(name: string) {
+    const result = await executeVenueCreate({
+      input: { name, address: "TBD", city: "NYC", state: "NY", latitude: 40.7128, longitude: -74.006 },
+    });
+    if (result.data?.venueFindOrCreate?.venue?.id) {
+      setNewVenueIds((prev) => [...prev, result.data.venueFindOrCreate.venue.id]);
+      reexecuteVenues({ requestPolicy: "network-only" });
+    }
+  }
+
+  async function handleAdd() {
+    setMessage(null);
+    const input: Record<string, any> = { showId };
+    if (newCompanyId) input.productionCompanyId = newCompanyId;
+    if (newVenueIds.length > 0) input.venueIds = newVenueIds;
+    if (newStartDate) input.startDate = new Date(newStartDate).toISOString();
+    if (newEndDate) input.endDate = new Date(newEndDate).toISOString();
+
+    const result = await executeRunCreate({ input });
+    if (result.data?.runFindOrCreate?.error) {
+      setMessage(result.data.runFindOrCreate.error);
+    } else {
+      setNewCompanyId(null);
+      setNewVenueIds([]);
+      setNewStartDate("");
+      setNewEndDate("");
+      setAdding(false);
+      onChanged();
+    }
+  }
+
+  function formatDate(iso: string | null): string {
+    if (!iso) return "";
+    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  return (
+    <div className="space-y-2 border-t border-curtn-dark pt-3">
+      <div className="flex items-center justify-between">
+        <label className="block text-xs text-curtn-muted">Runs</label>
+        {!adding && (
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="text-[10px] text-curtn-coral hover:text-curtn-cream transition-colors cursor-pointer"
+          >
+            + Add Run
+          </button>
+        )}
+      </div>
+
+      {message && <p className="text-[10px] text-curtn-red">{message}</p>}
+
+      {runs.length > 0 ? (
+        <div className="space-y-1">
+          {runs.map((run: any) => (
+            <div key={run.id} className="flex items-center justify-between gap-2 py-1">
+              <span className="text-xs text-curtn-cream">
+                {run.effectiveTitle}
+                {run.productionCompany?.name && (
+                  <span className="text-curtn-muted ml-1.5">by {run.productionCompany.name}</span>
+                )}
+              </span>
+              <span className="text-[10px] text-curtn-muted/50 shrink-0">
+                {formatDate(run.startDate)}
+                {run.startDate && run.endDate && " – "}
+                {formatDate(run.endDate)}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        !adding && <p className="text-xs text-curtn-muted/50">No runs yet</p>
+      )}
+
+      {adding && (
+        <div className="space-y-2 rounded-lg border border-curtn-dark bg-curtn-deep p-3">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <RelationPicker
+              label="Production Company"
+              options={companyOptions}
+              value={newCompanyId}
+              onChange={setNewCompanyId}
+              onCreateNew={handleCreateCompany}
+              placeholder="Search companies..."
+            />
+            <RelationPicker
+              label="Venues"
+              multi
+              options={venueOptions}
+              value={newVenueIds}
+              onChange={setNewVenueIds}
+              onCreateNew={handleCreateVenue}
+              placeholder="Search venues..."
+            />
+            <FieldEditor label="Start Date" value={newStartDate} onChange={setNewStartDate} type="date" />
+            <FieldEditor label="End Date" value={newEndDate} onChange={setNewEndDate} type="date" />
+          </div>
+          <div className="flex gap-2">
+            <Button variant="primary" onClick={handleAdd}>Add</Button>
+            <Button variant="ghost" onClick={() => { setAdding(false); setMessage(null); }}>Cancel</Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // --- Shows Tab ---
 function ShowsEditor() {
   const [search, setSearch] = useState("");
@@ -293,16 +468,61 @@ function ShowsEditor() {
   const [message, setMessage] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<any | null>(null);
   const [mergeSource, setMergeSource] = useState<any | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [afterCursor, setAfterCursor] = useState<string | null>(null);
+  const [allShows, setAllShows] = useState<any[]>([]);
 
   const [{ data, fetching }, reexecute] = useQuery({
     query: ADMIN_SHOW_LIST_QUERY,
-    variables: { first: 50, search: search || undefined },
+    variables: { first: PAGE_SIZE, after: afterCursor, search: search || undefined },
   });
   const [, executeUpdate] = useMutation(SHOW_UPDATE_MUTATION);
   const [, executeDelete] = useMutation(SHOW_DELETE_MUTATION);
   const [, executeMerge] = useMutation(SHOW_MERGE_MUTATION);
+  const [, executeCreate] = useMutation(SHOW_FIND_OR_CREATE_MUTATION);
 
-  const shows = data?.showList?.edges?.map((e: any) => e.node) || [];
+  const pageNodes = data?.showList?.edges?.map((e: any) => e.node) || [];
+  const pageInfo = data?.showList?.pageInfo;
+
+  useEffect(() => {
+    if (pageNodes.length > 0) {
+      if (afterCursor) {
+        setAllShows((prev) => {
+          const ids = new Set(prev.map((n: any) => n.id));
+          return [...prev, ...pageNodes.filter((n: any) => !ids.has(n.id))];
+        });
+      } else {
+        setAllShows(pageNodes);
+      }
+    } else if (!fetching && !afterCursor) {
+      setAllShows([]);
+    }
+  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const shows = allShows;
+
+  function refreshList() {
+    setAfterCursor(null);
+    setAllShows([]);
+    reexecute({ requestPolicy: "network-only" });
+  }
+
+  async function handleCreate() {
+    if (!newTitle.trim()) return;
+    setMessage(null);
+    const result = await executeCreate({ input: { title: newTitle.trim() } });
+    if (result.data?.showFindOrCreate?.error) {
+      setMessage(result.data.showFindOrCreate.error);
+    } else {
+      setNewTitle("");
+      setAdding(false);
+      refreshList();
+      if (result.data?.showFindOrCreate?.show?.id) {
+        startEdit({ ...result.data.showFindOrCreate.show, performanceTypes: [], duration: 0 });
+      }
+    }
+  }
 
   function startEdit(show: any) {
     setEditingId(show.id);
@@ -328,7 +548,7 @@ function ShowsEditor() {
     } else {
       setMessage("Show updated");
       setEditingId(null);
-      reexecute({ requestPolicy: "network-only" });
+      refreshList();
     }
   }
 
@@ -343,7 +563,7 @@ function ShowsEditor() {
       setMessage(result.data.showDelete.error);
     } else {
       setMessage("Show deleted");
-      reexecute({ requestPolicy: "network-only" });
+      refreshList();
     }
   }
 
@@ -358,18 +578,33 @@ function ShowsEditor() {
       setMessage(result.data.showMerge.error);
     } else {
       setMessage(`Merged into "${result.data?.showMerge?.show?.title}"`);
-      reexecute({ requestPolicy: "network-only" });
+      refreshList();
     }
   }
 
   return (
     <div className="space-y-4">
-      <input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search shows..."
-        className="w-full rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
-      />
+      <div className="flex gap-2">
+        <input
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setAfterCursor(null); setAllShows([]); }}
+          placeholder="Search shows..."
+          className="flex-1 rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
+        />
+        <Button variant="primary" onClick={() => setAdding(!adding)}>
+          {adding ? "Cancel" : "+ Add Show"}
+        </Button>
+      </div>
+      {adding && (
+        <Card className="space-y-3">
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <FieldEditor label="Title" value={newTitle} onChange={setNewTitle} />
+            </div>
+            <Button variant="primary" onClick={handleCreate}>Create</Button>
+          </div>
+        </Card>
+      )}
       {message && <p className="text-xs text-curtn-coral">{message}</p>}
       {fetching && !data ? (
         <p className="text-sm text-curtn-muted">Loading...</p>
@@ -400,6 +635,14 @@ function ShowsEditor() {
                     currentImageUrl={fields.posterUrl || null}
                     onUploaded={(url) => setFields((f) => ({ ...f, posterUrl: url }))}
                   />
+
+                  {/* Runs */}
+                  <RunsSection
+                    showId={show.id}
+                    runs={show.runs?.edges?.map((e: any) => e.node) || []}
+                    onChanged={() => refreshList()}
+                  />
+
                   <div className="flex gap-2">
                     <Button variant="primary" onClick={handleSave}>Save</Button>
                     <Button variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
@@ -414,6 +657,9 @@ function ShowsEditor() {
                         <span key={t} className="rounded-full bg-curtn-dark px-2 py-0.5">{t}</span>
                       ))}
                       {show.duration > 0 && <span>{show.duration} min</span>}
+                      {show.runs?.edges?.length > 0 && (
+                        <span>{show.runs.edges.length} run{show.runs.edges.length !== 1 ? "s" : ""}</span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -428,6 +674,16 @@ function ShowsEditor() {
             </Card>
           ))}
         </div>
+      )}
+      {pageInfo?.hasNextPage && (
+        <button
+          type="button"
+          onClick={() => setAfterCursor(pageInfo.endCursor)}
+          disabled={fetching}
+          className="w-full rounded-lg border border-curtn-dark bg-curtn-surface px-4 py-2.5 text-xs text-curtn-muted hover:text-curtn-cream hover:border-curtn-coral/50 transition-colors cursor-pointer disabled:opacity-50"
+        >
+          {fetching ? "Loading..." : "Load More"}
+        </button>
       )}
       {confirmDelete && (
         <ConfirmDialog
@@ -457,16 +713,63 @@ function VenuesEditor() {
   const [message, setMessage] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<any | null>(null);
   const [mergeSource, setMergeSource] = useState<any | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [afterCursor, setAfterCursor] = useState<string | null>(null);
+  const [allVenues, setAllVenues] = useState<any[]>([]);
 
   const [{ data, fetching }, reexecute] = useQuery({
     query: ADMIN_VENUE_LIST_QUERY,
-    variables: { first: 50 },
+    variables: { first: PAGE_SIZE, after: afterCursor },
   });
   const [, executeUpdate] = useMutation(VENUE_UPDATE_MUTATION);
   const [, executeDelete] = useMutation(VENUE_DELETE_MUTATION);
   const [, executeMerge] = useMutation(VENUE_MERGE_MUTATION);
+  const [, executeCreate] = useMutation(VENUE_FIND_OR_CREATE_MUTATION);
 
-  const venues = data?.venueList?.edges?.map((e: any) => e.node) || [];
+  const pageNodes = data?.venueList?.edges?.map((e: any) => e.node) || [];
+  const pageInfo = data?.venueList?.pageInfo;
+
+  useEffect(() => {
+    if (pageNodes.length > 0) {
+      if (afterCursor) {
+        setAllVenues((prev) => {
+          const ids = new Set(prev.map((n: any) => n.id));
+          return [...prev, ...pageNodes.filter((n: any) => !ids.has(n.id))];
+        });
+      } else {
+        setAllVenues(pageNodes);
+      }
+    } else if (!fetching && !afterCursor) {
+      setAllVenues([]);
+    }
+  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const venues = allVenues;
+
+  function refreshList() {
+    setAfterCursor(null);
+    setAllVenues([]);
+    reexecute({ requestPolicy: "network-only" });
+  }
+
+  async function handleCreate() {
+    if (!newName.trim()) return;
+    setMessage(null);
+    const result = await executeCreate({
+      input: { name: newName.trim(), address: "TBD", city: "NYC", state: "NY", latitude: 40.7128, longitude: -74.006 },
+    });
+    if (result.data?.venueFindOrCreate?.error) {
+      setMessage(result.data.venueFindOrCreate.error);
+    } else {
+      setNewName("");
+      setAdding(false);
+      refreshList();
+      if (result.data?.venueFindOrCreate?.venue?.id) {
+        startEdit({ ...result.data.venueFindOrCreate.venue, venueType: "theater" });
+      }
+    }
+  }
 
   function startEdit(venue: any) {
     setEditingId(venue.id);
@@ -505,7 +808,7 @@ function VenuesEditor() {
     } else {
       setMessage("Venue updated");
       setEditingId(null);
-      reexecute({ requestPolicy: "network-only" });
+      refreshList();
     }
   }
 
@@ -520,7 +823,7 @@ function VenuesEditor() {
       setMessage(result.data.venueDelete.error);
     } else {
       setMessage("Venue deleted");
-      reexecute({ requestPolicy: "network-only" });
+      refreshList();
     }
   }
 
@@ -535,7 +838,7 @@ function VenuesEditor() {
       setMessage(result.data.venueMerge.error);
     } else {
       setMessage("Venue merged");
-      reexecute({ requestPolicy: "network-only" });
+      refreshList();
     }
   }
 
@@ -551,6 +854,21 @@ function VenuesEditor() {
 
   return (
     <div className="space-y-4">
+      <div className="flex gap-2 justify-end">
+        <Button variant="primary" onClick={() => setAdding(!adding)}>
+          {adding ? "Cancel" : "+ Add Venue"}
+        </Button>
+      </div>
+      {adding && (
+        <Card className="space-y-3">
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <FieldEditor label="Name" value={newName} onChange={setNewName} />
+            </div>
+            <Button variant="primary" onClick={handleCreate}>Create</Button>
+          </div>
+        </Card>
+      )}
       {message && <p className="text-xs text-curtn-coral">{message}</p>}
       {fetching && !data ? (
         <p className="text-sm text-curtn-muted">Loading...</p>
@@ -626,6 +944,16 @@ function VenuesEditor() {
           ))}
         </div>
       )}
+      {pageInfo?.hasNextPage && (
+        <button
+          type="button"
+          onClick={() => setAfterCursor(pageInfo.endCursor)}
+          disabled={fetching}
+          className="w-full rounded-lg border border-curtn-dark bg-curtn-surface px-4 py-2.5 text-xs text-curtn-muted hover:text-curtn-cream hover:border-curtn-coral/50 transition-colors cursor-pointer disabled:opacity-50"
+        >
+          {fetching ? "Loading..." : "Load More"}
+        </button>
+      )}
       {confirmDelete && (
         <ConfirmDialog
           title={`Delete "${confirmDelete.name}"?`}
@@ -647,23 +975,319 @@ function VenuesEditor() {
   );
 }
 
+// --- Credit Editor (inline within Run editing) ---
+function CreditEditor({
+  runId,
+  cast,
+  crew,
+  onChanged,
+}: {
+  runId: string;
+  cast: any[];
+  crew: any[];
+  onChanged: () => void;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [newRole, setNewRole] = useState("");
+  const [newType, setNewType] = useState<"cast" | "crew">("cast");
+  const [newPersonId, setNewPersonId] = useState<string | null>(null);
+  const [newPersonName, setNewPersonName] = useState<string | null>(null);
+  const [newPersonSearch, setNewPersonSearch] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
+
+  const [{ data: peopleData, fetching: peopleFetching }] = useQuery({
+    query: PICKER_PEOPLE_QUERY,
+    variables: { first: 200, search: newPersonSearch || undefined },
+    pause: !adding,
+  });
+  const [, executeCreditAdd] = useMutation(CREDIT_ADD_MUTATION);
+  const [, executeCreditRemove] = useMutation(CREDIT_REMOVE_MUTATION);
+
+  const personOptions: RelationOption[] = [
+    ...(newPersonName
+      ? [{ id: "__new__", label: newPersonName, sublabel: "(new)" }]
+      : []),
+    ...(peopleData?.personList?.edges?.map((e: any) => ({
+      id: e.node.id,
+      label: e.node.name,
+    })) || []),
+  ];
+
+  async function handleAdd() {
+    if ((!newPersonId && !newPersonName) || !newRole) {
+      setMessage("Person and role are required");
+      return;
+    }
+    setMessage(null);
+    const input: Record<string, any> = {
+      runId,
+      creditType: newType,
+      role: newRole,
+    };
+    if (newPersonId && newPersonId !== "__new__") {
+      input.personId = newPersonId;
+    } else if (newPersonName) {
+      input.personName = newPersonName;
+    }
+    const result = await executeCreditAdd({ input });
+    if (result.data?.creditAdd?.error) {
+      setMessage(result.data.creditAdd.error);
+    } else {
+      setNewRole("");
+      setNewPersonId(null);
+      setNewPersonName(null);
+      setAdding(false);
+      onChanged();
+    }
+  }
+
+  async function handleRemove(creditId: string) {
+    const result = await executeCreditRemove({
+      input: { creditId },
+    });
+    if (result.data?.creditRemove?.error) {
+      setMessage(result.data.creditRemove.error);
+    } else {
+      onChanged();
+    }
+  }
+
+  function renderCreditRow(credit: any) {
+    return (
+      <div key={credit.id} className="flex items-center justify-between gap-2 py-1">
+        <span className="text-xs text-curtn-cream">
+          {credit.person?.name}
+          <span className="text-curtn-muted ml-1.5">as {credit.role}</span>
+        </span>
+        <button
+          type="button"
+          onClick={() => handleRemove(credit.id)}
+          className="text-[10px] text-curtn-muted hover:text-red-400 transition-colors cursor-pointer px-1"
+        >
+          x
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2 border-t border-curtn-dark pt-3">
+      <div className="flex items-center justify-between">
+        <label className="block text-xs text-curtn-muted">Credits</label>
+        {!adding && (
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="text-[10px] text-curtn-coral hover:text-curtn-cream transition-colors cursor-pointer"
+          >
+            + Add Credit
+          </button>
+        )}
+      </div>
+
+      {message && <p className="text-[10px] text-curtn-red">{message}</p>}
+
+      {cast.length > 0 && (
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-curtn-muted/60 mb-1">Cast</p>
+          {cast.map(renderCreditRow)}
+        </div>
+      )}
+
+      {crew.length > 0 && (
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-curtn-muted/60 mb-1">Crew</p>
+          {crew.map(renderCreditRow)}
+        </div>
+      )}
+
+      {cast.length === 0 && crew.length === 0 && !adding && (
+        <p className="text-xs text-curtn-muted/50">No credits yet</p>
+      )}
+
+      {adding && (
+        <div className="space-y-2 rounded-lg border border-curtn-dark bg-curtn-deep p-3">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <RelationPicker
+              label="Person"
+              options={personOptions}
+              value={newPersonId ?? (newPersonName ? "__new__" : null)}
+              onChange={(id) => {
+                if (id === "__new__") {
+                  setNewPersonId("__new__");
+                } else {
+                  setNewPersonId(id);
+                  setNewPersonName(null);
+                }
+              }}
+              onSearch={setNewPersonSearch}
+              onCreateNew={(name) => {
+                setNewPersonName(name);
+                setNewPersonId("__new__");
+              }}
+              loading={peopleFetching}
+              placeholder="Search people..."
+            />
+            <FieldEditor
+              label="Role"
+              value={newRole}
+              onChange={setNewRole}
+            />
+          </div>
+          <FieldEditor
+            label="Type"
+            value={newType}
+            onChange={(v) => setNewType(v as "cast" | "crew")}
+            type="select"
+            options={[
+              { value: "cast", label: "Cast" },
+              { value: "crew", label: "Crew" },
+            ]}
+          />
+          <div className="flex gap-2">
+            <Button variant="primary" onClick={handleAdd}>Add</Button>
+            <Button variant="ghost" onClick={() => { setAdding(false); setMessage(null); }}>Cancel</Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // --- Runs Tab ---
 function RunsEditor() {
+  const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
+  const [relShowId, setRelShowId] = useState<string | null>(null);
+  const [relVenueIds, setRelVenueIds] = useState<string[]>([]);
+  const [relCompanyId, setRelCompanyId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<any | null>(null);
   const [mergeSource, setMergeSource] = useState<any | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [addShowId, setAddShowId] = useState<string | null>(null);
+  const [afterCursor, setAfterCursor] = useState<string | null>(null);
+  const [allRuns, setAllRuns] = useState<any[]>([]);
 
   const [{ data, fetching }, reexecute] = useQuery({
     query: ADMIN_RUN_LIST_QUERY,
-    variables: { first: 50 },
+    variables: { first: PAGE_SIZE, after: afterCursor, search: search || undefined },
   });
+  const [{ data: showsData }, reexecuteShows] = useQuery({ query: PICKER_SHOWS_QUERY, variables: { first: 100 }, pause: !editingId && !adding });
+  const [{ data: venuesData }, reexecuteVenues] = useQuery({ query: PICKER_VENUES_QUERY, variables: { first: 100 }, pause: !editingId });
+  const [{ data: companiesData }, reexecuteCompanies] = useQuery({ query: PICKER_COMPANIES_QUERY, variables: { first: 100 }, pause: !editingId });
   const [, executeUpdate] = useMutation(RUN_UPDATE_MUTATION);
   const [, executeDelete] = useMutation(RUN_DELETE_MUTATION);
   const [, executeMerge] = useMutation(RUN_MERGE_MUTATION);
+  const [, executeShowCreate] = useMutation(SHOW_FIND_OR_CREATE_MUTATION);
+  const [, executeVenueCreate] = useMutation(VENUE_FIND_OR_CREATE_MUTATION);
+  const [, executeCompanyCreate] = useMutation(PRODUCTION_COMPANY_CREATE_MUTATION);
+  const [, executeRunCreate] = useMutation(RUN_FIND_OR_CREATE_MUTATION);
 
-  const runs = data?.runList?.edges?.map((e: any) => e.node) || [];
+  const pageNodes = data?.runList?.edges?.map((e: any) => e.node) || [];
+  const pageInfo = data?.runList?.pageInfo;
+
+  useEffect(() => {
+    if (pageNodes.length > 0) {
+      if (afterCursor) {
+        setAllRuns((prev) => {
+          const ids = new Set(prev.map((n: any) => n.id));
+          return [...prev, ...pageNodes.filter((n: any) => !ids.has(n.id))];
+        });
+      } else {
+        setAllRuns(pageNodes);
+      }
+    } else if (!fetching && !afterCursor) {
+      setAllRuns([]);
+    }
+  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const runs = allRuns;
+
+  function refreshList() {
+    setAfterCursor(null);
+    setAllRuns([]);
+    reexecute({ requestPolicy: "network-only" });
+  }
+
+  const showOptions: RelationOption[] =
+    showsData?.showList?.edges?.map((e: any) => ({ id: e.node.id, label: e.node.title })) || [];
+  const venueOptions: RelationOption[] =
+    venuesData?.venueList?.edges?.map((e: any) => ({
+      id: e.node.id,
+      label: e.node.name,
+      sublabel: e.node.city,
+    })) || [];
+  const companyOptions: RelationOption[] =
+    companiesData?.productionCompanyList?.edges?.map((e: any) => ({
+      id: e.node.id,
+      label: e.node.name,
+    })) || [];
+
+  async function handleCreateShow(title: string) {
+    const result = await executeShowCreate({ input: { title } });
+    if (result.data?.showFindOrCreate?.show?.id) {
+      setRelShowId(result.data.showFindOrCreate.show.id);
+      reexecuteShows({ requestPolicy: "network-only" });
+    } else if (result.data?.showFindOrCreate?.error) {
+      setMessage(result.data.showFindOrCreate.error);
+    }
+  }
+
+  async function handleCreateVenue(name: string) {
+    const result = await executeVenueCreate({
+      input: { name, address: "TBD", city: "NYC", state: "NY", latitude: 40.7128, longitude: -74.006 },
+    });
+    if (result.data?.venueFindOrCreate?.venue?.id) {
+      const newId = result.data.venueFindOrCreate.venue.id;
+      setRelVenueIds((prev) => [...prev, newId]);
+      reexecuteVenues({ requestPolicy: "network-only" });
+    } else if (result.data?.venueFindOrCreate?.error) {
+      setMessage(result.data.venueFindOrCreate.error);
+    }
+  }
+
+  async function handleCreateCompany(name: string) {
+    const result = await executeCompanyCreate({ input: { name } });
+    if (result.data?.productionCompanyCreate?.productionCompany?.id) {
+      setRelCompanyId(result.data.productionCompanyCreate.productionCompany.id);
+      reexecuteCompanies({ requestPolicy: "network-only" });
+    } else if (result.data?.productionCompanyCreate?.error) {
+      setMessage(result.data.productionCompanyCreate.error);
+    }
+  }
+
+  async function handleCreateShowForAdd(title: string) {
+    const result = await executeShowCreate({ input: { title } });
+    if (result.data?.showFindOrCreate?.show?.id) {
+      setAddShowId(result.data.showFindOrCreate.show.id);
+      reexecuteShows({ requestPolicy: "network-only" });
+    }
+  }
+
+  async function handleAddRun() {
+    if (!addShowId) {
+      setMessage("Pick a show for the new run");
+      return;
+    }
+    setMessage(null);
+    const result = await executeRunCreate({ input: { showId: addShowId } });
+    if (result.data?.runFindOrCreate?.error) {
+      setMessage(result.data.runFindOrCreate.error);
+    } else {
+      setAddShowId(null);
+      setAdding(false);
+      refreshList();
+      if (result.data?.runFindOrCreate?.run?.id) {
+        startEdit({
+          ...result.data.runFindOrCreate.run,
+          cast: [],
+          crew: [],
+        });
+      }
+    }
+  }
 
   function startEdit(run: any) {
     setEditingId(run.id);
@@ -676,19 +1300,26 @@ function RunsEditor() {
       imageUrl: run.imageUrl || "",
       posterUrl: run.posterUrl || "",
     });
+    setRelShowId(run.show?.id || null);
+    setRelVenueIds(run.venues?.map((v: any) => v.id) || []);
+    setRelCompanyId(run.productionCompany?.id || null);
   }
 
   async function handleSave() {
     if (!editingId) return;
     setMessage(null);
-    const result = await executeUpdate({
-      input: {
-        runId: decodeGlobalId(editingId),
-        ...fields,
-        startDate: fields.startDate ? new Date(fields.startDate).toISOString() : undefined,
-        endDate: fields.endDate ? new Date(fields.endDate).toISOString() : undefined,
-      },
-    });
+    const input: Record<string, any> = {
+      runId: decodeGlobalId(editingId),
+      ...fields,
+      startDate: fields.startDate ? new Date(fields.startDate).toISOString() : undefined,
+      endDate: fields.endDate ? new Date(fields.endDate).toISOString() : undefined,
+    };
+
+    if (relShowId) input.showId = decodeGlobalId(relShowId);
+    input.venueIds = JSON.stringify(relVenueIds.map(decodeGlobalId));
+    input.productionCompanyId = relCompanyId ? decodeGlobalId(relCompanyId) : "";
+
+    const result = await executeUpdate({ input });
     if (result.data?.runUpdate?.error) {
       setMessage(result.data.runUpdate.error);
     } else {
@@ -736,6 +1367,30 @@ function RunsEditor() {
 
   return (
     <div className="space-y-4">
+      <div className="flex gap-2">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search runs..."
+          className="flex-1 rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
+        />
+        <Button variant="primary" onClick={() => setAdding(!adding)}>
+          {adding ? "Cancel" : "+ Add Run"}
+        </Button>
+      </div>
+      {adding && (
+        <Card className="space-y-3">
+          <RelationPicker
+            label="Show"
+            options={showOptions}
+            value={addShowId}
+            onChange={setAddShowId}
+            onCreateNew={handleCreateShowForAdd}
+            placeholder="Search shows..."
+          />
+          <Button variant="primary" onClick={handleAddRun}>Create Run</Button>
+        </Card>
+      )}
       {message && <p className="text-xs text-curtn-coral">{message}</p>}
       {fetching && !data ? (
         <p className="text-sm text-curtn-muted">Loading...</p>
@@ -745,6 +1400,38 @@ function RunsEditor() {
             <Card key={run.id} className="space-y-3">
               {editingId === run.id ? (
                 <div className="space-y-3">
+                  {/* Relations */}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <RelationPicker
+                      label="Show"
+                      options={showOptions}
+                      value={relShowId}
+                      onChange={setRelShowId}
+                      onCreateNew={handleCreateShow}
+                      placeholder="Search shows..."
+                    />
+                    <RelationPicker
+                      label="Production Company"
+                      options={companyOptions}
+                      value={relCompanyId}
+                      onChange={setRelCompanyId}
+                      onCreateNew={handleCreateCompany}
+                      placeholder="Search companies..."
+                    />
+                    <div className="sm:col-span-2">
+                      <RelationPicker
+                        label="Venues"
+                        multi
+                        options={venueOptions}
+                        value={relVenueIds}
+                        onChange={setRelVenueIds}
+                        onCreateNew={handleCreateVenue}
+                        placeholder="Search venues..."
+                      />
+                    </div>
+                  </div>
+
+                  {/* Fields */}
                   <div className="grid gap-3 sm:grid-cols-2">
                     <FieldEditor label="Run Title" value={fields.title} onChange={(v) => setFields((f) => ({ ...f, title: v }))} />
                     <FieldEditor label="Intermissions" value={fields.intermissions} onChange={(v) => setFields((f) => ({ ...f, intermissions: v }))} type="number" />
@@ -766,6 +1453,15 @@ function RunsEditor() {
                     currentImageUrl={fields.posterUrl || null}
                     onUploaded={(url) => setFields((f) => ({ ...f, posterUrl: url }))}
                   />
+
+                  {/* Credits */}
+                  <CreditEditor
+                    runId={run.id}
+                    cast={run.cast || []}
+                    crew={run.crew || []}
+                    onChanged={() => reexecute({ requestPolicy: "network-only" })}
+                  />
+
                   <div className="flex gap-2">
                     <Button variant="primary" onClick={handleSave}>Save</Button>
                     <Button variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
@@ -782,6 +1478,13 @@ function RunsEditor() {
                       {run.productionCompany?.name || "No company"}
                       {run.venues?.length > 0 && ` · ${run.venues.map((v: any) => v.name).join(", ")}`}
                     </p>
+                    {(run.cast?.length > 0 || run.crew?.length > 0) && (
+                      <p className="text-[10px] text-curtn-muted/50 mt-0.5">
+                        {run.cast?.length > 0 && `${run.cast.length} cast`}
+                        {run.cast?.length > 0 && run.crew?.length > 0 && " · "}
+                        {run.crew?.length > 0 && `${run.crew.length} crew`}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <Button variant="ghost" onClick={() => startEdit(run)}>Edit</Button>
@@ -819,21 +1522,127 @@ function RunsEditor() {
 
 // --- Performances Tab ---
 function PerformancesEditor() {
+  const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
+  const [relRunId, setRelRunId] = useState<string | null>(null);
+  const [relVenueId, setRelVenueId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<any | null>(null);
   const [mergeSource, setMergeSource] = useState<any | null>(null);
+  const [creatingRun, setCreatingRun] = useState(false);
+  const [newRunShowId, setNewRunShowId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [addRunId, setAddRunId] = useState<string | null>(null);
+  const [addVenueId, setAddVenueId] = useState<string | null>(null);
+  const [addDate, setAddDate] = useState("");
+  const [addTime, setAddTime] = useState("");
 
   const [{ data, fetching }, reexecute] = useQuery({
     query: ADMIN_PERFORMANCE_LIST_QUERY,
-    variables: { first: 50 },
+    variables: { first: 200, search: search || undefined },
   });
+  const [{ data: runsData }, reexecuteRuns] = useQuery({ query: PICKER_RUNS_QUERY, variables: { first: 100 }, pause: !editingId && !adding });
+  const [{ data: venuesData }, reexecuteVenues] = useQuery({ query: PICKER_VENUES_QUERY, variables: { first: 100 }, pause: !editingId && !adding });
+  const [{ data: showsData }] = useQuery({ query: PICKER_SHOWS_QUERY, variables: { first: 100 }, pause: !creatingRun });
   const [, executeUpdate] = useMutation(PERFORMANCE_UPDATE_MUTATION);
   const [, executeDelete] = useMutation(PERFORMANCE_DELETE_MUTATION);
   const [, executeMerge] = useMutation(PERFORMANCE_MERGE_MUTATION);
+  const [, executeVenueCreate] = useMutation(VENUE_FIND_OR_CREATE_MUTATION);
+  const [, executeRunCreate] = useMutation(RUN_FIND_OR_CREATE_MUTATION);
+  const [, executeShowCreate] = useMutation(SHOW_FIND_OR_CREATE_MUTATION);
 
   const performances = data?.performanceList?.edges?.map((e: any) => e.node) || [];
+
+  const runOptions: RelationOption[] =
+    runsData?.runList?.edges?.map((e: any) => ({
+      id: e.node.id,
+      label: e.node.effectiveTitle,
+      sublabel: e.node.productionCompany?.name,
+    })) || [];
+  const venueOptions: RelationOption[] =
+    venuesData?.venueList?.edges?.map((e: any) => ({
+      id: e.node.id,
+      label: e.node.name,
+      sublabel: e.node.city,
+    })) || [];
+  const showOptions: RelationOption[] =
+    showsData?.showList?.edges?.map((e: any) => ({ id: e.node.id, label: e.node.title })) || [];
+
+  async function handleCreateVenue(name: string) {
+    const result = await executeVenueCreate({
+      input: { name, address: "TBD", city: "NYC", state: "NY", latitude: 40.7128, longitude: -74.006 },
+    });
+    if (result.data?.venueFindOrCreate?.venue?.id) {
+      setRelVenueId(result.data.venueFindOrCreate.venue.id);
+      reexecuteVenues({ requestPolicy: "network-only" });
+    } else if (result.data?.venueFindOrCreate?.error) {
+      setMessage(result.data.venueFindOrCreate.error);
+    }
+  }
+
+  async function handleCreateRun() {
+    if (!newRunShowId) {
+      setMessage("Pick a show for the new run");
+      return;
+    }
+    setMessage(null);
+    const result = await executeRunCreate({ input: { showId: newRunShowId } });
+    if (result.data?.runFindOrCreate?.run?.id) {
+      setRelRunId(result.data.runFindOrCreate.run.id);
+      reexecuteRuns({ requestPolicy: "network-only" });
+      setCreatingRun(false);
+      setNewRunShowId(null);
+    } else if (result.data?.runFindOrCreate?.error) {
+      setMessage(result.data.runFindOrCreate.error);
+    }
+  }
+
+  async function handleCreateShowForRun(title: string) {
+    const result = await executeShowCreate({ input: { title } });
+    if (result.data?.showFindOrCreate?.show?.id) {
+      setNewRunShowId(result.data.showFindOrCreate.show.id);
+    }
+  }
+
+  const [, executePerformanceCreate] = useMutation(PERFORMANCE_CREATE_MUTATION);
+
+  async function handleCreateVenueForAdd(name: string) {
+    const result = await executeVenueCreate({
+      input: { name, address: "TBD", city: "NYC", state: "NY", latitude: 40.7128, longitude: -74.006 },
+    });
+    if (result.data?.venueFindOrCreate?.venue?.id) {
+      setAddVenueId(result.data.venueFindOrCreate.venue.id);
+      reexecuteVenues({ requestPolicy: "network-only" });
+    }
+  }
+
+  async function handleAddPerformance() {
+    if (!addRunId) {
+      setMessage("Pick a run for the new performance");
+      return;
+    }
+    setMessage(null);
+    const input: Record<string, any> = { runId: addRunId };
+    if (addVenueId) input.venueId = addVenueId;
+    if (addDate) input.date = new Date(addDate).toISOString();
+    if (addTime) input.time = addTime;
+
+    const result = await executePerformanceCreate({ input });
+    if (result.data?.performanceCreate?.error) {
+      setMessage(result.data.performanceCreate.error);
+    } else {
+      setAddRunId(null);
+      setAddVenueId(null);
+      setAddDate("");
+      setAddTime("");
+      setAdding(false);
+      reexecute({ requestPolicy: "network-only" });
+      if (result.data?.performanceCreate?.performance?.id) {
+        startEdit(result.data.performanceCreate.performance);
+      }
+    }
+  }
 
   function startEdit(perf: any) {
     setEditingId(perf.id);
@@ -845,21 +1654,26 @@ function PerformancesEditor() {
       description: perf.effectiveDescription || "",
       imageUrl: perf.imageUrl || "",
     });
+    setRelRunId(perf.run?.id || null);
+    setRelVenueId(perf.venue?.id || null);
   }
 
   async function handleSave() {
     if (!editingId) return;
     setMessage(null);
-    const result = await executeUpdate({
-      input: {
-        performanceId: decodeGlobalId(editingId),
-        date: fields.date ? new Date(fields.date).toISOString() : undefined,
-        time: fields.time,
-        ticketUrl: fields.ticketUrl,
-        soldOut: fields.soldOut === "true",
-        description: fields.description,
-      },
-    });
+    const input: Record<string, any> = {
+      performanceId: decodeGlobalId(editingId),
+      date: fields.date ? new Date(fields.date).toISOString() : undefined,
+      time: fields.time,
+      ticketUrl: fields.ticketUrl,
+      soldOut: fields.soldOut === "true",
+      description: fields.description,
+    };
+
+    if (relRunId) input.runId = decodeGlobalId(relRunId);
+    if (relVenueId) input.venueId = decodeGlobalId(relVenueId);
+
+    const result = await executeUpdate({ input });
     if (result.data?.performanceUpdate?.error) {
       setMessage(result.data.performanceUpdate.error);
     } else {
@@ -916,6 +1730,41 @@ function PerformancesEditor() {
 
   return (
     <div className="space-y-4">
+      <div className="flex gap-2">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search performances..."
+          className="flex-1 rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
+        />
+        <Button variant="primary" onClick={() => setAdding(!adding)}>
+          {adding ? "Cancel" : "+ Add Performance"}
+        </Button>
+      </div>
+      {adding && (
+        <Card className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <RelationPicker
+              label="Run"
+              options={runOptions}
+              value={addRunId}
+              onChange={setAddRunId}
+              placeholder="Search runs..."
+            />
+            <RelationPicker
+              label="Venue"
+              options={venueOptions}
+              value={addVenueId}
+              onChange={setAddVenueId}
+              onCreateNew={handleCreateVenueForAdd}
+              placeholder="Search venues..."
+            />
+            <FieldEditor label="Date" value={addDate} onChange={setAddDate} type="date" />
+            <FieldEditor label="Time" value={addTime} onChange={setAddTime} />
+          </div>
+          <Button variant="primary" onClick={handleAddPerformance}>Create Performance</Button>
+        </Card>
+      )}
       {message && <p className="text-xs text-curtn-coral">{message}</p>}
       {fetching && !data ? (
         <p className="text-sm text-curtn-muted">Loading...</p>
@@ -925,6 +1774,46 @@ function PerformancesEditor() {
             <Card key={perf.id} className="space-y-3">
               {editingId === perf.id ? (
                 <div className="space-y-3">
+                  {/* Relations */}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <RelationPicker
+                        label="Run"
+                        options={runOptions}
+                        value={relRunId}
+                        onChange={(id) => { setRelRunId(id); setCreatingRun(false); }}
+                        onCreateNew={() => setCreatingRun(true)}
+                        placeholder="Search runs..."
+                      />
+                      {creatingRun && (
+                        <div className="mt-2 space-y-2 rounded-lg border border-curtn-dark bg-curtn-deep p-2.5">
+                          <p className="text-[10px] uppercase tracking-wider text-curtn-muted/60">New run for show:</p>
+                          <RelationPicker
+                            label="Show"
+                            options={showOptions}
+                            value={newRunShowId}
+                            onChange={setNewRunShowId}
+                            onCreateNew={handleCreateShowForRun}
+                            placeholder="Search shows..."
+                          />
+                          <div className="flex gap-2">
+                            <Button variant="primary" onClick={handleCreateRun}>Create Run</Button>
+                            <Button variant="ghost" onClick={() => { setCreatingRun(false); setNewRunShowId(null); }}>Cancel</Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <RelationPicker
+                      label="Venue"
+                      options={venueOptions}
+                      value={relVenueId}
+                      onChange={setRelVenueId}
+                      onCreateNew={handleCreateVenue}
+                      placeholder="Search venues..."
+                    />
+                  </div>
+
+                  {/* Fields */}
                   <div className="grid gap-3 sm:grid-cols-2">
                     <FieldEditor label="Date" value={fields.date} onChange={(v) => setFields((f) => ({ ...f, date: v }))} type="date" />
                     <FieldEditor label="Time" value={fields.time} onChange={(v) => setFields((f) => ({ ...f, time: v }))} />
@@ -949,6 +1838,15 @@ function PerformancesEditor() {
                     currentImageUrl={fields.imageUrl || null}
                     onUploaded={(url) => setFields((f) => ({ ...f, imageUrl: url }))}
                   />
+
+                  {/* Credits (from parent run, with performance overrides) */}
+                  <CreditEditor
+                    runId={perf.run?.id}
+                    cast={perf.effectiveCast || []}
+                    crew={perf.effectiveCrew || []}
+                    onChanged={() => reexecute({ requestPolicy: "network-only" })}
+                  />
+
                   <div className="flex gap-2">
                     <Button variant="primary" onClick={handleSave}>Save</Button>
                     <Button variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
@@ -965,6 +1863,13 @@ function PerformancesEditor() {
                       {perf.venue?.name ? ` · ${perf.venue.name}` : ""}
                       {perf.soldOut && <span className="text-curtn-red ml-2">Sold Out</span>}
                     </p>
+                    {(perf.effectiveCast?.length > 0 || perf.effectiveCrew?.length > 0) && (
+                      <p className="text-[10px] text-curtn-muted/50 mt-0.5">
+                        {perf.effectiveCast?.length > 0 && `${perf.effectiveCast.length} cast`}
+                        {perf.effectiveCast?.length > 0 && perf.effectiveCrew?.length > 0 && " · "}
+                        {perf.effectiveCrew?.length > 0 && `${perf.effectiveCrew.length} crew`}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <Button variant="ghost" onClick={() => startEdit(perf)}>Edit</Button>
@@ -1008,16 +1913,35 @@ function PeopleEditor() {
   const [message, setMessage] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<any | null>(null);
   const [mergeSource, setMergeSource] = useState<any | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
 
   const [{ data, fetching }, reexecute] = useQuery({
     query: ADMIN_PERSON_LIST_QUERY,
-    variables: { first: 50, search: search || undefined },
+    variables: { first: 200, search: search || undefined },
   });
   const [, executeUpdate] = useMutation(PERSON_UPDATE_MUTATION);
   const [, executeDelete] = useMutation(PERSON_DELETE_MUTATION);
   const [, executeMerge] = useMutation(PERSON_MERGE_MUTATION);
+  const [, executeCreate] = useMutation(PERSON_CREATE_MUTATION);
 
   const people = data?.personList?.edges?.map((e: any) => e.node) || [];
+
+  async function handleCreate() {
+    if (!newName.trim()) return;
+    setMessage(null);
+    const result = await executeCreate({ input: { name: newName.trim() } });
+    if (result.data?.personCreate?.error) {
+      setMessage(result.data.personCreate.error);
+    } else {
+      setNewName("");
+      setAdding(false);
+      reexecute({ requestPolicy: "network-only" });
+      if (result.data?.personCreate?.person?.id) {
+        startEdit({ ...result.data.personCreate.person, bio: "", headshotUrl: "", wikidataId: "" });
+      }
+    }
+  }
 
   function startEdit(person: any) {
     setEditingId(person.id);
@@ -1076,12 +2000,27 @@ function PeopleEditor() {
 
   return (
     <div className="space-y-4">
-      <input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search people..."
-        className="w-full rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
-      />
+      <div className="flex gap-2">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search people..."
+          className="flex-1 rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
+        />
+        <Button variant="primary" onClick={() => setAdding(!adding)}>
+          {adding ? "Cancel" : "+ Add Person"}
+        </Button>
+      </div>
+      {adding && (
+        <Card className="space-y-3">
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <FieldEditor label="Name" value={newName} onChange={setNewName} />
+            </div>
+            <Button variant="primary" onClick={handleCreate}>Create</Button>
+          </div>
+        </Card>
+      )}
       {message && <p className="text-xs text-curtn-coral">{message}</p>}
       {fetching && !data ? (
         <p className="text-sm text-curtn-muted">Loading...</p>

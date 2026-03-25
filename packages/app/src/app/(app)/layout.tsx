@@ -3,8 +3,10 @@ import { MobileNav } from "@/components/nav/MobileNav";
 
 export default function AppLayout({
   children,
+  modal,
 }: {
   children: React.ReactNode;
+  modal: React.ReactNode;
 }) {
   return (
     <div className="h-dvh w-full flex flex-col md:block">
@@ -12,6 +14,7 @@ export default function AppLayout({
       <main className="flex-1 overflow-y-auto overflow-x-hidden pt-[env(safe-area-inset-top)] md:pt-16 md:pb-0">
         {children}
       </main>
+      {modal}
       <MobileNav />
     </div>
   );

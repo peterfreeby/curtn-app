@@ -124,7 +124,7 @@ const sizeClasses = {
 
 const defaultActions: PosterAction[] = [
   { icon: "eye", label: "Seen" },
-  { icon: "clock-countdown", label: "Watchlist" },
+  { icon: "list-plus", label: "Watchlist" },
   { icon: "ticket", label: "Tickets" },
 ];
 

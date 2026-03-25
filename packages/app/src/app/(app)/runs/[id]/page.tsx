@@ -14,6 +14,7 @@ import { AddShowCreditForm } from "@/components/credits/AddShowCreditForm";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { Icon } from "@/components/icons/Icons";
 import { useAuth } from "@/lib/auth/useAuth";
+import { AddToListButton } from "@/components/lists/AddToListButton";
 import { formatShowDate, formatShowTime } from "@/lib/format";
 
 const REVIEW_PAGE_SIZE = 12;
@@ -126,6 +127,10 @@ export default function RunDetailPage() {
           reviewCount={run.reviewCount}
         />
 
+        {isAuthenticated && (
+          <AddToListButton entityType="runs" entityId={id} entityName={show.title} />
+        )}
+
         {/* Single performance — ticket card */}
         <div className="card-ticket">
           <div className={`ticket-stub ${isSoldOut ? "!bg-curtn-muted" : ""}`}>
@@ -225,6 +230,10 @@ export default function RunDetailPage() {
         averageRating={run.averageRating}
         reviewCount={run.reviewCount}
       />
+
+      {isAuthenticated && (
+        <AddToListButton entityType="runs" entityId={id} entityName={show.title} />
+      )}
 
       {upcomingShowings.length > 0 && (
         <ShowingsList showings={upcomingShowings} label="Upcoming Shows" />

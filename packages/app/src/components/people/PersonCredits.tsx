@@ -39,7 +39,7 @@ function CreditItem({ credit, index }: { credit: Credit; index: number }) {
       <span className="li-num">{String(index).padStart(2, "0")}</span>
       <span className="li-content">
         <span className="li-title">{run.show.title}</span>
-        <span className="li-sub">
+        <span className="li-sub ml-2">
           {credit.role}
           {run.productionCompany?.name ? ` · ${run.productionCompany.name}` : ""}
           {venue ? ` · ${venue.name}` : ""}
@@ -58,7 +58,7 @@ function ShowCreditItem({ credit, index }: { credit: ShowCredit; index: number }
       <span className="li-num">{String(index).padStart(2, "0")}</span>
       <span className="li-content">
         <span className="li-title">{credit.show.title}</span>
-        <span className="li-sub">{credit.role}</span>
+        <span className="li-sub ml-2">{credit.role}</span>
       </span>
     </div>
   );

@@ -5,6 +5,7 @@ import { useQuery } from "urql";
 import { VENUE_BY_SLUG_QUERY } from "@/lib/graphql/venues";
 import { VenueHero } from "@/components/venues/VenueHero";
 import { VenuePerformances } from "@/components/venues/VenuePerformances";
+import { AddToListButton } from "@/components/lists/AddToListButton";
 
 export default function VenueDetailPage() {
   const params = useParams();
@@ -55,6 +56,8 @@ export default function VenueDetailPage() {
         permanentlyClosed={venue.permanentlyClosed}
         closedDate={venue.closedDate}
       />
+
+      <AddToListButton itemId={venue.id} listType="venues" />
 
       <VenuePerformances venueName={venue.name} />
     </div>

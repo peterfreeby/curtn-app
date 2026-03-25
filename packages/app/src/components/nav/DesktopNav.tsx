@@ -22,11 +22,8 @@ export function DesktopNav() {
 
       {/* Center: Nav links */}
       <div className="flex items-center gap-8">
-        <NavLink href="/performances" className="text-[12px] font-display font-semibold uppercase tracking-[0.5px]">
+        <NavLink href="/browse" className="text-[12px] font-display font-semibold uppercase tracking-[0.5px]">
           Browse
-        </NavLink>
-        <NavLink href="/venues" className="text-[12px] font-display font-semibold uppercase tracking-[0.5px]">
-          Venues
         </NavLink>
         {isAuthenticated && (
           <>

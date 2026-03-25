@@ -9,7 +9,7 @@ export function SearchTrigger() {
   return (
     <button
       type="button"
-      onClick={() => router.push("/performances?focus=search")}
+      onClick={() => router.push("/search")}
       className="text-curtn-muted hover:text-curtn-cream transition-colors duration-200 p-2 -m-2"
       aria-label="Search"
     >

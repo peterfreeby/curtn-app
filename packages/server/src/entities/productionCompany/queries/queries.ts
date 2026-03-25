@@ -56,9 +56,10 @@ export const productionCompanyList: GraphQLFieldConfig<any, any, any> = {
     }
 
     try {
+      const limit = connArgs.first ?? 100
       const companies = await ProductionCompanyModel.find(filter)
         .sort(search ? { score: { $meta: 'textScore' } } : { name: 1 })
-        .limit(100)
+        .limit(limit)
       return connectionFromArray(companies, connArgs)
     } catch (error) {
       console.error('Error fetching production companies:', error)
