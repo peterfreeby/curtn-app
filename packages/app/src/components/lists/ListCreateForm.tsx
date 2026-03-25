@@ -57,7 +57,7 @@ export function ListCreateForm() {
     if (slug && user) {
       router.push(`/u/${user.username}/lists/${slug}`);
     } else {
-      router.push("/lists");
+      router.push("/my-lists");
     }
   }
 

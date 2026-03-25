@@ -48,7 +48,7 @@ export function ProfileDropdown() {
             Profile
           </Link>
           <Link
-            href="/lists"
+            href="/my-lists"
             onClick={() => setOpen(false)}
             className="flex items-center gap-3 px-4 py-2.5 text-sm text-curtn-cream hover:bg-curtn-deep/50 transition-colors"
           >

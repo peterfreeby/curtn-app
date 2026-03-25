@@ -25,6 +25,9 @@ export function DesktopNav() {
         <NavLink href="/browse" className="text-[12px] font-display font-semibold uppercase tracking-[0.5px]">
           Browse
         </NavLink>
+        <NavLink href="/lists" className="text-[12px] font-display font-semibold uppercase tracking-[0.5px]">
+          Lists
+        </NavLink>
         {isAuthenticated && (
           <>
             <NavLink href="/feed" className="text-[12px] font-display font-semibold uppercase tracking-[0.5px]">

@@ -46,7 +46,7 @@ export const ListableItem = new GraphQLUnionType({
   types: () => LIST_TYPES.map(t => typeMap[t]()),
   resolveType: (obj: any) => {
     if (obj._listType) return typeNameMap[obj._listType]
-    return null
+    return undefined
   }
 })
 

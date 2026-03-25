@@ -73,7 +73,7 @@ export default function ListDetailPage() {
 
     const result = await executeDelete({ input: { listId: list.id } });
     if (result.data?.listDelete?.success) {
-      router.push("/lists");
+      router.push("/my-lists");
     }
   }
 

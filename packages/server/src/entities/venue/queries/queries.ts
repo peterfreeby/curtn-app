@@ -43,7 +43,9 @@ export const venueBySlug: GraphQLFieldConfig<any, any, { slug: string }> = {
 }
 
 // List venues with filtering options
-type VenueListArgs = GraphQLFieldConfigArgumentMap & {
+import { ConnectionArguments } from 'graphql-relay'
+
+type VenueListArgs = ConnectionArguments & {
   city?: string
   venueType?: string
   search?: string
@@ -99,7 +101,7 @@ export const venueList: GraphQLFieldConfig<any, any, VenueListArgs> = {
 }
 
 // Search venues by location (near coordinates)
-type VenuesNearArgs = GraphQLFieldConfigArgumentMap & {
+type VenuesNearArgs = ConnectionArguments & {
   latitude: number
   longitude: number
   maxDistance?: number

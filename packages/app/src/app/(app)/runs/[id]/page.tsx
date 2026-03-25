@@ -128,7 +128,7 @@ export default function RunDetailPage() {
         />
 
         {isAuthenticated && (
-          <AddToListButton entityType="runs" entityId={id} entityName={show.title} />
+          <AddToListButton listType="runs" itemId={id} />
         )}
 
         {/* Single performance — ticket card */}
@@ -231,9 +231,8 @@ export default function RunDetailPage() {
         reviewCount={run.reviewCount}
       />
 
-      {isAuthenticated && (
-        <AddToListButton entityType="runs" entityId={id} entityName={show.title} />
-      )}
+      {isAuthenticated &&          <AddToListButton listType="runs" itemId={id} />
+      }
 
       {upcomingShowings.length > 0 && (
         <ShowingsList showings={upcomingShowings} label="Upcoming Shows" />
