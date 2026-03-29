@@ -879,20 +879,18 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid rgba(245,241,227,0.08);
 }
 
-/* --- Ticker tape text scroll --- */
+/* --- Ticker tape continuous scroll --- */
 @keyframes ticker {
-  0%, 15% { transform: translateX(0); }
-  45%, 55% { transform: translateX(var(--ticker-offset, -30%)); }
-  85%, 100% { transform: translateX(0); }
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 .ticker-scroll {
   display: inline-block;
   white-space: nowrap;
-  animation: ticker 6s ease-in-out infinite;
-  animation-delay: 1s;
+  animation: ticker var(--ticker-duration, 12s) linear infinite;
 }
 .ticker-container {
   overflow: hidden;
-  mask-image: linear-gradient(to right, black 85%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, black 5%, black 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 5%, black 90%, transparent 100%);
 }

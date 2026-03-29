@@ -334,14 +334,21 @@ export function MobileFloatingBar() {
                 />
               )}
               <div className="flex flex-col justify-center max-w-[120px]">
-                <div className="ticker-container">
-                  <span
-                    className="text-xs font-bold text-curtn-cream leading-none ticker-scroll"
-                    style={{ "--ticker-offset": nowViewing.title.length > 16 ? `-${(nowViewing.title.length - 14) * 6}px` : "0px" } as React.CSSProperties}
-                  >
-                    {nowViewing.title}
-                  </span>
-                </div>
+                {nowViewing.title.length > 16 ? (
+                  <div className="ticker-container">
+                    <span
+                      className="text-xs font-bold text-curtn-cream leading-none ticker-scroll"
+                      style={{ "--ticker-duration": `${Math.max(8, nowViewing.title.length * 0.4)}s` } as React.CSSProperties}
+                    >
+                      {nowViewing.title}
+                      <span className="text-curtn-muted/30 mx-3">·</span>
+                      {nowViewing.title}
+                      <span className="text-curtn-muted/30 mx-3">·</span>
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-xs font-bold text-curtn-cream leading-none truncate">{nowViewing.title}</span>
+                )}
                 {nowViewing.subtitle && (
                   <span className="flex items-baseline gap-1 mt-0.5">
                     {nowViewing.parentHref && (
