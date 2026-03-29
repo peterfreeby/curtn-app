@@ -15,8 +15,14 @@ import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { WatchlistButton } from "@/components/watchlist/WatchlistButton";
 import { AddToListButton } from "@/components/lists/AddToListButton";
 import { DetailBreadcrumb } from "@/components/nav/DetailBreadcrumb";
+import { Button } from "@/components/Button";
+import { InlineEditor } from "@/components/admin/InlineEditor";
 import { Icon } from "@/components/icons/Icons";
 import { useAuth } from "@/lib/auth/useAuth";
+
+function decodeId(globalId: string): string {
+  return atob(globalId).split(":")[1];
+}
 
 const REVIEW_PAGE_SIZE = 12;
 
@@ -24,6 +30,8 @@ export default function ShowDetailPage() {
   const params = useParams();
   const id = decodeURIComponent(params.id as string);
   const { user } = useAuth();
+  const isAdmin = !!user?.isAdmin;
+  const [editing, setEditing] = useState<"show" | "run" | null>(null);
 
   const [{ data, fetching }] = useQuery({
     query: SINGLE_SHOW_QUERY,
@@ -160,14 +168,25 @@ export default function ShowDetailPage() {
 
         <CreditsList cast={singleRun.cast ?? []} crew={singleRun.crew ?? []} />
 
-        {user?.isAdmin && (
-          <Link
-            href="/admin/editor"
-            className="flex items-center justify-center gap-2 border border-curtn-dark px-4 py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream"
-          >
-            <Icon name="pencil" size={14} />
-            Edit Performance
-          </Link>
+        {isAdmin && !editing && (
+          <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
+            Edit
+          </Button>
+        )}
+        {editing === "show" && (
+          <InlineEditor
+            entityType="show"
+            entityId={decodeId(show.id)}
+            initialValues={{
+              title: show.title,
+              description: show.description,
+              performanceTypes: show.performanceTypes,
+              duration: show.duration,
+              url: show.url,
+            }}
+            onSaved={() => { setEditing(null); window.location.reload(); }}
+            onCancel={() => setEditing(null)}
+          />
         )}
 
         <ReviewsSection
@@ -243,14 +262,25 @@ export default function ShowDetailPage() {
 
         <CreditsList cast={singleRun.cast ?? []} crew={singleRun.crew ?? []} />
 
-        {user?.isAdmin && (
-          <Link
-            href="/admin/editor"
-            className="flex items-center justify-center gap-2 border border-curtn-dark px-4 py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream"
-          >
-            <Icon name="pencil" size={14} />
-            Edit Performance
-          </Link>
+        {isAdmin && !editing && (
+          <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
+            Edit
+          </Button>
+        )}
+        {editing === "show" && (
+          <InlineEditor
+            entityType="show"
+            entityId={decodeId(show.id)}
+            initialValues={{
+              title: show.title,
+              description: show.description,
+              performanceTypes: show.performanceTypes,
+              duration: show.duration,
+              url: show.url,
+            }}
+            onSaved={() => { setEditing(null); window.location.reload(); }}
+            onCancel={() => setEditing(null)}
+          />
         )}
 
         <ReviewsSection
@@ -292,14 +322,25 @@ export default function ShowDetailPage() {
           initialWatchlistCount={show.watchlistCount ?? 0}
         />
 
-        {user?.isAdmin && (
-          <Link
-            href="/admin/editor"
-            className="flex items-center justify-center gap-2 rounded-lg border border-curtn-dark px-4 py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream"
-          >
-            <Icon name="pencil" size={14} />
-            Edit Performance
-          </Link>
+        {isAdmin && !editing && (
+          <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
+            Edit
+          </Button>
+        )}
+        {editing === "show" && (
+          <InlineEditor
+            entityType="show"
+            entityId={decodeId(show.id)}
+            initialValues={{
+              title: show.title,
+              description: show.description,
+              performanceTypes: show.performanceTypes,
+              duration: show.duration,
+              url: show.url,
+            }}
+            onSaved={() => { setEditing(null); window.location.reload(); }}
+            onCancel={() => setEditing(null)}
+          />
         )}
 
         <div className="relative">

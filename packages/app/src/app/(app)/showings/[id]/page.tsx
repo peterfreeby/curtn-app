@@ -10,8 +10,13 @@ import { CreditsList } from "@/components/credits/CreditsList";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { Icon } from "@/components/icons/Icons";
 import { Button } from "@/components/Button";
+import { InlineEditor } from "@/components/admin/InlineEditor";
 import { useAuth } from "@/lib/auth/useAuth";
 import { formatShowDate, formatShowTime } from "@/lib/format";
+
+function decodeId(globalId: string): string {
+  return atob(globalId).split(":")[1];
+}
 
 const REVIEW_PAGE_SIZE = 12;
 
@@ -78,7 +83,9 @@ function ReviewFilters({
 export default function PerformanceDetailPage() {
   const params = useParams();
   const id = decodeURIComponent(params.id as string);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const isAdmin = !!user?.isAdmin;
+  const [editing, setEditing] = useState(false);
 
   const [{ data, fetching }] = useQuery({
     query: SINGLE_PERFORMANCE_QUERY,
@@ -268,6 +275,27 @@ export default function PerformanceDetailPage() {
         <Button variant="primary" size="lg" fullWidth href={`/log?run=${run.id}`}>
           Log This Show
         </Button>
+
+        {/* Inline editor */}
+        {isAdmin && !editing && (
+          <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing(true)}>
+            Edit Performance
+          </Button>
+        )}
+        {editing && (
+          <InlineEditor
+            entityType="performance"
+            entityId={decodeId(id)}
+            initialValues={{
+              date: perf.date || "",
+              time: perf.time || "",
+              ticketUrl: perf.ticketUrl || "",
+              soldOut: String(perf.soldOut === true || perf.soldOut === "true"),
+            }}
+            onSaved={() => { setEditing(false); window.location.reload(); }}
+            onCancel={() => setEditing(false)}
+          />
+        )}
 
         {/* Reviews */}
         <div className="relative">

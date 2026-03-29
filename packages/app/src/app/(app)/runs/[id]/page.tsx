@@ -15,8 +15,14 @@ import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { Icon } from "@/components/icons/Icons";
 import { useAuth } from "@/lib/auth/useAuth";
 import { AddToListButton } from "@/components/lists/AddToListButton";
+import { Button } from "@/components/Button";
+import { InlineEditor } from "@/components/admin/InlineEditor";
 import { DetailBreadcrumb } from "@/components/nav/DetailBreadcrumb";
 import { formatShowDate, formatShowTime } from "@/lib/format";
+
+function decodeId(globalId: string): string {
+  return atob(globalId).split(":")[1];
+}
 
 function ReviewFilters({
   followedOnly,
@@ -94,6 +100,7 @@ export default function RunDetailPage() {
   const id = decodeURIComponent(params.id as string);
   const { isAuthenticated, user } = useAuth();
   const isAdmin = !!user?.isAdmin;
+  const [editing, setEditing] = useState(false);
 
   const [{ data, fetching }, reexecuteRun] = useQuery({
     query: SINGLE_RUN_QUERY,
@@ -267,7 +274,29 @@ export default function RunDetailPage() {
 
         <CreditsList cast={run.cast ?? []} crew={run.crew ?? []} />
 
-        {isAdmin && (
+        {isAdmin && !editing && (
+          <div className="flex gap-2">
+            <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing(true)}>
+              Edit Run
+            </Button>
+          </div>
+        )}
+        {editing && (
+          <InlineEditor
+            entityType="run"
+            entityId={decodeId(id)}
+            initialValues={{
+              title: run.title || "",
+              description: run.description || "",
+              intermissions: run.intermissions ?? 0,
+              startDate: run.startDate || "",
+              endDate: run.endDate || "",
+            }}
+            onSaved={() => { setEditing(false); window.location.reload(); }}
+            onCancel={() => setEditing(false)}
+          />
+        )}
+        {isAdmin && !editing && (
           <div className="card-ledger space-y-6">
             <AddShowCreditForm showId={show.id} onAdded={handleCreditAdded} />
             <AddCreditForm runId={id} onAdded={handleCreditAdded} />
