@@ -136,6 +136,7 @@ export default function RunDetailPage() {
         subtitle: sub,
         posterUrl: run.posterUrl || run.imageUrl || run.show.posterUrl || run.show.imageUrl,
         href: `/runs/${encodeURIComponent(id)}`,
+        parentHref: `/performances/${encodeURIComponent(run.show.id)}`,
       });
     }
     return () => setNowViewing(null);

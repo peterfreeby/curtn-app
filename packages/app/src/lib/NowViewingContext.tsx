@@ -7,6 +7,7 @@ interface NowViewing {
   subtitle?: string | null;
   posterUrl?: string | null;
   href: string;
+  parentHref?: string | null;
 }
 
 interface NowViewingContextValue {

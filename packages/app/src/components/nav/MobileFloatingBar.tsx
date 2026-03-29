@@ -225,26 +225,56 @@ export function MobileFloatingBar() {
 
           {/* Action button — morphs between + (log), × (close), and show info pill */}
           {barState === "detail" && nowViewing ? (
-            <button
-              type="button"
-              onClick={handleLog}
-              className="flex items-center gap-2 h-9 pl-1 pr-3 rounded-full bg-curtn-coral text-curtn-deep hover:bg-curtn-red active:scale-[0.98] shadow-lg shadow-black/20 shrink-0"
+            <div
+              className="nav-bar flex items-center gap-1.5 h-9 pl-1 pr-1 shrink-0"
               style={{ transition: `all ${DURATION} ${EASE}` }}
-              aria-label={`Log ${nowViewing.title}`}
             >
-              {nowViewing.posterUrl ? (
+              {/* Coral + icon */}
+              <button
+                type="button"
+                onClick={handleLog}
+                className="flex items-center justify-center w-7 h-7 rounded-full bg-curtn-coral text-curtn-deep hover:bg-curtn-red active:scale-95 shrink-0"
+                aria-label={`Log ${nowViewing.title}`}
+              >
+                <Icon name="plus" weight="bold" size={14} />
+              </button>
+              {/* Poster + info */}
+              {nowViewing.posterUrl && (
                 <img
                   src={nowViewing.posterUrl}
                   alt=""
                   className="w-7 h-7 rounded-full object-cover shrink-0"
                 />
-              ) : (
-                <div className="w-7 h-7 rounded-full bg-curtn-deep/20 flex items-center justify-center shrink-0">
-                  <Icon name="plus" weight="bold" size={14} />
-                </div>
               )}
-              <span className="truncate max-w-[120px]"><span className="text-xs font-bold block leading-tight">{nowViewing.title}</span>{nowViewing.subtitle && (<span className="text-[9px] font-normal opacity-70 block leading-tight">{nowViewing.subtitle}</span>)}</span>
-            </button>
+              <div className="truncate max-w-[130px] pr-1">
+                <span className="text-xs font-bold text-curtn-cream block leading-tight truncate">{nowViewing.title}</span>
+                {nowViewing.subtitle && (
+                  <span className="flex items-center gap-0.5">
+                    {nowViewing.parentHref ? (
+                      <a
+                        href={nowViewing.parentHref}
+                        onClick={(e) => { e.stopPropagation(); }}
+                        className="text-[9px] text-curtn-muted hover:text-curtn-coral block leading-tight truncate transition-colors"
+                      >
+                        {nowViewing.subtitle}
+                      </a>
+                    ) : (
+                      <span className="text-[9px] text-curtn-muted block leading-tight truncate">{nowViewing.subtitle}</span>
+                    )}
+                    {nowViewing.parentHref && (
+                      <a
+                        href={nowViewing.parentHref}
+                        onClick={(e) => { e.stopPropagation(); }}
+                        className="text-curtn-muted hover:text-curtn-coral transition-colors shrink-0"
+                        aria-label="Go to parent"
+                      >
+                        <Icon name="caret-down" size={10} className="-rotate-90" />
+                      </a>
+                    )}
+                  </span>
+                )}
+              </div>
+            </div>
           ) : (
             <button
               type="button"
