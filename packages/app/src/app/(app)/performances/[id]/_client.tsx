@@ -57,6 +57,7 @@ export default function ShowDetailPage() {
         posterUrl: show.posterUrl || show.imageUrl,
         showId: show.id,
         runId: singleRun?.id || null,
+        isOnWatchlist: show.isOnMyWatchlist ?? false,
         href: `/performances/${encodeURIComponent(id)}`,
       });
     }

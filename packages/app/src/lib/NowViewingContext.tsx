@@ -10,6 +10,7 @@ interface NowViewing {
   parentHref?: string | null;
   showId?: string | null;
   runId?: string | null;
+  isOnWatchlist?: boolean;
 }
 
 interface NowViewingContextValue {

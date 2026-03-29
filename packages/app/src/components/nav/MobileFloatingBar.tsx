@@ -7,7 +7,7 @@ import { Icon, type IconName } from "@/components/icons/Icons";
 import { useAuth } from "@/lib/auth/useAuth";
 import { useNowViewing } from "@/lib/NowViewingContext";
 import { useMutation } from "urql";
-import { WATCHLIST_ADD_MUTATION } from "@/lib/graphql/watchlist";
+import { WATCHLIST_ADD_MUTATION, WATCHLIST_REMOVE_MUTATION } from "@/lib/graphql/watchlist";
 
 type BarState = "default" | "expanded" | "search" | "detail";
 type TabId = "browse" | "upcoming" | "feed";
@@ -71,6 +71,8 @@ export function MobileFloatingBar() {
   const [toast, setToast] = useState<string | null>(null);
   const [showListPicker, setShowListPicker] = useState(false);
   const [, executeWatchlistAdd] = useMutation(WATCHLIST_ADD_MUTATION);
+  const [, executeWatchlistRemove] = useMutation(WATCHLIST_REMOVE_MUTATION);
+  const [isOnWatchlist, setIsOnWatchlist] = useState(false);
 
   useEffect(() => {
     const tab = getTabFromPathname(pathname);
@@ -143,16 +145,29 @@ export function MobileFloatingBar() {
     navigateTo("/log");
   }, [navigateTo]);
 
+  // Sync watchlist state from context
+  useEffect(() => {
+    setIsOnWatchlist(nowViewing?.isOnWatchlist ?? false);
+  }, [nowViewing?.isOnWatchlist]);
+
   const handleBack = useCallback(() => { router.back(); }, [router]);
 
-  const handleAddToWatchlist = useCallback(async () => {
+  const handleWatchlistToggle = useCallback(async () => {
     if (!nowViewing?.showId) return;
-    const result = await executeWatchlistAdd({ input: { showId: nowViewing.showId } });
-    if (!result.error && !result.data?.watchlistAdd?.error) {
-      setToast("Added to watchlist");
+    const wasOn = isOnWatchlist;
+    setIsOnWatchlist(!wasOn);
+    
+    const execute = wasOn ? executeWatchlistRemove : executeWatchlistAdd;
+    const result = await execute({ input: { showId: nowViewing.showId } });
+    const payload = wasOn ? result.data?.watchlistRemove : result.data?.watchlistAdd;
+    
+    if (result.error || payload?.error) {
+      setIsOnWatchlist(wasOn);
+    } else {
+      setToast(wasOn ? "Removed from watchlist" : "Added to watchlist");
       setTimeout(() => setToast(null), 3000);
     }
-  }, [nowViewing?.showId, executeWatchlistAdd]);
+  }, [nowViewing?.showId, isOnWatchlist, executeWatchlistAdd, executeWatchlistRemove]);
 
   const lastTabConfig = TAB_CONFIG.find((t) => t.id === lastTab)!;
   const currentTab = getTabFromPathname(pathname);
@@ -337,11 +352,11 @@ export function MobileFloatingBar() {
               {/* Add to list + Log on the right */}
               <button
                 type="button"
-                onClick={handleAddToWatchlist}
-                className="flex items-center justify-center w-8 h-8 text-curtn-muted hover:text-curtn-cream transition-colors shrink-0"
-                aria-label="Add to watchlist"
+                onClick={handleWatchlistToggle}
+                className={`flex items-center justify-center w-8 h-8 transition-colors shrink-0 ${isOnWatchlist ? "text-curtn-coral" : "text-curtn-muted hover:text-curtn-cream"}`}
+                aria-label={isOnWatchlist ? "Remove from watchlist" : "Add to watchlist"}
               >
-                <Icon name="list-plus" size={20} />
+                <Icon name="list-plus" weight={isOnWatchlist ? "fill" : "regular"} size={20} />
               </button>
               <button
                 type="button"

@@ -115,6 +115,7 @@ export default function PerformanceDetailPage() {
         posterUrl: perf?.effectivePosterUrl || show.posterUrl || show.imageUrl,
         showId: show.id,
         runId: run?.id || null,
+        isOnWatchlist: false,
         href: `/showings/${encodeURIComponent(id)}`,
         parentHref: run?.id ? `/runs/${encodeURIComponent(run.id)}` : null,
       });

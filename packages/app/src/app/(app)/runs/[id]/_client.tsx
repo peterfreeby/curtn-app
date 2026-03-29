@@ -138,6 +138,7 @@ export default function RunDetailPage() {
         posterUrl: run.posterUrl || run.imageUrl || run.show.posterUrl || run.show.imageUrl,
         showId: run.show.id,
         runId: run.id,
+        isOnWatchlist: false,
         href: `/runs/${encodeURIComponent(id)}`,
         parentHref: `/performances/${encodeURIComponent(run.show.id)}`,
       });
