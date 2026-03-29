@@ -83,7 +83,18 @@ export function MobileFloatingBar() {
   const handleSearch = useCallback(() => {
     setBarState("search");
     setSearchQuery("");
-  }, []);
+    navigateTo("/search");
+  }, [navigateTo]);
+
+  const handleSearchInput = useCallback((value: string) => {
+    setSearchQuery(value);
+    // Update URL param as user types so search page picks it up
+    if (value.trim()) {
+      router.replace(`/search?q=${encodeURIComponent(value.trim())}`, { scroll: false });
+    } else {
+      router.replace("/search", { scroll: false });
+    }
+  }, [router]);
 
   const handleSearchSubmit = useCallback(() => {
     if (searchQuery.trim()) {
@@ -186,7 +197,7 @@ export function MobileFloatingBar() {
                     ref={searchInputRef}
                     type="text"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => handleSearchInput(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearchSubmit()}
                     placeholder="Shows, venues, people..."
                     className="flex-1 bg-transparent text-sm text-curtn-cream placeholder:text-curtn-muted/50 outline-none py-2.5 min-w-0"

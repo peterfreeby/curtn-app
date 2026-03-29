@@ -46,22 +46,33 @@ function SearchContent() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const initialQ = searchParams.get("q") ?? "";
-  const [input, setInput] = useState(initialQ);
+  const urlQ = searchParams.get("q") ?? "";
+  const [input, setInput] = useState(urlQ);
   const query = useDebounce(input, 250);
   const hasQuery = query.length >= 2;
 
-  // Auto-focus the input on mount
+  // Sync input from URL param (when floating bar updates it)
+  useEffect(() => {
+    if (urlQ !== input) {
+      setInput(urlQ);
+    }
+  }, [urlQ]);
+
+  // Auto-focus the input on mount (desktop only)
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  // Sync query param
+  // Sync query param back to URL (desktop input changes)
   useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (query) params.set("q", query);
-    else params.delete("q");
-    router.replace(`/search?${params.toString()}`, { scroll: false });
+    // Only sync if the query differs from current URL to avoid loops
+    const currentQ = searchParams.get("q") ?? "";
+    if (query !== currentQ) {
+      const params = new URLSearchParams(searchParams.toString());
+      if (query) params.set("q", query);
+      else params.delete("q");
+      router.replace(`/search?${params.toString()}`, { scroll: false });
+    }
   }, [query]);
 
   const [showsResult] = useQuery({
@@ -217,7 +228,7 @@ function SearchContent() {
   return (
     <div className="px-6 py-8 max-w-2xl mx-auto">
       {/* Search input */}
-      <div className="relative">
+      <div className="relative hidden md:block">
         <Icon
           name="magnifying-glass"
           size={18}
