@@ -224,16 +224,27 @@ export const BROWSE_PERFORMANCES_QUERY = gql`
           }
           ticketUrl
           soldOut
+          effectiveDescription
           run {
             id
             show {
               id
               title
+              description
               posterUrl
               performanceTypes
+              averageRating
+              reviewCount
             }
             productionCompany {
               name
+            }
+            averageRating
+            reviewCount
+            cast {
+              id
+              person { id name headshotUrl }
+              role
             }
           }
         }
