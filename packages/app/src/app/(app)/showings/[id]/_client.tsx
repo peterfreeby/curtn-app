@@ -107,7 +107,8 @@ export default function PerformanceDetailPage() {
 
   useEffect(() => {
     if (show) {
-      const sub = run?.title || run?.productionCompany?.name || perf?.venue?.name || run?.venues?.[0]?.name || null;
+      const perfDate = perf?.date ? new Date(perf.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+      const sub = run?.title || run?.productionCompany?.name || perf?.venue?.name || run?.venues?.[0]?.name || perfDate || null;
       setNowViewing({
         title: show.title,
         subtitle: sub,

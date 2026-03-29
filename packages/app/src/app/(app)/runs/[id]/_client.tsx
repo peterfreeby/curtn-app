@@ -130,7 +130,8 @@ export default function RunDetailPage() {
 
   useEffect(() => {
     if (run?.show) {
-      const sub = run.title || run.productionCompany?.name || run.venues?.[0]?.name || null;
+      const runDate = run.startDate ? new Date(run.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+      const sub = run.title || run.productionCompany?.name || run.venues?.[0]?.name || runDate || null;
       setNowViewing({
         title: run.show.title,
         subtitle: sub,
