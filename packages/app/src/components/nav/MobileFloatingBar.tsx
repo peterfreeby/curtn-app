@@ -62,9 +62,7 @@ export function MobileFloatingBar() {
   const [barState, setBarState] = useState<BarState>("default");
   const [lastTab, setLastTab] = useState<TabId>("browse");
   const [searchQuery, setSearchQuery] = useState("");
-  const [shrunk, setShrunk] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const lastScrollY = useRef(0);
 
   useEffect(() => {
     const tab = getTabFromPathname(pathname);
@@ -86,28 +84,13 @@ export function MobileFloatingBar() {
     }
   }, [barState]);
 
-  useEffect(() => {
-    function handleScroll() {
-      const y = window.scrollY;
-      const delta = y - lastScrollY.current;
-      if (delta > 8 && y > 60) setShrunk(true);
-      else if (delta < -8) setShrunk(false);
-      lastScrollY.current = y;
-    }
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const unShrink = useCallback(() => { if (shrunk) setShrunk(false); }, [shrunk]);
-
   const navigateTo = useCallback((href: string) => { router.push(href); }, [router]);
 
   const handleTabTap = useCallback(() => {
-    unShrink();
     const tab = TAB_CONFIG.find((t) => t.id === lastTab);
     if (tab) navigateTo(tab.href);
     setBarState("expanded");
-  }, [lastTab, navigateTo, unShrink]);
+  }, [lastTab, navigateTo]);
 
   const handleExpandedTab = useCallback((tab: typeof TAB_CONFIG[number]) => {
     navigateTo(tab.href);
@@ -115,11 +98,10 @@ export function MobileFloatingBar() {
   }, [navigateTo]);
 
   const handleSearch = useCallback(() => {
-    unShrink();
     setBarState("search");
     setSearchQuery("");
     navigateTo("/search");
-  }, [navigateTo, unShrink]);
+  }, [navigateTo]);
 
   const handleSearchInput = useCallback((value: string) => {
     setSearchQuery(value);
@@ -145,9 +127,8 @@ export function MobileFloatingBar() {
   }, [router]);
 
   const handleLog = useCallback(() => {
-    unShrink();
     navigateTo("/log");
-  }, [navigateTo, unShrink]);
+  }, [navigateTo]);
 
   const handleBack = useCallback(() => { router.back(); }, [router]);
 
@@ -158,39 +139,8 @@ export function MobileFloatingBar() {
     <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 pb-[env(safe-area-inset-bottom)]">
       <div className="px-5 pb-0.5">
 
-        {/* Compact pill when shrunk */}
-        <div
-          className="flex justify-center"
-          style={{
-            transition: `all 300ms ${EASE}`,
-            opacity: shrunk ? 1 : 0,
-            transform: shrunk ? "scale(1)" : "scale(0.8)",
-            pointerEvents: shrunk ? "auto" : "none",
-            position: shrunk ? "relative" : "absolute",
-            height: shrunk ? "auto" : 0,
-            left: 0, right: 0,
-          }}
-          onClick={unShrink}
-        >
-          <div className="w-12 h-8 rounded-full bg-curtn-coral/80 backdrop-blur-md flex items-center justify-center cursor-pointer shadow-md shadow-black/20">
-            <div className="w-1.5 h-1.5 rounded-full bg-curtn-deep" />
-          </div>
-        </div>
-
-        {/* Full bar + plus button */}
-        <div
-          className="flex items-center justify-center gap-2"
-          style={{
-            transition: `all 300ms ${EASE}`,
-            opacity: shrunk ? 0 : 1,
-            transform: shrunk ? "translateY(8px) scale(0.95)" : "translateY(0) scale(1)",
-            pointerEvents: shrunk ? "none" : "auto",
-            position: shrunk ? "absolute" : "relative",
-            left: shrunk ? "1.25rem" : undefined,
-            right: shrunk ? "1.25rem" : undefined,
-            bottom: shrunk ? "0.125rem" : undefined,
-          }}
-        >
+        {/* Bar + plus button */}
+        <div className="flex items-center justify-center gap-2">
           {/* Nav bar */}
           <div
             className="nav-bar inline-flex"
