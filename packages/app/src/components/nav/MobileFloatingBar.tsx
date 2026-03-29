@@ -226,18 +226,9 @@ export function MobileFloatingBar() {
           {/* Action button — morphs between + (log), × (close), and show info pill */}
           {barState === "detail" && nowViewing ? (
             <div
-              className="nav-bar flex items-center gap-1.5 h-9 pl-1 pr-1 shrink-0"
+              className="nav-bar flex items-center gap-1.5 h-9 pl-1.5 pr-0.5 shrink-0"
               style={{ transition: `all ${DURATION} ${EASE}` }}
             >
-              {/* Coral + icon */}
-              <button
-                type="button"
-                onClick={handleLog}
-                className="flex items-center justify-center w-7 h-7 rounded-full bg-curtn-coral text-curtn-deep hover:bg-curtn-red active:scale-95 shrink-0"
-                aria-label={`Log ${nowViewing.title}`}
-              >
-                <Icon name="plus" weight="bold" size={14} />
-              </button>
               {/* Poster + info */}
               {nowViewing.posterUrl && (
                 <img
@@ -246,7 +237,7 @@ export function MobileFloatingBar() {
                   className="w-7 h-7 rounded-full object-cover shrink-0"
                 />
               )}
-              <div className="truncate max-w-[130px] pr-1">
+              <div className="truncate max-w-[120px]">
                 <span className="text-xs font-bold text-curtn-cream block leading-tight truncate">{nowViewing.title}</span>
                 {nowViewing.subtitle && (
                   <span className="flex items-center gap-0.5">
@@ -274,6 +265,23 @@ export function MobileFloatingBar() {
                   </span>
                 )}
               </div>
+              {/* Heart + Plus on the right */}
+              <button
+                type="button"
+                onClick={() => {}}
+                className="flex items-center justify-center w-7 h-7 text-curtn-muted hover:text-curtn-cream transition-colors shrink-0"
+                aria-label="Watchlist"
+              >
+                <Icon name="heart" size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={handleLog}
+                className="flex items-center justify-center w-7 h-7 text-curtn-coral hover:text-curtn-red transition-colors shrink-0"
+                aria-label={`Log ${nowViewing.title}`}
+              >
+                <Icon name="plus" weight="bold" size={18} />
+              </button>
             </div>
           ) : (
             <button
