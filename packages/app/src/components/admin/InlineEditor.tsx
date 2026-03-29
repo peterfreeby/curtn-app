@@ -14,15 +14,18 @@ import { PERFORMANCE_CREATE_MUTATION } from "@/lib/graphql/performances";
 import { AddShowCreditForm } from "@/components/credits/AddShowCreditForm";
 import { RunCreditEditor } from "@/components/admin/RunCreditEditor";
 import { PerformanceCreditEditor } from "@/components/admin/PerformanceCreditEditor";
+import { ImageUpload } from "@/components/admin/ImageUpload";
 
 // --- Field definitions ---
 
 interface FieldDef {
   key: string;
   label: string;
-  type?: "text" | "textarea" | "number" | "date" | "url" | "select";
+  type?: "text" | "textarea" | "number" | "date" | "url" | "select" | "image";
   options?: string[];
   placeholder?: string;
+  /** For image fields: the entity type prefix for R2 storage path */
+  imageEntityType?: string;
 }
 
 const SHOW_FIELDS: FieldDef[] = [
@@ -31,6 +34,8 @@ const SHOW_FIELDS: FieldDef[] = [
   { key: "performanceTypes", label: "Performance Types", placeholder: "theater, musical, comedy" },
   { key: "duration", label: "Duration (minutes)", type: "number" },
   { key: "url", label: "Website", type: "url" },
+  { key: "posterUrl", label: "Poster", type: "image", imageEntityType: "show-poster" },
+  { key: "imageUrl", label: "Splash Image", type: "image", imageEntityType: "show" },
 ];
 
 const RUN_FIELDS: FieldDef[] = [
@@ -39,6 +44,8 @@ const RUN_FIELDS: FieldDef[] = [
   { key: "intermissions", label: "Intermissions", type: "number" },
   { key: "startDate", label: "Start Date", type: "date" },
   { key: "endDate", label: "End Date", type: "date" },
+  { key: "posterUrl", label: "Poster", type: "image", imageEntityType: "run-poster" },
+  { key: "imageUrl", label: "Splash Image", type: "image", imageEntityType: "run" },
 ];
 
 const PERFORMANCE_FIELDS: FieldDef[] = [
@@ -46,6 +53,7 @@ const PERFORMANCE_FIELDS: FieldDef[] = [
   { key: "time", label: "Time", placeholder: "7:30 PM" },
   { key: "ticketUrl", label: "Ticket URL", type: "url" },
   { key: "soldOut", label: "Sold Out", type: "select", options: ["false", "true"] },
+  { key: "imageUrl", label: "Poster Override", type: "image", imageEntityType: "performance" },
 ];
 
 const FIELD_MAP: Record<string, FieldDef[]> = {
@@ -72,14 +80,29 @@ function EditorFields({
   fields,
   values,
   onChange,
+  entityId,
 }: {
   fields: FieldDef[];
   values: Record<string, string>;
   onChange: (key: string, value: string) => void;
+  entityId: string;
 }) {
   return (
     <div className="space-y-3">
       {fields.map((field) => {
+        if (field.type === "image") {
+          return (
+            <ImageUpload
+              key={field.key}
+              label={field.label}
+              entityType={field.imageEntityType || "image"}
+              entityId={entityId}
+              currentImageUrl={values[field.key] || null}
+              onUploaded={(url) => onChange(field.key, url)}
+            />
+          );
+        }
+
         if (field.type === "textarea") {
           return (
             <div key={field.key} className="flex flex-col gap-[var(--spacing-1)]">
@@ -321,7 +344,7 @@ export function InlineEditor({
       {/* Edit fields */}
       {section === "fields" && (
         <>
-          <EditorFields fields={fields} values={values} onChange={handleChange} />
+          <EditorFields fields={fields} values={values} onChange={handleChange} entityId={entityId} />
           {error && <p className="text-xs text-curtn-red">{error}</p>}
           <div className="flex gap-2">
             <Button variant="primary" size="sm" onClick={handleSave} disabled={fetching}>

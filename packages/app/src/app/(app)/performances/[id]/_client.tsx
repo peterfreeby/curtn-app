@@ -185,6 +185,8 @@ export default function ShowDetailPage() {
                 performanceTypes: show.performanceTypes,
                 duration: show.duration,
                 url: show.url,
+                posterUrl: show.posterUrl || "",
+                imageUrl: show.imageUrl || "",
               }}
               onSaved={() => { setEditing(null); window.location.reload(); }}
               onCancel={() => setEditing(null)}
@@ -203,6 +205,8 @@ export default function ShowDetailPage() {
                 intermissions: singleRun.intermissions ?? 0,
                 startDate: singleRun.startDate || "",
                 endDate: singleRun.endDate || "",
+                posterUrl: singleRun.posterUrl || "",
+                imageUrl: singleRun.imageUrl || "",
               }}
               onSaved={() => window.location.reload()}
               onCancel={() => setEditing(null)}
@@ -215,6 +219,7 @@ export default function ShowDetailPage() {
                 time: singlePerf.time || "",
                 ticketUrl: singlePerf.ticketUrl || "",
                 soldOut: String(isSoldOut),
+                imageUrl: "",
               }}
               effectiveCast={(singleRun.cast ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
               effectiveCrew={(singleRun.crew ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
@@ -314,6 +319,8 @@ export default function ShowDetailPage() {
                 performanceTypes: show.performanceTypes,
                 duration: show.duration,
                 url: show.url,
+                posterUrl: show.posterUrl || "",
+                imageUrl: show.imageUrl || "",
               }}
               onSaved={() => { setEditing(null); window.location.reload(); }}
               onCancel={() => setEditing(null)}
@@ -332,6 +339,8 @@ export default function ShowDetailPage() {
                 intermissions: singleRun.intermissions ?? 0,
                 startDate: singleRun.startDate || "",
                 endDate: singleRun.endDate || "",
+                posterUrl: singleRun.posterUrl || "",
+                imageUrl: singleRun.imageUrl || "",
               }}
               onSaved={() => window.location.reload()}
               onCancel={() => setEditing(null)}
@@ -394,6 +403,8 @@ export default function ShowDetailPage() {
               performanceTypes: show.performanceTypes,
               duration: show.duration,
               url: show.url,
+                posterUrl: show.posterUrl || "",
+                imageUrl: show.imageUrl || "",
             }}
             onSaved={() => { setEditing(null); window.location.reload(); }}
             onCancel={() => setEditing(null)}

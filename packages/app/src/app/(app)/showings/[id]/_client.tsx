@@ -325,6 +325,7 @@ export default function PerformanceDetailPage() {
               time: perf.time || "",
               ticketUrl: perf.ticketUrl || "",
               soldOut: String(perf.soldOut === true || perf.soldOut === "true"),
+              imageUrl: perf.metadataOverrides?.imageUrl || "",
             }}
             effectiveCast={perf.effectiveCast ?? []}
             effectiveCrew={perf.effectiveCrew ?? []}
