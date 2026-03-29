@@ -88,22 +88,23 @@ function buildSinglePopup(perf: Performance): string {
       </div>`
     : "";
 
-  return `<div style="font-family:sans-serif;max-width:280px;">
+  return `<a href="/showings/${perf.id}" style="font-family:sans-serif;max-width:280px;display:block;text-decoration:none;color:inherit;cursor:pointer;">
     <div style="display:flex;gap:10px;">
       ${show?.posterUrl ? `<img src="${show.posterUrl}" alt="" style="width:60px;height:90px;object-fit:cover;border-radius:2px;flex-shrink:0;" />` : ""}
       <div style="flex:1;min-width:0;">
-        <div style="font-weight:700;font-size:14px;line-height:1.2;margin-bottom:3px;">${esc(show?.title || "Untitled")}</div>
+        <div style="font-weight:700;font-size:14px;line-height:1.2;margin-bottom:3px;color:#f3ebd5;">${esc(show?.title || "Untitled")}</div>
         ${company ? `<div style="font-size:11px;color:#8b8679;">${esc(company.name)}</div>` : ""}
         ${rating ? `<div style="margin-top:4px;">${stars(rating, reviewCount)}</div>` : ""}
       </div>
     </div>
     ${desc ? `<div style="font-size:11px;color:#B5BBBF;margin-top:8px;line-height:1.5;">${esc(desc)}${desc.length >= 120 ? "…" : ""}</div>` : ""}
     ${facepile}
-    <div style="display:flex;gap:6px;margin-top:10px;">
-      <a href="/showings/${perf.id}" style="flex:1;display:block;padding:7px 0;text-align:center;background:#f84331;color:#111;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;text-decoration:none;">Log This Show</a>
-      ${!isSoldOut && perf.ticketUrl ? `<a href="${perf.ticketUrl}" target="_blank" rel="noopener" style="padding:7px 12px;border:1px solid rgba(248,67,49,0.3);color:#f84331;font-size:11px;text-decoration:none;">Tickets</a>` : ""}
+    <div style="display:flex;gap:8px;margin-top:10px;align-items:center;">
+      <span onclick="event.preventDefault();event.stopPropagation();window.location.href='/log?run=${perf.run?.id}'" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:#f84331;color:#111;border-radius:50%;cursor:pointer;font-size:14px;font-weight:bold;" title="Log">+</span>
+      <span onclick="event.preventDefault();event.stopPropagation();" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #393E41;color:#8b8679;border-radius:50%;cursor:pointer;font-size:12px;" title="Watchlist">♡</span>
+      ${!isSoldOut && perf.ticketUrl ? `<a href="${perf.ticketUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation();" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(248,67,49,0.3);color:#f84331;border-radius:50%;cursor:pointer;font-size:12px;text-decoration:none;" title="Tickets">🎟</a>` : ""}
     </div>
-  </div>`;
+  </a>`;
 }
 
 function buildMultiPopup(venue: NonNullable<Performance["venue"]>, performances: Performance[]): string {
