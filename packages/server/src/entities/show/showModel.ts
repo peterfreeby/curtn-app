@@ -29,7 +29,7 @@ const showSchema = new Schema<IShow>({
   },
   performanceTypes: [{
     type: String,
-    enum: ['theater', 'musical', 'dance', 'comedy', 'improv', 'spoken-word', 'cabaret', 'experimental', 'immersive', 'drag', 'burlesque', 'happening', 'other']
+    enum: ['theater', 'play', 'musical', 'dance', 'comedy', 'improv', 'spoken-word', 'cabaret', 'experimental', 'immersive', 'drag', 'burlesque', 'happening', 'other']
   }],
   duration: {
     type: Number,

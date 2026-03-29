@@ -22,6 +22,34 @@ import { PersonModel } from '../../person/personModel'
 import { CreditModel } from '../../credit/creditModel'
 import { ShowCreditModel } from '../../showCredit/showCreditModel'
 
+const VALID_PERFORMANCE_TYPES = new Set([
+  'theater', 'play', 'musical', 'dance', 'comedy', 'improv',
+  'spoken-word', 'cabaret', 'experimental', 'immersive',
+  'drag', 'burlesque', 'happening', 'other'
+])
+
+const PERFORMANCE_TYPE_ALIASES: Record<string, string> = {
+  'theatre': 'theater',
+  'drama': 'play',
+  'stand-up': 'comedy',
+  'standup': 'comedy',
+  'stand up': 'comedy',
+  'spoken word': 'spoken-word',
+  'spokenword': 'spoken-word',
+  'variety': 'cabaret',
+  'performance art': 'experimental',
+  'site-specific': 'immersive',
+  'opera': 'musical',
+  'sketch': 'comedy',
+}
+
+function normalizePerformanceType(raw: string): string | null {
+  const lower = raw.trim().toLowerCase()
+  if (VALID_PERFORMANCE_TYPES.has(lower)) return lower
+  if (PERFORMANCE_TYPE_ALIASES[lower]) return PERFORMANCE_TYPE_ALIASES[lower]
+  return null
+}
+
 const CsvRowInput = new GraphQLInputObjectType({
   name: 'CsvRowInput',
   fields: {
@@ -209,13 +237,27 @@ export const csvImport = mutationWithClientMutationId({
 
         if (show) {
           result.showsMatched++
+          // Update image fields if provided and show doesn't already have them
+          if (!dryRun) {
+            const imageUpdates: Record<string, string> = {}
+            if (row.showImageUrl?.trim() && !show.imageUrl) {
+              imageUpdates.imageUrl = row.showImageUrl.trim()
+            }
+            if (row.showPosterUrl?.trim() && !show.posterUrl) {
+              imageUpdates.posterUrl = row.showPosterUrl.trim()
+            }
+            if (Object.keys(imageUpdates).length > 0) {
+              Object.assign(show, imageUpdates)
+              await show.save()
+            }
+          }
         } else {
           if (dryRun) {
             result.showsCreated++
             continue // Skip rest in dry run for new shows
           }
           const types = row.performanceTypes
-            ? row.performanceTypes.split(',').map((t: string) => t.trim().toLowerCase())
+            ? row.performanceTypes.split(',').map((t: string) => normalizePerformanceType(t)).filter(Boolean) as string[]
             : []
           // Infer duration from startTime/endTime if no explicit duration
           let duration = row.duration ? parseInt(row.duration, 10) || 0 : 0

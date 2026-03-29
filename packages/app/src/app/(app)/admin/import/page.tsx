@@ -1,11 +1,52 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useMutation } from "urql";
 import JSZip from "jszip";
 import { CSV_IMPORT_MUTATION } from "@/lib/graphql/admin";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
+import { getStoredAccessToken, setTokens, isTokenExpired } from "@/lib/auth/token";
+
+const REFRESH_MUTATION = `mutation RefreshToken($input: userRefreshTokenInput!) {
+  userRefreshToken(input: $input) { accessToken error }
+}`;
+
+// Refresh the access token if it's expired or about to expire (within 2 minutes)
+async function ensureFreshToken(): Promise<void> {
+  const token = localStorage.getItem("curtn_access_token");
+  if (!token) return;
+
+  // Check if token expires within 2 minutes
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    const expiresIn = payload.exp * 1000 - Date.now();
+    if (expiresIn > 2 * 60 * 1000) return; // Still fresh enough
+  } catch {
+    return;
+  }
+
+  const refreshToken = localStorage.getItem("curtn_refresh_token");
+  if (!refreshToken) return;
+
+  try {
+    const res = await fetch("/api/graphql", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: REFRESH_MUTATION,
+        variables: { input: { refreshToken } },
+      }),
+    });
+    const json = await res.json();
+    const newAccessToken = json.data?.userRefreshToken?.accessToken;
+    if (newAccessToken) {
+      setTokens(newAccessToken, refreshToken);
+    }
+  } catch {
+    // Silently fail — next request will get a 401
+  }
+}
 
 // All fields that can contain image filenames or URLs
 const IMAGE_FIELDS = new Set([
@@ -169,7 +210,7 @@ function isImageFilename(value: string): boolean {
   return /\.(jpe?g|png|webp|gif)$/i.test(value);
 }
 
-// Upload a single image file to Vercel Blob via /api/upload
+// Upload a single image file to R2 via /api/upload
 async function uploadImage(
   file: Blob,
   filename: string,
@@ -492,6 +533,34 @@ export default function CsvImportPage() {
     return seen.size;
   }
 
+  // Estimate total upload size for images that will be uploaded
+  function getImageUploadEstimate(): { count: number; bytes: number; cost: number } {
+    if (imageFilesRef.current.size === 0) return { count: 0, bytes: 0, cost: 0 };
+    const mappedRows = getMappedRows();
+    const seen = new Map<string, Blob>();
+    for (const row of mappedRows) {
+      for (const [field, value] of Object.entries(row)) {
+        if (IMAGE_FIELDS.has(field) && isImageFilename(value)) {
+          const key = value.toLowerCase();
+          const basename = key.split("/").pop()!;
+          const blob = imageFilesRef.current.get(basename) || imageFilesRef.current.get(key);
+          if (blob && !seen.has(key)) {
+            seen.set(key, blob);
+          }
+        }
+      }
+    }
+    let totalBytes = 0;
+    for (const blob of seen.values()) {
+      totalBytes += blob.size;
+    }
+    // R2 cost: $0.015/GB storage, Class A ops are free under 1M/month
+    const gbStored = totalBytes / (1024 * 1024 * 1024);
+    const freeTierGB = 10;
+    const cost = Math.max(0, gbStored - freeTierGB) * 0.015;
+    return { count: seen.size, bytes: totalBytes, cost };
+  }
+
   // Upload all referenced images and return rows with filenames replaced by URLs
   async function uploadImagesAndResolveRows(
     mappedRows: Record<string, string>[]
@@ -522,7 +591,7 @@ export default function CsvImportPage() {
     const batchId = Date.now().toString();
     const urlMap = new Map<string, string>();
     const entries = Array.from(toUpload.entries());
-    const CONCURRENCY = 3;
+    const CONCURRENCY = 10;
     let uploaded = 0;
 
     for (let i = 0; i < entries.length; i += CONCURRENCY) {
@@ -626,6 +695,7 @@ export default function CsvImportPage() {
     let finalRows = mappedRows;
     if (hasImages) {
       try {
+        await ensureFreshToken();
         finalRows = await uploadImagesAndResolveRows(mappedRows);
         logActivity("All images uploaded");
       } catch (err: unknown) {
@@ -667,6 +737,9 @@ export default function CsvImportPage() {
     const progressRange = hasImages ? 50 : 100;
 
     for (let i = 0; i < totalBatches; i++) {
+      // Refresh auth token if needed before each batch
+      await ensureFreshToken();
+
       const batchStart = i * BATCH_SIZE + 1;
       const batchEnd = Math.min((i + 1) * BATCH_SIZE, totalRows);
       const batch = finalRows.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
@@ -721,6 +794,7 @@ export default function CsvImportPage() {
   }
 
   const imageFileCount = step === "preview" ? getImageFileCount() : 0;
+  const imageEstimate = step === "preview" ? getImageUploadEstimate() : { count: 0, bytes: 0, cost: 0 };
 
   return (
     <div className="px-6 py-8 max-w-4xl mx-auto space-y-6">
@@ -1022,11 +1096,21 @@ export default function CsvImportPage() {
                   Ready to import {getMappedRows().length} rows
                 </h2>
                 {imageFileCount > 0 && (
-                  <p className="text-xs text-curtn-coral mt-1">
-                    {imageFileCount} image
-                    {imageFileCount === 1 ? "" : "s"} will be uploaded from ZIP
-                    on import
-                  </p>
+                  <div className="mt-1 space-y-0.5">
+                    <p className="text-xs text-curtn-coral">
+                      {imageFileCount} image
+                      {imageFileCount === 1 ? "" : "s"} will be uploaded from ZIP
+                      {" · "}
+                      {imageEstimate.bytes < 1024 * 1024
+                        ? `${(imageEstimate.bytes / 1024).toFixed(0)} KB`
+                        : `${(imageEstimate.bytes / (1024 * 1024)).toFixed(1)} MB`}
+                    </p>
+                    <p className="text-[10px] text-curtn-muted/60">
+                      Estimated storage cost: {imageEstimate.cost < 0.01
+                        ? "< $0.01/mo (within free tier)"
+                        : `~$${imageEstimate.cost.toFixed(2)}/mo`}
+                    </p>
+                  </div>
                 )}
               </div>
               <div className="flex gap-2">
