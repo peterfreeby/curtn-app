@@ -17,6 +17,7 @@ const jetbrainsMono = localFont({
 
 export const viewport: Viewport = {
   viewportFit: "cover",
+  themeColor: "#111111",
 };
 
 export const metadata: Metadata = {
