@@ -881,8 +881,8 @@ h1, h2, h3, h4, h5, h6 {
 
 /* --- Ticker tape continuous scroll with pause --- */
 @keyframes ticker {
-  0%, 10% { transform: translateX(0); }
-  90%, 100% { transform: translateX(-50%); }
+  0%, 12% { transform: translateX(0%); }
+  88%, 100% { transform: translateX(-50%); }
 }
 .ticker-scroll {
   display: inline-block;
@@ -891,6 +891,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 .ticker-container {
   overflow: hidden;
-  mask-image: linear-gradient(to right, transparent 0%, black 5%, black 90%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 5%, black 90%, transparent 100%);
+  /* Fade only on the right edge — left edge stays sharp so text is visible at pause */
+  mask-image: linear-gradient(to right, black 0%, black 85%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black 0%, black 85%, transparent 100%);
 }
