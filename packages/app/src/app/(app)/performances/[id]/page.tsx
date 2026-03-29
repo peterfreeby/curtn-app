@@ -17,7 +17,6 @@ import { AddToListButton } from "@/components/lists/AddToListButton";
 import { DetailBreadcrumb } from "@/components/nav/DetailBreadcrumb";
 import { Button } from "@/components/Button";
 import { InlineEditor } from "@/components/admin/InlineEditor";
-import { AddSiblingActions } from "@/components/admin/AddSiblingActions";
 import { Icon } from "@/components/icons/Icons";
 import { useAuth } from "@/lib/auth/useAuth";
 
@@ -170,26 +169,16 @@ export default function ShowDetailPage() {
         <CreditsList cast={singleRun.cast ?? []} crew={singleRun.crew ?? []} />
 
         {isAdmin && !editing && (
-          <div className="space-y-2">
-            <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
-              Edit
-            </Button>
-            <AddSiblingActions
-              showId={show.id}
-              runId={singleRun.id}
-              venueId={venues[0]?.id}
-              showAddRun
-              showAddPerformance
-              onRunCreated={() => window.location.reload()}
-              onPerformanceCreated={() => window.location.reload()}
-            />
-          </div>
+          <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
+            Edit
+          </Button>
         )}
         {editing && (
           <div className="space-y-4">
             <InlineEditor
               entityType="show"
               entityId={decodeId(show.id)}
+              showId={show.id}
               initialValues={{
                 title: show.title,
                 description: show.description,
@@ -203,6 +192,8 @@ export default function ShowDetailPage() {
             <InlineEditor
               entityType="run"
               entityId={decodeId(singleRun.id)}
+              runId={singleRun.id}
+              venueId={venues[0]?.id}
               initialValues={{
                 title: singleRun.title || "",
                 description: singleRun.description || "",
@@ -302,22 +293,16 @@ export default function ShowDetailPage() {
         <CreditsList cast={singleRun.cast ?? []} crew={singleRun.crew ?? []} />
 
         {isAdmin && !editing && (
-          <div className="space-y-2">
-            <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
-              Edit
-            </Button>
-            <AddSiblingActions
-              showId={show.id}
-              showAddRun
-              onRunCreated={() => window.location.reload()}
-            />
-          </div>
+          <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
+            Edit
+          </Button>
         )}
         {editing && (
           <div className="space-y-4">
             <InlineEditor
               entityType="show"
               entityId={decodeId(show.id)}
+              showId={show.id}
               initialValues={{
                 title: show.title,
                 description: show.description,
@@ -331,6 +316,8 @@ export default function ShowDetailPage() {
             <InlineEditor
               entityType="run"
               entityId={decodeId(singleRun.id)}
+              runId={singleRun.id}
+              venueId={venues[0]?.id}
               initialValues={{
                 title: singleRun.title || "",
                 description: singleRun.description || "",
@@ -384,21 +371,15 @@ export default function ShowDetailPage() {
         />
 
         {isAdmin && !editing && (
-          <div className="space-y-2">
-            <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
-              Edit
-            </Button>
-            <AddSiblingActions
-              showId={show.id}
-              showAddRun
-              onRunCreated={() => window.location.reload()}
-            />
-          </div>
+          <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
+            Edit
+          </Button>
         )}
-        {editing === "show" && (
+        {editing && (
           <InlineEditor
             entityType="show"
             entityId={decodeId(show.id)}
+            showId={show.id}
             initialValues={{
               title: show.title,
               description: show.description,

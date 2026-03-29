@@ -9,8 +9,6 @@ import { RUN_REVIEWS_QUERY } from "@/lib/graphql/performances";
 import { RunHero } from "@/components/runs/RunHero";
 import { ShowingsList } from "@/components/performances/ShowingsList";
 import { CreditsList } from "@/components/credits/CreditsList";
-import { AddCreditForm } from "@/components/credits/AddCreditForm";
-import { AddShowCreditForm } from "@/components/credits/AddShowCreditForm";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { Icon } from "@/components/icons/Icons";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -290,6 +288,9 @@ export default function RunDetailPage() {
           <InlineEditor
             entityType="run"
             entityId={decodeId(id)}
+            runId={id}
+            venueId={run.venues?.[0]?.id}
+            showId={show.id}
             initialValues={{
               title: run.title || "",
               description: run.description || "",
@@ -310,12 +311,6 @@ export default function RunDetailPage() {
             onCreated={() => { setBatchCreating(false); window.location.reload(); }}
             onCancel={() => setBatchCreating(false)}
           />
-        )}
-        {isAdmin && !editing && !batchCreating && (
-          <div className="card-ledger space-y-6">
-            <AddShowCreditForm showId={show.id} onAdded={handleCreditAdded} />
-            <AddCreditForm runId={id} onAdded={handleCreditAdded} />
-          </div>
         )}
 
         {/* Reviews */}
@@ -402,13 +397,6 @@ export default function RunDetailPage() {
       </Link>
 
       <CreditsList cast={run.cast ?? []} crew={run.crew ?? []} />
-
-      {isAdmin && (
-        <div className="card-ledger space-y-6">
-          <AddShowCreditForm showId={show.id} onAdded={handleCreditAdded} />
-          <AddCreditForm runId={id} onAdded={handleCreditAdded} />
-        </div>
-      )}
 
       {/* Reviews */}
       <div className="relative">
