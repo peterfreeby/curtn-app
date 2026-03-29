@@ -870,101 +870,11 @@ h1, h2, h3, h4, h5, h6 {
   background: #111111 !important;
 }
 
-/* --- Dithered Glass Bar --- */
-.dithered-glass {
-  position: relative;
+/* --- Nav Bar --- */
+.nav-bar {
   background: rgba(17,17,17,0.88);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: 999px;
-  isolation: isolate;
-}
-
-/* Layer 1: Spectral highlights — cream dots on bar surface padding ring */
-.dithered-glass::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  z-index: 2;
-  background:
-    radial-gradient(circle, rgba(245,241,227,0.5) 1px, transparent 1px),
-    radial-gradient(circle, rgba(245,241,227,0.25) 0.8px, transparent 0.8px);
-  background-size: 4px 4px, 3px 3px;
-  background-position: 0 0, 1.5px 1.5px;
-  /* Ring: visible in padding, transparent behind buttons */
-  mask-image: radial-gradient(
-    ellipse at center,
-    transparent 55%,
-    rgba(0,0,0,0.5) 70%,
-    black 85%,
-    black 100%
-  );
-  -webkit-mask-image: radial-gradient(
-    ellipse at center,
-    transparent 55%,
-    rgba(0,0,0,0.5) 70%,
-    black 85%,
-    black 100%
-  );
-}
-
-/* Layer 2: Dark immediate shadow — OUTSIDE the bar, tight to edge */
-.dithered-glass::after {
-  content: '';
-  position: absolute;
-  inset: -4px;
-  top: 0px;
-  bottom: -6px;
-  border-radius: inherit;
-  pointer-events: none;
-  z-index: -1;
-  background:
-    radial-gradient(circle, rgba(0,0,0,0.8) 1.5px, transparent 1.5px),
-    radial-gradient(circle, rgba(0,0,0,0.4) 1px, transparent 1px);
-  background-size: 3px 3px, 4px 4px;
-  background-position: 0 0, 1.5px 1.5px;
-  /* Ring: cut out interior (bar shape), show only outside edge */
-  mask-image: radial-gradient(
-    ellipse at center 40%,
-    transparent 78%,
-    rgba(0,0,0,0.6) 85%,
-    black 95%
-  );
-  -webkit-mask-image: radial-gradient(
-    ellipse at center 40%,
-    transparent 78%,
-    rgba(0,0,0,0.6) 85%,
-    black 95%
-  );
-}
-
-/* Layer 3: Color burn soft shadow — OUTSIDE the bar, wider spread */
-.dithered-glass-shadow {
-  position: absolute;
-  inset: -6px;
-  top: 4px;
-  bottom: -14px;
-  border-radius: inherit;
-  pointer-events: none;
-  z-index: -2;
-  background:
-    radial-gradient(circle, rgba(0,0,0,0.5) 1.5px, transparent 1.5px);
-  background-size: 4px 4px;
-  /* Ring: cut out interior, show outside, heavier bottom */
-  mask-image: radial-gradient(
-    ellipse at center 30%,
-    transparent 60%,
-    rgba(0,0,0,0.3) 72%,
-    black 88%
-  );
-  -webkit-mask-image: radial-gradient(
-    ellipse at center 30%,
-    transparent 60%,
-    rgba(0,0,0,0.3) 72%,
-    black 88%
-  );
-  mix-blend-mode: color-burn;
-  filter: blur(2px);
+  border: 1px solid rgba(245,241,227,0.08);
 }
