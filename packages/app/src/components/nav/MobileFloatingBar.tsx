@@ -267,7 +267,7 @@ export function MobileFloatingBar() {
           <button
             type="button"
             onClick={handleLog}
-            className="flex items-center justify-center w-11 h-11 rounded-full bg-curtn-coral text-curtn-deep transition-all hover:bg-curtn-red active:scale-95 shadow-lg shadow-black/20 shrink-0"
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-curtn-coral text-curtn-deep transition-all hover:bg-curtn-red active:scale-95 shadow-lg shadow-black/20 shrink-0"
             aria-label="Log a performance"
           >
             <Icon name="plus" weight="bold" size={20} />
