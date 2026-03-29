@@ -873,28 +873,30 @@ h1, h2, h3, h4, h5, h6 {
 /* --- Dithered Glass Bar --- */
 .dithered-glass {
   position: relative;
-  /* Clear center — no fill, content shows through */
-  background: transparent;
+  /* Solid dark fill + blur like before */
+  background: rgba(17,17,17,0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-radius: 999px;
+  /* Isolate so pseudo-elements layer behind content */
+  isolation: isolate;
 }
 
-/* Dithered border — dots that dissolve inward */
+/* Dithered border — dots that dissolve outward from edge */
 .dithered-glass::before {
   content: '';
   position: absolute;
-  inset: -4px;
+  inset: -6px;
   border-radius: inherit;
   pointer-events: none;
-  z-index: 1;
+  z-index: -1;
   /* Multiple ring layers of dots at different densities */
   background:
-    /* Outer dense ring — dark */
     radial-gradient(circle, rgba(17,17,17,0.9) 1.5px, transparent 1.5px),
-    /* Mid ring — medium density */
     radial-gradient(circle, rgba(17,17,17,0.5) 1px, transparent 1px);
   background-size: 4px 4px, 5px 5px;
   background-position: 0 0, 2px 2px;
-  /* Mask: only show dots near the edges, fade to transparent in center */
+  /* Mask: only show dots near the edges */
   mask-image: radial-gradient(
     ellipse at center,
     transparent 50%,
@@ -913,12 +915,12 @@ h1, h2, h3, h4, h5, h6 {
 .dithered-glass::after {
   content: '';
   position: absolute;
-  inset: -2px;
+  inset: -4px;
   top: 2px;
-  bottom: -8px;
+  bottom: -10px;
   border-radius: inherit;
   pointer-events: none;
-  z-index: -1;
+  z-index: -2;
   /* Dense dark dots for shadow */
   background:
     radial-gradient(circle, rgba(17,17,17,0.7) 1.5px, transparent 1.5px);
@@ -926,16 +928,16 @@ h1, h2, h3, h4, h5, h6 {
   /* Mask: edge-only, denser at bottom */
   mask-image: radial-gradient(
     ellipse at center bottom,
-    transparent 45%,
-    rgba(0,0,0,0.3) 60%,
-    black 80%,
+    transparent 40%,
+    rgba(0,0,0,0.3) 55%,
+    black 75%,
     black 100%
   );
   -webkit-mask-image: radial-gradient(
     ellipse at center bottom,
-    transparent 45%,
-    rgba(0,0,0,0.3) 60%,
-    black 80%,
+    transparent 40%,
+    rgba(0,0,0,0.3) 55%,
+    black 75%,
     black 100%
   );
   filter: blur(0.5px);
