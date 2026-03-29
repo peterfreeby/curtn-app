@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/auth/useAuth";
 import { AddToListButton } from "@/components/lists/AddToListButton";
 import { Button } from "@/components/Button";
 import { InlineEditor } from "@/components/admin/InlineEditor";
+import { BatchPerformanceCreator } from "@/components/admin/BatchPerformanceCreator";
 import { DetailBreadcrumb } from "@/components/nav/DetailBreadcrumb";
 import { formatShowDate, formatShowTime } from "@/lib/format";
 
@@ -101,6 +102,7 @@ export default function RunDetailPage() {
   const { isAuthenticated, user } = useAuth();
   const isAdmin = !!user?.isAdmin;
   const [editing, setEditing] = useState(false);
+  const [batchCreating, setBatchCreating] = useState(false);
 
   const [{ data, fetching }, reexecuteRun] = useQuery({
     query: SINGLE_RUN_QUERY,
@@ -274,10 +276,13 @@ export default function RunDetailPage() {
 
         <CreditsList cast={run.cast ?? []} crew={run.crew ?? []} />
 
-        {isAdmin && !editing && (
+        {isAdmin && !editing && !batchCreating && (
           <div className="flex gap-2">
             <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing(true)}>
               Edit Run
+            </Button>
+            <Button variant="tertiary" size="sm" icon="plus" onClick={() => setBatchCreating(true)}>
+              Add Performances
             </Button>
           </div>
         )}
@@ -296,7 +301,17 @@ export default function RunDetailPage() {
             onCancel={() => setEditing(false)}
           />
         )}
-        {isAdmin && !editing && (
+        {batchCreating && (
+          <BatchPerformanceCreator
+            runId={id}
+            venueId={run.venues?.[0]?.id || ""}
+            startDate={run.startDate}
+            endDate={run.endDate}
+            onCreated={() => { setBatchCreating(false); window.location.reload(); }}
+            onCancel={() => setBatchCreating(false)}
+          />
+        )}
+        {isAdmin && !editing && !batchCreating && (
           <div className="card-ledger space-y-6">
             <AddShowCreditForm showId={show.id} onAdded={handleCreditAdded} />
             <AddCreditForm runId={id} onAdded={handleCreditAdded} />
