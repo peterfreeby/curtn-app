@@ -240,6 +240,16 @@ export function MobileFloatingBar() {
                     placeholder="Shows, venues, people..."
                     className="flex-1 bg-transparent text-sm text-curtn-cream placeholder:text-curtn-muted/50 outline-none py-2 min-w-0"
                   />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => { setSearchQuery(""); handleSearchInput(""); searchInputRef.current?.focus(); }}
+                      className="flex items-center justify-center w-6 h-6 rounded-full text-curtn-muted hover:text-curtn-cream shrink-0"
+                      aria-label="Clear search"
+                    >
+                      <Icon name="plus" weight="regular" size={14} className="rotate-45" />
+                    </button>
+                  )}
                 </div>
               </StateLayer>
 
