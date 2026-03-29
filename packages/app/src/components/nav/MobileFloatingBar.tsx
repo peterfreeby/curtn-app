@@ -31,7 +31,7 @@ const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 const DURATION = "220ms";
 
 // Shared button styles
-const iconBtn = "flex items-center justify-center w-11 h-9 rounded-full transition-all";
+const iconBtn = "flex items-center justify-center w-10 h-10 rounded-full transition-all";
 const iconBtnMuted = `${iconBtn} text-curtn-muted hover:bg-curtn-cream/5 hover:text-curtn-cream`;
 const iconBtnActive = `${iconBtn} text-curtn-cream hover:bg-curtn-cream/5`;
 const iconBtnPrimary = `${iconBtn} bg-curtn-coral text-curtn-deep hover:bg-curtn-red`;
@@ -215,11 +215,12 @@ export function MobileFloatingBar() {
             bottom: shrunk ? "0.75rem" : undefined,
           }}
         >
+        <div className="flex justify-center">
         <div
-          className="dithered-glass"
+          className="dithered-glass inline-flex"
           style={{ transition: `all ${DURATION} ${EASE}` }}
         >
-          <div className="relative p-1" style={{ minHeight: 44 }}>
+          <div className="relative p-1 flex items-center justify-center">
 
             {/* DEFAULT */}
             <StateLayer active={barState === "default"}>
@@ -241,7 +242,7 @@ export function MobileFloatingBar() {
                   key={tab.id}
                   type="button"
                   onClick={() => handleExpandedTab(tab)}
-                  className={`flex flex-col items-center justify-center gap-0.5 w-13 h-9 rounded-full transition-all ${
+                  className={`flex flex-col items-center justify-center gap-0.5 w-10 h-10 rounded-full transition-all ${
                     currentTab === tab.id
                       ? "text-curtn-cream bg-curtn-cream/10"
                       : "text-curtn-muted hover:text-curtn-cream hover:bg-curtn-cream/5"
@@ -292,6 +293,7 @@ export function MobileFloatingBar() {
             </StateLayer>
 
           </div>
+        </div>
         </div>
         </div>
       </div>
