@@ -877,7 +877,7 @@ h1, h2, h3, h4, h5, h6 {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: none;
-  border-radius: 20px;
+  border-radius: 0;
 }
 
 /* Stippled dotted border */
@@ -886,7 +886,8 @@ h1, h2, h3, h4, h5, h6 {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  border: 1.5px dotted rgba(245,241,227,0.12);
+  border: none;
+  border-top: 1.5px dotted rgba(245,241,227,0.12);
   pointer-events: none;
   z-index: 1;
 }
@@ -895,8 +896,8 @@ h1, h2, h3, h4, h5, h6 {
 .dithered-glass::after {
   content: '';
   position: absolute;
-  left: 10%;
-  right: 10%;
+  left: 0;
+  right: 0;
   bottom: -6px;
   height: 14px;
   border-radius: 50%;
