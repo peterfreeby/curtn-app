@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import { useNowViewing } from "@/lib/NowViewingContext";
 import { useQuery } from "urql";
 import Link from "next/link";
 import { SINGLE_SHOW_QUERY } from "@/lib/graphql/shows";
@@ -38,8 +39,21 @@ export default function ShowDetailPage() {
     variables: { id },
   });
 
+  const { setNowViewing } = useNowViewing();
   const show = data?.singleShow;
   const runs = show?.runs?.edges?.map((e: any) => e.node) ?? [];
+
+  // Set now viewing for the floating bar
+  useEffect(() => {
+    if (show) {
+      setNowViewing({
+        title: show.title,
+        posterUrl: show.posterUrl || show.imageUrl,
+        href: `/performances/${encodeURIComponent(id)}`,
+      });
+    }
+    return () => setNowViewing(null);
+  }, [show?.title, show?.posterUrl, show?.imageUrl, id, setNowViewing]);
   const runCount = runs.length;
   const singleRun = runCount === 1 ? runs[0] : null;
   const performances = singleRun?.performances?.edges?.map((e: any) => e.node) ?? [];

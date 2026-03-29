@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Icon, type IconName } from "@/components/icons/Icons";
 import { useAuth } from "@/lib/auth/useAuth";
+import { useNowViewing } from "@/lib/NowViewingContext";
 
 type BarState = "default" | "expanded" | "search" | "detail";
 type TabId = "browse" | "upcoming" | "feed";
@@ -57,6 +59,7 @@ function StateLayer({ active, children }: { active: boolean; children: React.Rea
 export function MobileFloatingBar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { nowViewing } = useNowViewing();
   const { user } = useAuth();
 
   const [barState, setBarState] = useState<BarState>("default");
@@ -209,9 +212,6 @@ export function MobileFloatingBar() {
 
               {/* DETAIL */}
               <StateLayer active={barState === "detail"}>
-                <button type="button" onClick={handleBack} className={iconBtnMuted} aria-label="Back">
-                  <Icon name="arrow-left" size={20} />
-                </button>
                 <button type="button" onClick={handleSearch} className={iconBtnMuted} aria-label="Search">
                   <Icon name="magnifying-glass" size={20} />
                 </button>
@@ -223,25 +223,48 @@ export function MobileFloatingBar() {
             </div>
           </div>
 
-          {/* Plus button — doubles as close button when rotated */}
-          <button
-            type="button"
-            onClick={
-              barState === "expanded" ? () => setBarState("default") :
-              barState === "search" ? handleCloseSearch :
-              handleLog
-            }
-            className="flex items-center justify-center w-9 h-9 rounded-full bg-curtn-coral text-curtn-deep hover:bg-curtn-red active:scale-95 shadow-lg shadow-black/20 shrink-0"
-            style={{
-              transition: `transform ${DURATION} ${EASE}`,
-              transform: (barState === "expanded" || barState === "search") ? "rotate(45deg)" : "rotate(0deg)",
-            }}
-            aria-label={
-              barState === "expanded" || barState === "search" ? "Close" : "Log a performance"
-            }
-          >
-            <Icon name="plus" weight="bold" size={20} />
-          </button>
+          {/* Action button — morphs between + (log), × (close), and show info pill */}
+          {barState === "detail" && nowViewing ? (
+            <button
+              type="button"
+              onClick={handleLog}
+              className="flex items-center gap-2 h-9 pl-1 pr-3 rounded-full bg-curtn-coral text-curtn-deep hover:bg-curtn-red active:scale-[0.98] shadow-lg shadow-black/20 shrink-0"
+              style={{ transition: `all ${DURATION} ${EASE}` }}
+              aria-label={`Log ${nowViewing.title}`}
+            >
+              {nowViewing.posterUrl ? (
+                <img
+                  src={nowViewing.posterUrl}
+                  alt=""
+                  className="w-7 h-7 rounded-full object-cover shrink-0"
+                />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-curtn-deep/20 flex items-center justify-center shrink-0">
+                  <Icon name="plus" weight="bold" size={14} />
+                </div>
+              )}
+              <span className="text-xs font-bold truncate max-w-[120px]">{nowViewing.title}</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={
+                barState === "expanded" ? () => setBarState("default") :
+                barState === "search" ? handleCloseSearch :
+                handleLog
+              }
+              className="flex items-center justify-center w-9 h-9 rounded-full bg-curtn-coral text-curtn-deep hover:bg-curtn-red active:scale-95 shadow-lg shadow-black/20 shrink-0"
+              style={{
+                transition: `transform ${DURATION} ${EASE}`,
+                transform: (barState === "expanded" || barState === "search") ? "rotate(45deg)" : "rotate(0deg)",
+              }}
+              aria-label={
+                barState === "expanded" || barState === "search" ? "Close" : "Log a performance"
+              }
+            >
+              <Icon name="plus" weight="bold" size={20} />
+            </button>
+          )}
         </div>
 
       </div>

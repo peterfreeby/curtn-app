@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import { useNowViewing } from "@/lib/NowViewingContext";
 import { useQuery } from "urql";
 import Link from "next/link";
 import { SINGLE_PERFORMANCE_QUERY, RUN_REVIEWS_QUERY } from "@/lib/graphql/performances";
@@ -99,9 +100,21 @@ export default function PerformanceDetailPage() {
   const [reviewScope, setReviewScope] = useState<"performance" | "run" | "show">("performance");
   const [scopeAutoSet, setScopeAutoSet] = useState(false);
 
+  const { setNowViewing } = useNowViewing();
   const perf = data?.singlePerformance;
   const run = perf?.run;
   const show = run?.show;
+
+  useEffect(() => {
+    if (show) {
+      setNowViewing({
+        title: show.title,
+        posterUrl: perf?.effectivePosterUrl || show.posterUrl || show.imageUrl,
+        href: `/showings/${encodeURIComponent(id)}`,
+      });
+    }
+    return () => setNowViewing(null);
+  }, [show?.title, perf?.effectivePosterUrl, id, setNowViewing]);
 
   // Check if this performance has any reviews — if not, auto-switch to run scope
   const [{ data: perfReviewCheck }] = useQuery({

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import { useNowViewing } from "@/lib/NowViewingContext";
 import { useQuery } from "urql";
 import Link from "next/link";
 import { SINGLE_RUN_QUERY } from "@/lib/graphql/runs";
@@ -124,7 +125,19 @@ export default function RunDetailPage() {
     variables: reviewVariables,
   });
 
+  const { setNowViewing } = useNowViewing();
   const run = data?.singleRun;
+
+  useEffect(() => {
+    if (run?.show) {
+      setNowViewing({
+        title: run.show.title,
+        posterUrl: run.posterUrl || run.imageUrl || run.show.posterUrl || run.show.imageUrl,
+        href: `/runs/${encodeURIComponent(id)}`,
+      });
+    }
+    return () => setNowViewing(null);
+  }, [run?.show?.title, run?.posterUrl, run?.imageUrl, id, setNowViewing]);
 
   if (fetching) {
     return (
