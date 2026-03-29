@@ -863,3 +863,8 @@ h1, h2, h3, h4, h5, h6 {
   background: rgba(30,27,30,0.95) !important;
   color: #F5F1E3 !important;
 }
+
+/* Leaflet tile loading background */
+.leaflet-container {
+  background: #111111 !important;
+}
