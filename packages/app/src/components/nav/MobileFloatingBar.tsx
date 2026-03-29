@@ -181,15 +181,40 @@ export function MobileFloatingBar() {
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 pb-[env(safe-area-inset-bottom)]">
-      <div
-        className="px-4 pb-3"
-        style={{
-          transition: `transform ${DURATION} ${EASE}, opacity ${DURATION} ${EASE}`,
-          transform: shrunk ? "translateY(calc(100% - 20px)) scale(0.9)" : "translateY(0) scale(1)",
-          opacity: shrunk ? 0.6 : 1,
-        }}
-        onClick={shrunk ? unShrink : undefined}
-      >
+      <div className="px-4 pb-3">
+
+        {/* Compact pill when shrunk */}
+        <div
+          className="mx-auto flex items-center justify-center"
+          style={{
+            transition: `all 300ms ${EASE}`,
+            maxWidth: shrunk ? "48px" : "24rem",
+            opacity: shrunk ? 1 : 0,
+            transform: shrunk ? "scale(1)" : "scale(0.8)",
+            pointerEvents: shrunk ? "auto" : "none",
+            position: shrunk ? "relative" : "absolute",
+            height: shrunk ? "auto" : 0,
+          }}
+          onClick={unShrink}
+        >
+          <div className="w-12 h-8 rounded-full bg-curtn-coral/80 backdrop-blur-md flex items-center justify-center cursor-pointer shadow-md shadow-black/20">
+            <div className="w-1.5 h-1.5 rounded-full bg-curtn-deep" />
+          </div>
+        </div>
+
+        {/* Full bar */}
+        <div
+          style={{
+            transition: `all 300ms ${EASE}`,
+            opacity: shrunk ? 0 : 1,
+            transform: shrunk ? "translateY(8px) scale(0.95)" : "translateY(0) scale(1)",
+            pointerEvents: shrunk ? "none" : "auto",
+            position: shrunk ? "absolute" : "relative",
+            left: shrunk ? "1rem" : undefined,
+            right: shrunk ? "1rem" : undefined,
+            bottom: shrunk ? "0.75rem" : undefined,
+          }}
+        >
         <div
           className="mx-auto max-w-sm dithered-glass overflow-hidden"
           style={{ transition: `all ${DURATION} ${EASE}` }}
@@ -268,15 +293,9 @@ export function MobileFloatingBar() {
 
           </div>
         </div>
+        </div>
       </div>
 
-      {/* Shrunk tap target — invisible touch area when bar is minimized */}
-      {shrunk && (
-        <div
-          className="absolute bottom-0 left-0 right-0 h-12"
-          onClick={unShrink}
-        />
-      )}
     </div>
   );
 }
