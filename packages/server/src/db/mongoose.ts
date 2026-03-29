@@ -25,7 +25,11 @@ export async function connectToDatabase() {
         if (process.env.TESTING !== 'true') console.log('Connected to database')
       })
 
-    cached!.promise = mongoose.connect(MONGODB_URL!).then((m) => m)
+    cached!.promise = mongoose.connect(MONGODB_URL!, {
+      maxPoolSize: 5,        // Limit connections per serverless instance
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    }).then((m) => m)
   }
 
   cached!.conn = await cached!.promise
