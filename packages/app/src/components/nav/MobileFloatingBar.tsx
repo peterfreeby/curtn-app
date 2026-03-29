@@ -151,7 +151,7 @@ export function MobileFloatingBar() {
             className="nav-bar inline-flex"
             style={{ transition: `all ${DURATION} ${EASE}` }}
           >
-            <div className="relative p-0.5 flex items-center justify-center">
+            <div className="relative p-0.5 flex items-center justify-center" style={{ minHeight: 34 }}>
 
               {/* DEFAULT */}
               <StateLayer active={barState === "default"}>
