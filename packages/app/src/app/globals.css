@@ -833,8 +833,9 @@ h1, h2, h3, h4, h5, h6 {
   background: #1E1B1E;
   color: #F5F1E3;
   border: 1px solid #393E41;
-  border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  --popup-radius: 8px;
+  border-radius: var(--popup-radius);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
 }
 .curtn-popup .leaflet-popup-tip {
   background: #1E1B1E;
