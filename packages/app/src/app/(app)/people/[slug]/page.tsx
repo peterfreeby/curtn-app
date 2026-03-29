@@ -5,13 +5,14 @@ import { useQuery } from "urql";
 import { PERSON_BY_SLUG_QUERY } from "@/lib/graphql/people";
 import { PersonHero } from "@/components/people/PersonHero";
 import { PersonCredits } from "@/components/people/PersonCredits";
+import { ClaimPersonButton } from "@/components/people/ClaimPersonButton";
 import { AddToListButton } from "@/components/lists/AddToListButton";
 
 export default function PersonDetailPage() {
   const params = useParams();
   const slug = params.slug as string;
 
-  const [{ data, fetching }] = useQuery({
+  const [{ data, fetching }, reexecute] = useQuery({
     query: PERSON_BY_SLUG_QUERY,
     variables: { slug },
   });
@@ -53,7 +54,15 @@ export default function PersonDetailPage() {
         headshotUrl={person.headshotUrl}
       />
 
-      <AddToListButton itemId={person.id} listType="people" />
+      <div className="flex items-center gap-3">
+        <AddToListButton itemId={person.id} listType="people" />
+        <ClaimPersonButton
+          personId={person.id}
+          isClaimed={person.isClaimed ?? false}
+          claimedByUser={person.user}
+          onClaimed={() => reexecute({ requestPolicy: "network-only" })}
+        />
+      </div>
 
       <PersonCredits
         castCredits={person.castCredits ?? []}

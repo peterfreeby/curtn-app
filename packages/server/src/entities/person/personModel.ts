@@ -6,6 +6,7 @@ export interface IPerson {
   bio?: string
   headshotUrl?: string
   wikidataId?: string
+  userId?: Types.ObjectId
   createdAt: Date
   updatedAt: Date
   submittedBy: Types.ObjectId
@@ -30,6 +31,11 @@ const personSchema = new Schema<IPerson>({
   },
   headshotUrl: String,
   wikidataId: String,
+  userId: {
+    type: Schema.Types.ObjectId,
+    ref: 'user',
+    default: null
+  },
   submittedBy: {
     type: Schema.Types.ObjectId,
     ref: 'user',
@@ -42,6 +48,7 @@ const personSchema = new Schema<IPerson>({
 personSchema.index({ name: 'text', bio: 'text' })
 personSchema.index({ slug: 1 }, { unique: true })
 personSchema.index({ name: 1 })
+personSchema.index({ userId: 1 }, { unique: true, sparse: true })
 
 personSchema.pre('save', function(next) {
   if (this.isModified('name') && !this.slug) {

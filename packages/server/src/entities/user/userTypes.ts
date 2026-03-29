@@ -13,6 +13,7 @@ import { entityRegister } from '../../graphql/entityHelpers'
 import { UserModel } from './userModel'
 import { FollowModel } from '../follow/followModel'
 import { ReviewModel } from '../review/reviewModel'
+// PersonModel imported lazily in fields() to avoid circular deps
 
 export const userType = new GraphQLObjectType({
   name: 'User',
@@ -72,6 +73,15 @@ export const userType = new GraphQLObjectType({
       type: GraphQLInt,
       description: 'Number of reviews this user has written',
       resolve: async user => ReviewModel.countDocuments({ user: user._id })
+    },
+    person: {
+      type: require('../person/personTypes').personType,
+      description: 'Linked Person entity (for cast/crew credits)',
+      resolve: async (user: any) => {
+        if (!user.personId) return null
+        const { PersonModel } = require('../person/personModel')
+        return PersonModel.findById(user.personId)
+      }
     },
     listCount: {
       type: GraphQLInt,

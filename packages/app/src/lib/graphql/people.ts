@@ -8,6 +8,11 @@ export const PERSON_BY_SLUG_QUERY = gql`
       slug
       bio
       headshotUrl
+      isClaimed
+      user {
+        id
+        username
+      }
       castCredits {
         id
         role

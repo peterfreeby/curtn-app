@@ -10,6 +10,7 @@ export type IUser = {
   bio: string
   avatarUrl: string
   isAdmin: boolean,
+  personId?: mongoose.Types.ObjectId,
   validatePassword: (plainPassword: string) => boolean,
 }
 
@@ -43,8 +44,15 @@ const schema = new Schema<IUser>({
   isAdmin: {
     type: Boolean,
     default: false
+  },
+  personId: {
+    type: Schema.Types.ObjectId,
+    ref: 'person',
+    default: null
   }
 })
+
+schema.index({ personId: 1 }, { unique: true, sparse: true })
 
 schema.index({
   fullName: 'text',

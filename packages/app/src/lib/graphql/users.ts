@@ -13,8 +13,73 @@ export const USER_BY_USERNAME_QUERY = gql`
           followerCount
           followingCount
           isFollowing
+          person {
+            id
+            name
+            slug
+            headshotUrl
+            isClaimed
+            castCredits {
+              id
+              role
+              creditType
+              run {
+                id
+                show { id title }
+                productionCompany { name slug }
+                venues { name city }
+                startDate
+                endDate
+              }
+            }
+            crewCredits {
+              id
+              role
+              creditType
+              run {
+                id
+                show { id title }
+                productionCompany { name slug }
+                venues { name city }
+                startDate
+                endDate
+              }
+            }
+            showCredits {
+              id
+              role
+              show { id title }
+            }
+          }
         }
       }
+    }
+  }
+`;
+
+export const USER_CLAIM_PERSON_MUTATION = gql`
+  mutation UserClaimPerson($input: userClaimPersonInput!) {
+    userClaimPerson(input: $input) {
+      user {
+        id
+        person {
+          id
+          name
+          slug
+        }
+      }
+      error
+    }
+  }
+`;
+
+export const USER_UNCLAIM_PERSON_MUTATION = gql`
+  mutation UserUnclaimPerson($input: userUnclaimPersonInput!) {
+    userUnclaimPerson(input: $input) {
+      user {
+        id
+      }
+      error
     }
   }
 `;

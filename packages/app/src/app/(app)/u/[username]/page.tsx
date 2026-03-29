@@ -9,6 +9,8 @@ import { MY_WATCHLIST_QUERY } from "@/lib/graphql/watchlist";
 import { USER_LISTS_QUERY } from "@/lib/graphql/lists";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { EditProfileModal } from "@/components/profile/EditProfileModal";
+import { ProfileCredits } from "@/components/profile/ProfileCredits";
+import { ClaimPrompt } from "@/components/profile/ClaimPrompt";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { WiredPosterCard } from "@/components/WiredPosterCard";
 import { ListGrid } from "@/components/lists/ListGrid";
@@ -20,7 +22,7 @@ export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
   const { user: currentUser } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<"reviews" | "watchlist" | "lists">("reviews");
+  const [activeTab, setActiveTab] = useState<"reviews" | "watchlist" | "lists" | "credits">("reviews");
   const [after, setAfter] = useState<string | null>(null);
   const [allEdges, setAllEdges] = useState<any[]>([]);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -147,6 +149,10 @@ export default function ProfilePage() {
         />
       )}
 
+      {isOwnProfile && !profileUser.person && (
+        <ClaimPrompt onClaimed={() => reexecuteUser({ requestPolicy: "network-only" })} />
+      )}
+
       <div className="tabs-ledger">
         <button
           onClick={() => setActiveTab("reviews")}
@@ -156,6 +162,16 @@ export default function ProfilePage() {
         >
           Reviews
         </button>
+        {profileUser.person && (
+          <button
+            onClick={() => setActiveTab("credits")}
+            className={`tab-ledger flex-1 cursor-pointer ${
+              activeTab === "credits" ? "active" : ""
+            }`}
+          >
+            Credits
+          </button>
+        )}
         {isOwnProfile && (
           <button
             onClick={() => setActiveTab("watchlist")}
@@ -219,6 +235,20 @@ export default function ProfilePage() {
               Load more reviews
             </button>
           )}
+        </section>
+      )}
+
+      {activeTab === "credits" && profileUser.person && (
+        <section>
+          <h2 className="text-xs uppercase tracking-widest text-curtn-muted mb-4">
+            Credits
+          </h2>
+          <ProfileCredits
+            castCredits={profileUser.person.castCredits ?? []}
+            crewCredits={profileUser.person.crewCredits ?? []}
+            showCredits={profileUser.person.showCredits ?? []}
+            isOwnProfile={isOwnProfile}
+          />
         </section>
       )}
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 interface Credit {
   id: string;
   role: string;
+  creditType?: string;
   run: {
     id: string;
     show: { id: string; title: string };
@@ -21,10 +22,11 @@ interface ShowCredit {
   show: { id: string; title: string };
 }
 
-interface PersonCreditsProps {
+interface ProfileCreditsProps {
   castCredits: Credit[];
   crewCredits: Credit[];
   showCredits: ShowCredit[];
+  isOwnProfile: boolean;
 }
 
 function formatDateRange(startDate: string | null, endDate: string | null): string {
@@ -34,10 +36,10 @@ function formatDateRange(startDate: string | null, endDate: string | null): stri
   if (!endDate) return String(startYear);
   const end = new Date(endDate);
   const endYear = end.getFullYear();
-  return startYear === endYear ? String(startYear) : `${startYear}\u2013${endYear}`;
+  return startYear === endYear ? String(startYear) : `${startYear}–${endYear}`;
 }
 
-function CreditItem({ credit, index }: { credit: Credit; index: number }) {
+function CreditBreadcrumb({ credit, index }: { credit: Credit; index: number }) {
   const run = credit.run;
   const venue = run.venues?.[0];
   const dateRange = formatDateRange(run.startDate, run.endDate);
@@ -49,7 +51,7 @@ function CreditItem({ credit, index }: { credit: Credit; index: number }) {
         <span className="li-title">{run.show.title}</span>
         <span className="li-sub ml-2">
           {credit.role}
-          {run.productionCompany?.name ? ` \u00B7 ${run.productionCompany.name}` : ""}
+          {run.productionCompany?.name ? ` · ${run.productionCompany.name}` : ""}
           {venue ? ` @ ${venue.name}` : ""}
         </span>
       </span>
@@ -58,7 +60,7 @@ function CreditItem({ credit, index }: { credit: Credit; index: number }) {
   );
 }
 
-function ShowCreditItem({ credit, index }: { credit: ShowCredit; index: number }) {
+function ShowCreditBreadcrumb({ credit, index }: { credit: ShowCredit; index: number }) {
   return (
     <div className="list-item">
       <span className="li-num">{String(index).padStart(2, "0")}</span>
@@ -70,12 +72,30 @@ function ShowCreditItem({ credit, index }: { credit: ShowCredit; index: number }
   );
 }
 
-export function PersonCredits({ castCredits, crewCredits, showCredits }: PersonCreditsProps) {
-  if (castCredits.length === 0 && crewCredits.length === 0 && showCredits.length === 0) {
-    return <p className="text-sm text-curtn-muted">No credits yet.</p>;
+export function ProfileCredits({
+  castCredits,
+  crewCredits,
+  showCredits,
+  isOwnProfile,
+}: ProfileCreditsProps) {
+  const totalCredits = castCredits.length + crewCredits.length + showCredits.length;
+
+  if (totalCredits === 0) {
+    return (
+      <div className="empty-state">
+        <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">
+          No Credits Yet
+        </p>
+        <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">
+          {isOwnProfile
+            ? "Add your first credit from a run page."
+            : "This person hasn\u2019t been credited in any productions yet."}
+        </p>
+      </div>
+    );
   }
 
-  // Sort run credits by date descending
+  // Sort run credits by date descending (most recent first)
   const sortByDate = (a: Credit, b: Credit) => {
     const dateA = a.run.startDate ? new Date(a.run.startDate).getTime() : 0;
     const dateB = b.run.startDate ? new Date(b.run.startDate).getTime() : 0;
@@ -93,7 +113,7 @@ export function PersonCredits({ castCredits, crewCredits, showCredits }: PersonC
             Creative ({showCredits.length})
           </h2>
           {showCredits.map((c, i) => (
-            <ShowCreditItem key={c.id} credit={c} index={i + 1} />
+            <ShowCreditBreadcrumb key={c.id} credit={c} index={i + 1} />
           ))}
         </div>
       )}
@@ -104,7 +124,7 @@ export function PersonCredits({ castCredits, crewCredits, showCredits }: PersonC
             Cast ({sortedCast.length})
           </h2>
           {sortedCast.map((c, i) => (
-            <CreditItem key={c.id} credit={c} index={i + 1} />
+            <CreditBreadcrumb key={c.id} credit={c} index={i + 1} />
           ))}
         </div>
       )}
@@ -115,7 +135,7 @@ export function PersonCredits({ castCredits, crewCredits, showCredits }: PersonC
             Crew ({sortedCrew.length})
           </h2>
           {sortedCrew.map((c, i) => (
-            <CreditItem key={c.id} credit={c} index={i + 1} />
+            <CreditBreadcrumb key={c.id} credit={c} index={i + 1} />
           ))}
         </div>
       )}

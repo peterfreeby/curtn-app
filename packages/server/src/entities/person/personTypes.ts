@@ -1,4 +1,5 @@
 import {
+  GraphQLBoolean,
   GraphQLList,
   GraphQLString,
   GraphQLNonNull,
@@ -23,6 +24,7 @@ export const personType: GraphQLObjectType = new GraphQLObjectType({
     const { creditType } = require('../credit/creditType')
     const { showCreditType } = require('../showCredit/showCreditTypes')
     const { productionCompanyType } = require('../productionCompany/productionCompanyTypes')
+    const { userType } = require('../user/userTypes')
     return {
       id: globalIdField('Person', person => person.id),
       name: {
@@ -68,6 +70,20 @@ export const personType: GraphQLObjectType = new GraphQLObjectType({
           const companyIds = [...new Set(runs.filter(r => r.productionCompany).map(r => r.productionCompany!.toString()))]
           return await ProductionCompanyModel.find({ _id: { $in: companyIds } })
         }
+      },
+      user: {
+        type: userType,
+        description: 'Linked User account (if this person has claimed a profile)',
+        resolve: async (person: any) => {
+          if (!person.userId) return null
+          const { UserModel } = require('../user/userModel')
+          return UserModel.findById(person.userId)
+        }
+      },
+      isClaimed: {
+        type: GraphQLBoolean,
+        description: 'Whether this person has been claimed by a user',
+        resolve: (person: any) => !!person.userId
       },
       createdAt: {
         type: GraphQLString,
