@@ -11,6 +11,9 @@ import {
   PERFORMANCE_CREDIT_ADD_MUTATION,
 } from "@/lib/graphql/performances";
 
+// State for replace inline form
+type ReplaceState = { creditId: string; role: string; creditType: string } | null;
+
 interface Credit {
   id: string;
   role: string;
@@ -36,6 +39,42 @@ export function PerformanceCreditEditor({
 
   const [removing, setRemoving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [replacingCredit, setReplacingCredit] = useState<ReplaceState>(null);
+  const [replaceName, setReplaceName] = useState("");
+  const [replaceLoading, setReplaceLoading] = useState(false);
+
+  async function handleReplace() {
+    if (!replacingCredit || !replaceName.trim()) return;
+    setError(null);
+    setReplaceLoading(true);
+
+    // Sub out the original
+    const mongoId = atob(replacingCredit.creditId).split(":")[1];
+    const removeResult = await executeRemove({ input: { performanceId, creditId: mongoId } });
+    if (removeResult.data?.performanceCreditRemove?.error) {
+      setError(removeResult.data.performanceCreditRemove.error);
+      setReplaceLoading(false);
+      return;
+    }
+
+    // Add the replacement
+    const addResult = await executeAdd({
+      input: {
+        performanceId,
+        personName: replaceName.trim(),
+        creditType: replacingCredit.creditType,
+        role: replacingCredit.role,
+      },
+    });
+    setReplaceLoading(false);
+    if (addResult.data?.performanceCreditAdd?.error) {
+      setError(addResult.data.performanceCreditAdd.error);
+    } else {
+      setReplacingCredit(null);
+      setReplaceName("");
+      onChanged();
+    }
+  }
 
   // Add guest form
   const [showAddForm, setShowAddForm] = useState(false);
@@ -82,20 +121,57 @@ export function PerformanceCreditEditor({
   }
 
   function CreditRow({ credit, type }: { credit: Credit; type: string }) {
+    const isReplacing = replacingCredit?.creditId === credit.id;
+
     return (
-      <div className="flex items-center justify-between py-1.5 border-b border-curtn-dark/30">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm text-curtn-cream truncate">{credit.person.name}</span>
-          <span className="text-xs text-curtn-muted">{credit.role}</span>
+      <div className="py-1.5 border-b border-curtn-dark/30">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-sm text-curtn-cream truncate">{credit.person.name}</span>
+            <span className="text-xs text-curtn-muted">{credit.role}</span>
+          </div>
+          {!isReplacing && (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => { setReplacingCredit({ creditId: credit.id, role: credit.role, creditType: type }); setReplaceName(""); }}
+                className="text-xs text-curtn-muted hover:text-curtn-coral transition-colors cursor-pointer"
+              >
+                Replace
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSubOut(credit.id)}
+                disabled={removing === credit.id}
+                className="text-xs text-curtn-muted hover:text-curtn-red transition-colors cursor-pointer disabled:opacity-40"
+              >
+                {removing === credit.id ? "..." : "Sub out"}
+              </button>
+            </div>
+          )}
         </div>
-        <button
-          type="button"
-          onClick={() => handleSubOut(credit.id)}
-          disabled={removing === credit.id}
-          className="text-xs text-curtn-muted hover:text-curtn-red transition-colors cursor-pointer disabled:opacity-40 shrink-0"
-        >
-          {removing === credit.id ? "..." : "Sub out"}
-        </button>
+        {isReplacing && (
+          <div className="mt-2 flex items-end gap-2">
+            <div className="flex-1">
+              <Input
+                label={`Replace ${credit.person.name} with`}
+                value={replaceName}
+                onChange={(e) => setReplaceName(e.target.value)}
+                placeholder="New person name"
+              />
+            </div>
+            <Button variant="primary" size="sm" onClick={handleReplace} disabled={replaceLoading || !replaceName.trim()}>
+              {replaceLoading ? "..." : "Replace"}
+            </Button>
+            <button
+              type="button"
+              onClick={() => setReplacingCredit(null)}
+              className="text-xs text-curtn-muted hover:text-curtn-cream cursor-pointer pb-1"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
     );
   }
