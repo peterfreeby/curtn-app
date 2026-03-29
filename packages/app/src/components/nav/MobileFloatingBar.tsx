@@ -333,30 +333,30 @@ export function MobileFloatingBar() {
                   className="w-7 h-7 rounded-full object-cover shrink-0"
                 />
               )}
-              <div className="truncate max-w-[120px]">
-                <span className="text-xs font-bold text-curtn-cream block leading-tight truncate">{nowViewing.title}</span>
+              <div className="flex flex-col justify-center truncate max-w-[120px]">
+                <span className="text-xs font-bold text-curtn-cream leading-none truncate">{nowViewing.title}</span>
                 {nowViewing.subtitle && (
-                  <span className="flex items-center gap-0.5">
-                    {nowViewing.parentHref ? (
-                      <a
-                        href={nowViewing.parentHref}
-                        onClick={(e) => { e.stopPropagation(); }}
-                        className="text-[9px] text-curtn-muted hover:text-curtn-coral block leading-tight truncate transition-colors"
-                      >
-                        {nowViewing.subtitle}
-                      </a>
-                    ) : (
-                      <span className="text-[9px] text-curtn-muted block leading-tight truncate">{nowViewing.subtitle}</span>
-                    )}
+                  <span className="flex items-baseline gap-1 mt-0.5">
                     {nowViewing.parentHref && (
                       <a
                         href={nowViewing.parentHref}
                         onClick={(e) => { e.stopPropagation(); }}
-                        className="text-curtn-muted hover:text-curtn-coral transition-colors shrink-0"
+                        className="text-curtn-muted hover:text-curtn-coral transition-colors shrink-0 leading-none"
                         aria-label="Go to parent"
                       >
-                        <Icon name="caret-down" size={10} className="-rotate-90" />
+                        <Icon name="caret-down" size={8} className="rotate-90 inline-block align-baseline" />
                       </a>
+                    )}
+                    {nowViewing.parentHref ? (
+                      <a
+                        href={nowViewing.parentHref}
+                        onClick={(e) => { e.stopPropagation(); }}
+                        className="text-[9px] text-curtn-muted hover:text-curtn-coral leading-none truncate transition-colors"
+                      >
+                        {nowViewing.subtitle}
+                      </a>
+                    ) : (
+                      <span className="text-[9px] text-curtn-muted leading-none truncate">{nowViewing.subtitle}</span>
                     )}
                   </span>
                 )}
