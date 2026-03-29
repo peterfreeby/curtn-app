@@ -142,8 +142,12 @@ export function MobileFloatingBar() {
   }, [router]);
 
   const handleLog = useCallback(() => {
+    if (!user) {
+      navigateTo("/login");
+      return;
+    }
     navigateTo("/log");
-  }, [navigateTo]);
+  }, [user, navigateTo]);
 
   // Sync watchlist state from context
   useEffect(() => {
@@ -153,9 +157,11 @@ export function MobileFloatingBar() {
   const handleBack = useCallback(() => { router.back(); }, [router]);
 
   const handleWatchlistToggle = useCallback(async () => {
+    if (!user) {
+      navigateTo("/login");
+      return;
+    }
     if (!nowViewing?.showId) {
-      setToast("No show to add");
-      setTimeout(() => setToast(null), 2000);
       return;
     }
     const wasOn = isOnWatchlist;
