@@ -226,7 +226,7 @@ export function MobileFloatingBar() {
           {/* Action button — morphs between + (log), × (close), and show info pill */}
           {barState === "detail" && nowViewing ? (
             <div
-              className="nav-bar flex items-center gap-1.5 h-9 pl-1.5 pr-0.5 shrink-0"
+              className="nav-bar flex items-center gap-0.5 h-9 pl-1.5 pr-0.5 shrink-0"
               style={{ transition: `all ${DURATION} ${EASE}` }}
             >
               {/* Poster + info */}
@@ -269,18 +269,18 @@ export function MobileFloatingBar() {
               <button
                 type="button"
                 onClick={() => {}}
-                className="flex items-center justify-center w-7 h-7 text-curtn-muted hover:text-curtn-cream transition-colors shrink-0"
+                className="flex items-center justify-center w-8 h-8 text-curtn-muted hover:text-curtn-cream transition-colors shrink-0"
                 aria-label="Watchlist"
               >
-                <Icon name="heart" size={16} />
+                <Icon name="heart" size={20} />
               </button>
               <button
                 type="button"
                 onClick={handleLog}
-                className="flex items-center justify-center w-7 h-7 text-curtn-coral hover:text-curtn-red transition-colors shrink-0"
+                className="flex items-center justify-center w-8 h-8 text-curtn-coral hover:text-curtn-red transition-colors shrink-0"
                 aria-label={`Log ${nowViewing.title}`}
               >
-                <Icon name="plus" weight="bold" size={18} />
+                <Icon name="plus" weight="bold" size={20} />
               </button>
             </div>
           ) : (
