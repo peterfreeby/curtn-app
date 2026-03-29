@@ -180,7 +180,7 @@ h1, h2, h3, h4, h5, h6 {
 .dog-ear::after {
   content: '';
   position: absolute;
-  top: 0; right: 0;
+  top: 0; right: 15%;
   width: var(--ear-size); height: var(--ear-size);
   pointer-events: none;
   z-index: 3;
@@ -189,7 +189,7 @@ h1, h2, h3, h4, h5, h6 {
 .dog-ear::before {
   content: '';
   position: absolute;
-  top: 0; right: 0;
+  top: 0; right: 15%;
   width: calc(var(--ear-size) + 2px); height: calc(var(--ear-size) + 2px);
   pointer-events: none;
   z-index: 2;
@@ -206,7 +206,7 @@ h1, h2, h3, h4, h5, h6 {
 .torn-bottom::after {
   content: '';
   position: absolute;
-  bottom: -4px; left: 0; right: 0;
+  bottom: -4px; left: 15%; right: 15%;
   height: 8px;
   background: var(--color-curtn-surface);
   mask-image: url("data:image/svg+xml,%3Csvg width='200' height='8' viewBox='0 0 200 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,0 L5,3 L8,1 L13,4 L16,2 L21,5 L25,1 L29,4 L33,2 L37,5 L41,1 L45,3 L49,5 L53,2 L57,4 L61,1 L65,5 L69,2 L73,4 L77,1 L81,3 L85,5 L89,2 L93,4 L97,1 L101,5 L105,2 L109,3 L113,5 L117,1 L121,4 L125,2 L129,5 L133,1 L137,3 L141,5 L145,2 L149,4 L153,1 L157,5 L161,2 L165,4 L169,1 L173,3 L177,5 L181,2 L185,4 L189,1 L193,5 L197,2 L200,4 L200,8 L0,8 Z' fill='white'/%3E%3C/svg%3E");
@@ -504,7 +504,7 @@ h1, h2, h3, h4, h5, h6 {
   padding: 10px 22px;
   background: var(--color-curtn-surface);
   color: var(--color-curtn-muted);
-  border: none;
+  
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -528,7 +528,7 @@ h1, h2, h3, h4, h5, h6 {
 .chip-stamp {
   padding: 6px 16px;
   background: var(--color-curtn-surface);
-  border: none;
+  
   mask-image:
     radial-gradient(circle at 0px 50%, transparent 2.5px, black 2.5px),
     radial-gradient(circle at 100% 50%, transparent 2.5px, black 2.5px);
@@ -613,7 +613,7 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-curtn-cream);
   margin-left: -8px;
 }
-.face:first-child { margin-left: 0; }
+.face:first-child { margin-left: 15%; }
 .face-count {
   background: var(--color-curtn-coral);
   color: var(--color-curtn-deep);
@@ -876,8 +876,8 @@ h1, h2, h3, h4, h5, h6 {
   background: rgba(26,26,26,0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: none;
-  border-radius: 0;
+  
+  border-radius: 999px;
 }
 
 /* Stippled dotted border */
@@ -886,8 +886,8 @@ h1, h2, h3, h4, h5, h6 {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  border: none;
-  border-top: 1.5px dotted rgba(245,241,227,0.12);
+  
+  border: 1.5px dotted rgba(245,241,227,0.12);
   pointer-events: none;
   z-index: 1;
 }
@@ -896,8 +896,8 @@ h1, h2, h3, h4, h5, h6 {
 .dithered-glass::after {
   content: '';
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 15%;
+  right: 15%;
   bottom: -6px;
   height: 14px;
   border-radius: 50%;
