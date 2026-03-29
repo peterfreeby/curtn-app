@@ -138,9 +138,9 @@ export function MobileFloatingBar() {
   }, [searchQuery, navigateTo]);
 
   const handleCloseSearch = useCallback(() => {
-    setBarState(isDetailRoute(pathname) ? "detail" : "default");
     setSearchQuery("");
-  }, [pathname]);
+    router.back();
+  }, [router]);
 
   const handleLog = useCallback(() => {
     unShrink();
