@@ -94,7 +94,7 @@ export default function UpcomingPage() {
   }, [performances]);
 
   return (
-    <div className="relative h-[calc(100dvh-4rem)] md:h-[calc(100dvh-3.5rem)] overflow-hidden">
+    <div className="fixed inset-0 top-[env(safe-area-inset-top)] md:top-16 bottom-16 md:bottom-0 overflow-hidden">
       {/* Full-canvas map */}
       {view === "map" && (
         <div className="absolute inset-0">
