@@ -121,6 +121,10 @@ export const UPCOMING_PERFORMANCES_QUERY = gql`
           venue {
             id
             name
+            slug
+            address
+            city
+            coordinates { lat lng }
           }
           ticketUrl
           soldOut
@@ -129,6 +133,7 @@ export const UPCOMING_PERFORMANCES_QUERY = gql`
             show {
               id
               title
+              posterUrl
               performanceTypes
             }
             productionCompany {
@@ -197,6 +202,46 @@ export const PERFORMANCE_CREDIT_ADD_MUTATION = gql`
     performanceCreditAdd(input: $input) {
       performance { id }
       error
+    }
+  }
+`;
+
+export const BROWSE_PERFORMANCES_QUERY = gql`
+  query BrowsePerformances($search: String, $first: Int, $after: String) {
+    performanceList(search: $search, first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          date
+          time
+          venue {
+            id
+            name
+            slug
+            city
+            coordinates { lat lng }
+          }
+          ticketUrl
+          soldOut
+          run {
+            id
+            show {
+              id
+              title
+              posterUrl
+              performanceTypes
+            }
+            productionCompany {
+              name
+            }
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
     }
   }
 `;
