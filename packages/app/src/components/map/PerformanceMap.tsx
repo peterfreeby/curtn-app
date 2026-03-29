@@ -141,8 +141,7 @@ export function PerformanceMap({ performances, className = "" }: PerformanceMapP
   return (
     <div
       ref={mapRef}
-      className={`w-full rounded-sm border border-curtn-dark/50 ${className}`}
-      style={{ height: "400px" }}
+      className={`w-full h-full ${className}`}
     />
   );
 }
