@@ -873,72 +873,97 @@ h1, h2, h3, h4, h5, h6 {
 /* --- Dithered Glass Bar --- */
 .dithered-glass {
   position: relative;
-  /* Solid dark fill + blur like before */
   background: rgba(17,17,17,0.88);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: 999px;
-  /* Isolate so pseudo-elements layer behind content */
   isolation: isolate;
 }
 
-/* Dithered border — dots that dissolve outward from edge */
+/* Layer 1: Spectral highlights — light dots on top/sides edges */
 .dithered-glass::before {
   content: '';
   position: absolute;
-  inset: -6px;
+  inset: -5px;
   border-radius: inherit;
   pointer-events: none;
   z-index: -1;
-  /* Multiple ring layers of dots at different densities */
+  /* Light cream dots — spectral highlight */
   background:
-    radial-gradient(circle, rgba(17,17,17,0.9) 1.5px, transparent 1.5px),
-    radial-gradient(circle, rgba(17,17,17,0.5) 1px, transparent 1px);
-  background-size: 4px 4px, 5px 5px;
-  background-position: 0 0, 2px 2px;
-  /* Mask: only show dots near the edges */
+    radial-gradient(circle, rgba(245,241,227,0.5) 1px, transparent 1px),
+    radial-gradient(circle, rgba(245,241,227,0.25) 0.8px, transparent 0.8px);
+  background-size: 4px 4px, 3px 3px;
+  background-position: 0 0, 1.5px 1.5px;
+  /* Mask: highlights on top edge and sides, fade toward bottom */
   mask-image: radial-gradient(
-    ellipse at center,
-    transparent 50%,
-    black 70%,
-    black 100%
+    ellipse at center top,
+    transparent 55%,
+    rgba(0,0,0,0.6) 70%,
+    black 85%
   );
   -webkit-mask-image: radial-gradient(
-    ellipse at center,
-    transparent 50%,
-    black 70%,
-    black 100%
+    ellipse at center top,
+    transparent 55%,
+    rgba(0,0,0,0.6) 70%,
+    black 85%
   );
 }
 
-/* Shadow layer — darker dithered ring underneath, offset down */
+/* Layer 2: Dark immediate shadow — tight black dots around bottom edge */
 .dithered-glass::after {
   content: '';
   position: absolute;
-  inset: -4px;
-  top: 2px;
-  bottom: -10px;
+  inset: -3px;
+  top: 1px;
+  bottom: -5px;
   border-radius: inherit;
   pointer-events: none;
-  z-index: -2;
-  /* Dense dark dots for shadow */
+  z-index: -1;
+  /* Dense dark dots — crisp contact shadow */
   background:
-    radial-gradient(circle, rgba(17,17,17,0.7) 1.5px, transparent 1.5px);
-  background-size: 3px 3px;
-  /* Mask: edge-only, denser at bottom */
+    radial-gradient(circle, rgba(0,0,0,0.85) 1.5px, transparent 1.5px),
+    radial-gradient(circle, rgba(0,0,0,0.4) 1px, transparent 1px);
+  background-size: 3px 3px, 4px 4px;
+  background-position: 0 0, 1.5px 1.5px;
+  /* Mask: concentrated at bottom edge */
   mask-image: radial-gradient(
     ellipse at center bottom,
-    transparent 40%,
-    rgba(0,0,0,0.3) 55%,
-    black 75%,
-    black 100%
+    transparent 50%,
+    rgba(0,0,0,0.5) 65%,
+    black 80%
   );
   -webkit-mask-image: radial-gradient(
     ellipse at center bottom,
-    transparent 40%,
-    rgba(0,0,0,0.3) 55%,
-    black 75%,
-    black 100%
+    transparent 50%,
+    rgba(0,0,0,0.5) 65%,
+    black 80%
   );
-  filter: blur(0.5px);
+}
+
+/* Layer 3: Color burn soft shadow — wide blurred dither underneath */
+.dithered-glass-shadow {
+  position: absolute;
+  inset: -2px;
+  top: 4px;
+  bottom: -12px;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: -2;
+  background:
+    radial-gradient(circle, rgba(0,0,0,0.6) 1.5px, transparent 1.5px);
+  background-size: 4px 4px;
+  mask-image: radial-gradient(
+    ellipse at center bottom,
+    transparent 35%,
+    rgba(0,0,0,0.4) 50%,
+    black 70%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse at center bottom,
+    transparent 35%,
+    rgba(0,0,0,0.4) 50%,
+    black 70%
+  );
+  mix-blend-mode: color-burn;
+  filter: blur(2px);
 }

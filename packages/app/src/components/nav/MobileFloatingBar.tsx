@@ -217,9 +217,11 @@ export function MobileFloatingBar() {
         >
         <div className="flex justify-center">
         <div
-          className="dithered-glass inline-flex"
+          className="dithered-glass inline-flex relative"
           style={{ transition: `all ${DURATION} ${EASE}` }}
         >
+          {/* Layer 3: Color burn soft shadow */}
+          <div className="dithered-glass-shadow rounded-full" />
           <div className="relative p-1 flex items-center justify-center">
 
             {/* DEFAULT */}
