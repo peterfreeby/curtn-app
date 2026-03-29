@@ -213,6 +213,8 @@ export default function ShowDetailPage() {
                 ticketUrl: singlePerf.ticketUrl || "",
                 soldOut: String(isSoldOut),
               }}
+              effectiveCast={(singleRun.cast ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
+              effectiveCrew={(singleRun.crew ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
               onSaved={() => window.location.reload()}
               onCancel={() => setEditing(null)}
             />

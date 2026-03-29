@@ -13,6 +13,7 @@ import { RUN_FIND_OR_CREATE_MUTATION } from "@/lib/graphql/runs";
 import { PERFORMANCE_CREATE_MUTATION } from "@/lib/graphql/performances";
 import { AddCreditForm } from "@/components/credits/AddCreditForm";
 import { AddShowCreditForm } from "@/components/credits/AddShowCreditForm";
+import { PerformanceCreditEditor } from "@/components/admin/PerformanceCreditEditor";
 
 // --- Field definitions ---
 
@@ -132,6 +133,12 @@ function EditorFields({
 
 // --- Main InlineEditor ---
 
+interface CreditData {
+  id: string;
+  role: string;
+  person: { id: string; name: string; slug: string };
+}
+
 interface InlineEditorProps {
   entityType: "show" | "run" | "performance";
   entityId: string; // MongoDB ObjectId
@@ -140,6 +147,9 @@ interface InlineEditorProps {
   showId?: string; // Global ID — for "add run" on show editor, "add show credit"
   runId?: string; // Global ID — for "add performance" on run editor, "add credit"
   venueId?: string; // Global ID — for performance creation
+  // Performance credit override props
+  effectiveCast?: CreditData[];
+  effectiveCrew?: CreditData[];
   onSaved?: () => void;
   onCancel: () => void;
 }
@@ -150,6 +160,8 @@ export function InlineEditor({
   initialValues,
   showId,
   runId,
+  effectiveCast,
+  effectiveCrew,
   venueId,
   onSaved,
   onCancel,
@@ -261,7 +273,8 @@ export function InlineEditor({
 
   const canAddCredits =
     (entityType === "show" && showId) ||
-    (entityType === "run" && runId);
+    (entityType === "run" && runId) ||
+    (entityType === "performance" && (effectiveCast?.length || effectiveCrew?.length));
 
   const childLabel = entityType === "show" ? "Add Production" : "Add Performance";
 
@@ -356,6 +369,15 @@ export function InlineEditor({
 
       {section === "credits" && entityType === "run" && runId && (
         <AddCreditForm runId={runId} onAdded={() => onSaved?.()} />
+      )}
+
+      {section === "credits" && entityType === "performance" && (
+        <PerformanceCreditEditor
+          performanceId={entityId}
+          effectiveCast={effectiveCast ?? []}
+          effectiveCrew={effectiveCrew ?? []}
+          onChanged={() => onSaved?.()}
+        />
       )}
     </div>
   );

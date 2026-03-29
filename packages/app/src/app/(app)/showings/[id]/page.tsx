@@ -292,6 +292,8 @@ export default function PerformanceDetailPage() {
               ticketUrl: perf.ticketUrl || "",
               soldOut: String(perf.soldOut === true || perf.soldOut === "true"),
             }}
+            effectiveCast={perf.effectiveCast ?? []}
+            effectiveCrew={perf.effectiveCrew ?? []}
             onSaved={() => { setEditing(false); window.location.reload(); }}
             onCancel={() => setEditing(false)}
           />

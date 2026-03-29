@@ -160,3 +160,30 @@ export const RUN_REVIEWS_QUERY = gql`
     }
   }
 `;
+
+export const PERFORMANCE_CREDIT_REMOVE_MUTATION = gql`
+  mutation PerformanceCreditRemove($input: performanceCreditRemoveInput!) {
+    performanceCreditRemove(input: $input) {
+      performance { id }
+      error
+    }
+  }
+`;
+
+export const PERFORMANCE_CREDIT_RESTORE_MUTATION = gql`
+  mutation PerformanceCreditRestore($input: performanceCreditRestoreInput!) {
+    performanceCreditRestore(input: $input) {
+      performance { id }
+      error
+    }
+  }
+`;
+
+export const PERFORMANCE_CREDIT_ADD_MUTATION = gql`
+  mutation PerformanceCreditAdd($input: performanceCreditAddInput!) {
+    performanceCreditAdd(input: $input) {
+      performance { id }
+      error
+    }
+  }
+`;
