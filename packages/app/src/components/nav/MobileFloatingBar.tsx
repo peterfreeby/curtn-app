@@ -222,7 +222,7 @@ export function MobileFloatingBar() {
         >
           {/* Layer 3: Color burn soft shadow */}
           <div className="dithered-glass-shadow rounded-full" />
-          <div className="relative p-1 flex items-center justify-center z-[2]">
+          <div className="relative p-1 flex items-center justify-center z-[3]">
 
             {/* DEFAULT */}
             <StateLayer active={barState === "default"}>
