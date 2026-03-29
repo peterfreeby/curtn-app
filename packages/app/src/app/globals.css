@@ -879,10 +879,10 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid rgba(245,241,227,0.08);
 }
 
-/* --- Ticker tape continuous scroll --- */
+/* --- Ticker tape continuous scroll with pause --- */
 @keyframes ticker {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  0%, 10% { transform: translateX(0); }
+  90%, 100% { transform: translateX(-50%); }
 }
 .ticker-scroll {
   display: inline-block;
