@@ -72,10 +72,11 @@ export function MobileFloatingBar() {
   }, [pathname]);
 
   useEffect(() => {
+    // Only auto-set state on navigation — don't override expanded/search
     if (isDetailRoute(pathname)) {
-      setBarState("detail");
-    } else if (barState === "detail") {
-      setBarState("default");
+      setBarState((prev) => prev === "expanded" || prev === "search" ? prev : "detail");
+    } else {
+      setBarState((prev) => prev === "detail" ? "default" : prev);
     }
   }, [pathname]);
 
@@ -139,6 +140,7 @@ export function MobileFloatingBar() {
 
   const handleCloseSearch = useCallback(() => {
     setSearchQuery("");
+    setBarState("default");
     router.back();
   }, [router]);
 
