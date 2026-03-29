@@ -344,7 +344,7 @@ export function MobileFloatingBar() {
                         className="text-curtn-muted hover:text-curtn-coral transition-colors shrink-0 leading-none"
                         aria-label="Go to parent"
                       >
-                        <Icon name="caret-down" size={8} className="rotate-90 inline-block align-baseline" />
+                        <Icon name="caret-down" size={8} className="rotate-90 inline-block" style={{ position: "relative", top: "1px" }} />
                       </a>
                     )}
                     {nowViewing.parentHref ? (
