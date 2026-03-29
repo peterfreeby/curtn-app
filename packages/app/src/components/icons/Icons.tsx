@@ -39,6 +39,8 @@ const ICONS = {
   "copy": "\uE1D0",
   trash: "\uE4AC",
   lightning: "\uE2DE",
+  "folder-simple": "\uE268",
+  "folder-simple-plus": "\uE26C",
 } as const;
 
 export type IconName = keyof typeof ICONS;

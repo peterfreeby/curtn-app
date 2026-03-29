@@ -368,7 +368,7 @@ export function MobileFloatingBar() {
                 className={`flex items-center justify-center w-8 h-8 transition-colors shrink-0 ${isOnWatchlist ? "text-curtn-coral" : "text-curtn-muted hover:text-curtn-cream"}`}
                 aria-label={isOnWatchlist ? "Remove from watchlist" : "Add to watchlist"}
               >
-                <Icon name="list-plus" weight={isOnWatchlist ? "fill" : "regular"} size={20} />
+                <Icon name={isOnWatchlist ? "folder-simple" : "folder-simple-plus"} weight={isOnWatchlist ? "fill" : "regular"} size={20} />
               </button>
               <button
                 type="button"
