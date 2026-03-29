@@ -17,6 +17,7 @@ import { AddToListButton } from "@/components/lists/AddToListButton";
 import { DetailBreadcrumb } from "@/components/nav/DetailBreadcrumb";
 import { Button } from "@/components/Button";
 import { InlineEditor } from "@/components/admin/InlineEditor";
+import { AddSiblingActions } from "@/components/admin/AddSiblingActions";
 import { Icon } from "@/components/icons/Icons";
 import { useAuth } from "@/lib/auth/useAuth";
 
@@ -169,9 +170,20 @@ export default function ShowDetailPage() {
         <CreditsList cast={singleRun.cast ?? []} crew={singleRun.crew ?? []} />
 
         {isAdmin && !editing && (
-          <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
-            Edit
-          </Button>
+          <div className="space-y-2">
+            <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
+              Edit
+            </Button>
+            <AddSiblingActions
+              showId={show.id}
+              runId={singleRun.id}
+              venueId={venues[0]?.id}
+              showAddRun
+              showAddPerformance
+              onRunCreated={() => window.location.reload()}
+              onPerformanceCreated={() => window.location.reload()}
+            />
+          </div>
         )}
         {editing === "show" && (
           <InlineEditor
@@ -263,9 +275,16 @@ export default function ShowDetailPage() {
         <CreditsList cast={singleRun.cast ?? []} crew={singleRun.crew ?? []} />
 
         {isAdmin && !editing && (
-          <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
-            Edit
-          </Button>
+          <div className="space-y-2">
+            <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
+              Edit
+            </Button>
+            <AddSiblingActions
+              showId={show.id}
+              showAddRun
+              onRunCreated={() => window.location.reload()}
+            />
+          </div>
         )}
         {editing === "show" && (
           <InlineEditor
@@ -323,9 +342,16 @@ export default function ShowDetailPage() {
         />
 
         {isAdmin && !editing && (
-          <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
-            Edit
-          </Button>
+          <div className="space-y-2">
+            <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
+              Edit
+            </Button>
+            <AddSiblingActions
+              showId={show.id}
+              showAddRun
+              onRunCreated={() => window.location.reload()}
+            />
+          </div>
         )}
         {editing === "show" && (
           <InlineEditor
