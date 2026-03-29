@@ -35,7 +35,9 @@ export const SHOW_LIST_QUERY = gql`
                   slug
                 }
                 venues {
+                  id
                   name
+                  slug
                   city
                 }
                 startDate

@@ -185,20 +185,47 @@ export default function ShowDetailPage() {
             />
           </div>
         )}
-        {editing === "show" && (
-          <InlineEditor
-            entityType="show"
-            entityId={decodeId(show.id)}
-            initialValues={{
-              title: show.title,
-              description: show.description,
-              performanceTypes: show.performanceTypes,
-              duration: show.duration,
-              url: show.url,
-            }}
-            onSaved={() => { setEditing(null); window.location.reload(); }}
-            onCancel={() => setEditing(null)}
-          />
+        {editing && (
+          <div className="space-y-4">
+            <InlineEditor
+              entityType="show"
+              entityId={decodeId(show.id)}
+              initialValues={{
+                title: show.title,
+                description: show.description,
+                performanceTypes: show.performanceTypes,
+                duration: show.duration,
+                url: show.url,
+              }}
+              onSaved={() => { setEditing(null); window.location.reload(); }}
+              onCancel={() => setEditing(null)}
+            />
+            <InlineEditor
+              entityType="run"
+              entityId={decodeId(singleRun.id)}
+              initialValues={{
+                title: singleRun.title || "",
+                description: singleRun.description || "",
+                intermissions: singleRun.intermissions ?? 0,
+                startDate: singleRun.startDate || "",
+                endDate: singleRun.endDate || "",
+              }}
+              onSaved={() => window.location.reload()}
+              onCancel={() => setEditing(null)}
+            />
+            <InlineEditor
+              entityType="performance"
+              entityId={decodeId(singlePerf.id)}
+              initialValues={{
+                date: singlePerf.date || "",
+                time: singlePerf.time || "",
+                ticketUrl: singlePerf.ticketUrl || "",
+                soldOut: String(isSoldOut),
+              }}
+              onSaved={() => window.location.reload()}
+              onCancel={() => setEditing(null)}
+            />
+          </div>
         )}
 
         <ReviewsSection
@@ -286,20 +313,35 @@ export default function ShowDetailPage() {
             />
           </div>
         )}
-        {editing === "show" && (
-          <InlineEditor
-            entityType="show"
-            entityId={decodeId(show.id)}
-            initialValues={{
-              title: show.title,
-              description: show.description,
-              performanceTypes: show.performanceTypes,
-              duration: show.duration,
-              url: show.url,
-            }}
-            onSaved={() => { setEditing(null); window.location.reload(); }}
-            onCancel={() => setEditing(null)}
-          />
+        {editing && (
+          <div className="space-y-4">
+            <InlineEditor
+              entityType="show"
+              entityId={decodeId(show.id)}
+              initialValues={{
+                title: show.title,
+                description: show.description,
+                performanceTypes: show.performanceTypes,
+                duration: show.duration,
+                url: show.url,
+              }}
+              onSaved={() => { setEditing(null); window.location.reload(); }}
+              onCancel={() => setEditing(null)}
+            />
+            <InlineEditor
+              entityType="run"
+              entityId={decodeId(singleRun.id)}
+              initialValues={{
+                title: singleRun.title || "",
+                description: singleRun.description || "",
+                intermissions: singleRun.intermissions ?? 0,
+                startDate: singleRun.startDate || "",
+                endDate: singleRun.endDate || "",
+              }}
+              onSaved={() => window.location.reload()}
+              onCancel={() => setEditing(null)}
+            />
+          </div>
         )}
 
         <ReviewsSection
