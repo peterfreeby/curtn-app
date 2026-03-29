@@ -153,16 +153,22 @@ export function MobileFloatingBar() {
   const handleBack = useCallback(() => { router.back(); }, [router]);
 
   const handleWatchlistToggle = useCallback(async () => {
-    if (!nowViewing?.showId) return;
+    if (!nowViewing?.showId) {
+      setToast("No show to add");
+      setTimeout(() => setToast(null), 2000);
+      return;
+    }
     const wasOn = isOnWatchlist;
     setIsOnWatchlist(!wasOn);
-    
+
     const execute = wasOn ? executeWatchlistRemove : executeWatchlistAdd;
     const result = await execute({ input: { showId: nowViewing.showId } });
     const payload = wasOn ? result.data?.watchlistRemove : result.data?.watchlistAdd;
-    
+
     if (result.error || payload?.error) {
       setIsOnWatchlist(wasOn);
+      setToast(result.error?.message || payload?.error || "Something went wrong");
+      setTimeout(() => setToast(null), 3000);
     } else {
       setToast(wasOn ? "Removed from watchlist" : "Added to watchlist");
       setTimeout(() => setToast(null), 3000);
