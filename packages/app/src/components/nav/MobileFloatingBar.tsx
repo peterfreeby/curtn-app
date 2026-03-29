@@ -212,8 +212,8 @@ export function MobileFloatingBar() {
 
               {/* DETAIL */}
               <StateLayer active={barState === "detail"}>
-                <button type="button" onClick={handleTabTap} className={iconBtnActive} aria-label={lastTabConfig.label}>
-                  <Icon name={lastTabConfig.icon} weight={currentTab === lastTab ? "fill" : "regular"} size={20} />
+                <button type="button" onClick={handleTabTap} className={iconBtnMuted} aria-label={lastTabConfig.label}>
+                  <Icon name={lastTabConfig.icon} weight="regular" size={20} />
                 </button>
                 <button type="button" onClick={handleSearch} className={iconBtnMuted} aria-label="Search">
                   <Icon name="magnifying-glass" size={20} />
