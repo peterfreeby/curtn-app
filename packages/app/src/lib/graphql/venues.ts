@@ -120,3 +120,19 @@ export const VENUE_RUNS_QUERY = gql`
     }
   }
 `;
+
+export const VENUE_MAP_QUERY = gql`
+  query VenueMap($first: Int) {
+    venueList(first: $first) {
+      edges {
+        node {
+          id
+          name
+          slug
+          city
+          coordinates { lat lng }
+        }
+      }
+    }
+  }
+`;

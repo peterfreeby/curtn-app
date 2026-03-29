@@ -5,11 +5,17 @@ import { useQuery } from "urql";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { BROWSE_PERFORMANCES_QUERY } from "@/lib/graphql/performances";
+import { VENUE_MAP_QUERY } from "@/lib/graphql/venues";
 import { Icon } from "@/components/icons/Icons";
 import { formatShowTime } from "@/lib/format";
 
 const PerformanceMap = dynamic(
   () => import("@/components/map/PerformanceMap").then((m) => m.PerformanceMap),
+  { ssr: false, loading: () => <div className="absolute inset-0 bg-curtn-deep" /> }
+);
+
+const VenueOnlyMap = dynamic(
+  () => import("@/components/map/VenueOnlyMap").then((m) => m.VenueOnlyMap),
   { ssr: false, loading: () => <div className="absolute inset-0 bg-curtn-deep" /> }
 );
 
@@ -62,14 +68,27 @@ export default function UpcomingPage() {
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [listExpanded, setListExpanded] = useState(false);
 
+  // Phase 1: lightweight venue pins (fast)
+  const [{ data: venueData }] = useQuery({
+    query: VENUE_MAP_QUERY,
+    variables: { first: 200 },
+  });
+
+  // Phase 2: full performance data (slower, enriches popups)
   const [{ data, fetching }] = useQuery({
     query: BROWSE_PERFORMANCES_QUERY,
     variables: { first: 200 },
   });
 
+  const venues = useMemo(() => {
+    return (venueData?.venueList?.edges ?? []).map((e: any) => e.node).filter((v: any) => v.coordinates?.lat);
+  }, [venueData]);
+
   const allPerformances = useMemo(() => {
     return (data?.performanceList?.edges ?? []).map((e: any) => e.node);
   }, [data]);
+
+  const hasPerformanceData = allPerformances.length > 0;
 
   const performances = useMemo(() => {
     const range = getDateRange(dateFilter);
@@ -95,10 +114,14 @@ export default function UpcomingPage() {
 
   return (
     <div className="fixed inset-0 top-[env(safe-area-inset-top)] md:top-16 bottom-16 md:bottom-0 overflow-hidden">
-      {/* Full-canvas map */}
+      {/* Full-canvas map — show venue pins immediately, enrich when performance data loads */}
       {view === "map" && (
         <div className="absolute inset-0">
-          <PerformanceMap performances={performances} className="!h-full !rounded-none !border-0" />
+          {hasPerformanceData ? (
+            <PerformanceMap performances={performances} />
+          ) : (
+            <VenueOnlyMap venues={venues} />
+          )}
         </div>
       )}
 
