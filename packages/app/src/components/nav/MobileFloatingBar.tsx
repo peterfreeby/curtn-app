@@ -95,7 +95,7 @@ export function MobileFloatingBar() {
 
   useEffect(() => {
     if (barState === "search") {
-      setTimeout(() => searchInputRef.current?.focus(), 80);
+      setTimeout(() => searchInputRef.current?.focus(), 150);
     }
   }, [barState]);
 
@@ -292,7 +292,7 @@ export function MobileFloatingBar() {
                     onChange={(e) => handleSearchInput(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearchSubmit()}
                     placeholder="Shows, venues, people..."
-                    className="flex-1 bg-transparent text-sm text-curtn-cream placeholder:text-curtn-muted/50 outline-none py-2 min-w-0"
+                    className="flex-1 bg-transparent text-base text-curtn-cream placeholder:text-curtn-muted/50 outline-none py-1 min-w-0"
                   />
                   <button
                     type="button"
