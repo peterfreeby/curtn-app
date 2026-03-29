@@ -332,7 +332,15 @@ export default function RunDetailPage() {
           {!reviewsFetching && displayReviewEdges.length === 0 && (
             <div className="empty-state">
               <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">No Reviews Yet</p>
-              <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">Be the first to share your thoughts.</p>
+              <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">Be the first to share your thoughts about this production.</p>
+              <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-2">
+                <Button variant="primary" size="sm" href={`/log?run=${id}`}>
+                  Write a Review
+                </Button>
+                <Button variant="tertiary" size="sm" href={`/performances/${encodeURIComponent(show.id)}`}>
+                  View Other Productions
+                </Button>
+              </div>
             </div>
           )}
           <div className="space-y-3">

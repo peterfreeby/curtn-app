@@ -72,6 +72,18 @@ export const performanceType = new GraphQLObjectType({
         type: GraphQLString,
         resolve: perf => perf.metadataOverrides?.imageUrl
       },
+      effectivePosterUrl: {
+        type: GraphQLString,
+        description: 'Resolved poster: performance override > run poster > show poster',
+        resolve: async (performance: any) => {
+          if (performance.metadataOverrides?.imageUrl) return performance.metadataOverrides.imageUrl
+          const run = await RunModel.findById(performance.run)
+          if (run?.posterUrl) return run.posterUrl
+          if (run?.imageUrl) return run.imageUrl
+          const show = await ShowModel.findById(run?.show)
+          return show?.posterUrl || show?.imageUrl || null
+        }
+      },
       effectiveDescription: {
         type: GraphQLString,
         description: 'Resolved description: performance override > run > show',

@@ -15,6 +15,7 @@ export const SINGLE_PERFORMANCE_QUERY = gql`
       }
       ticketUrl
       soldOut
+      effectivePosterUrl
       effectiveDescription
       effectiveCast {
         id
@@ -52,6 +53,18 @@ export const SINGLE_PERFORMANCE_QUERY = gql`
         endDate
         averageRating
         reviewCount
+        performances {
+          edges {
+            node {
+              id
+              date
+              time
+              venue { id name }
+              ticketUrl
+              soldOut
+            }
+          }
+        }
       }
     }
   }

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "urql";
 import Link from "next/link";
 import { SINGLE_PERFORMANCE_QUERY, RUN_REVIEWS_QUERY } from "@/lib/graphql/performances";
 import { DetailBreadcrumb } from "@/components/nav/DetailBreadcrumb";
 import { CreditsList } from "@/components/credits/CreditsList";
+import { ShowingsList } from "@/components/performances/ShowingsList";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { Icon } from "@/components/icons/Icons";
 import { Button } from "@/components/Button";
@@ -96,10 +97,27 @@ export default function PerformanceDetailPage() {
   const [allReviewEdges, setAllReviewEdges] = useState<any[]>([]);
   const [followedOnly, setFollowedOnly] = useState(false);
   const [reviewScope, setReviewScope] = useState<"performance" | "run" | "show">("performance");
+  const [scopeAutoSet, setScopeAutoSet] = useState(false);
 
   const perf = data?.singlePerformance;
   const run = perf?.run;
   const show = run?.show;
+
+  // Check if this performance has any reviews — if not, auto-switch to run scope
+  const [{ data: perfReviewCheck }] = useQuery({
+    query: RUN_REVIEWS_QUERY,
+    variables: { performance: id, first: 1 },
+    pause: !perf || scopeAutoSet,
+  });
+
+  useEffect(() => {
+    if (scopeAutoSet || !perfReviewCheck) return;
+    const hasPerformanceReviews = (perfReviewCheck?.reviewList?.edges?.length ?? 0) > 0;
+    if (!hasPerformanceReviews) {
+      setReviewScope("run");
+    }
+    setScopeAutoSet(true);
+  }, [perfReviewCheck, scopeAutoSet]);
 
   const reviewVariables = {
     ...(reviewScope === "performance"
@@ -165,6 +183,11 @@ export default function PerformanceDetailPage() {
   const reviewPageInfo = reviewConnection?.pageInfo;
   const displayReviewEdges = reviewAfter === null ? reviewEdges : [...allReviewEdges, ...reviewEdges];
 
+  // Sibling performances from the same run (excluding current)
+  const siblingPerformances = (run?.performances?.edges ?? [])
+    .map((e: any) => e.node)
+    .filter((p: any) => p.id !== id);
+
   function loadMoreReviews() {
     if (reviewPageInfo?.endCursor) {
       setAllReviewEdges(displayReviewEdges);
@@ -191,7 +214,16 @@ export default function PerformanceDetailPage() {
       <DetailBreadcrumb levels={breadcrumbLevels} />
 
       <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
-        {/* Performance record card */}
+        {/* Poster + Performance record card */}
+        <div className="flex gap-5 items-start">
+          {perf.effectivePosterUrl && (
+            <div className="w-[110px] sm:w-[140px] shrink-0">
+              <div className="relative aspect-[2/3] rounded-sm border-2 border-curtn-dark/50 bg-curtn-surface shadow-2xl overflow-hidden">
+                <img src={perf.effectivePosterUrl} alt={show.title} className="h-full w-full object-cover" />
+              </div>
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
         <div className="dinn-panel">
           <div className="dinn-header">
             <span className="dinn-title">{show.title}</span>
@@ -270,6 +302,8 @@ export default function PerformanceDetailPage() {
             </div>
           )}
         </div>
+          </div>
+        </div>
 
         {/* Log CTA */}
         <Button variant="primary" size="lg" fullWidth href={`/log?run=${run.id}`}>
@@ -297,6 +331,11 @@ export default function PerformanceDetailPage() {
             onSaved={() => { setEditing(false); window.location.reload(); }}
             onCancel={() => setEditing(false)}
           />
+        )}
+
+        {/* Also playing on */}
+        {siblingPerformances.length > 0 && (
+          <ShowingsList showings={siblingPerformances} label="Also Playing" />
         )}
 
         {/* Reviews */}
