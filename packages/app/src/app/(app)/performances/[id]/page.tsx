@@ -112,7 +112,6 @@ export default function ShowDetailPage() {
 
     return (
       <div className="relative">
-        <DetailBreadcrumb levels={[{ label: show.title }]} />
         <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
         <RunHero
           showTitle={show.title}
@@ -196,7 +195,6 @@ export default function ShowDetailPage() {
 
     return (
       <div className="relative">
-        <DetailBreadcrumb levels={[{ label: show.title }]} />
         <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
         <RunHero
           showTitle={show.title}
@@ -274,7 +272,6 @@ export default function ShowDetailPage() {
   // --- SCENARIO C: multiple runs — show info + run list ---
   return (
     <div className="relative">
-      <DetailBreadcrumb levels={[{ label: show.title }]} />
       <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
         <ShowHero
           title={show.title}

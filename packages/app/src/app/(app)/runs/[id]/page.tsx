@@ -200,7 +200,7 @@ export default function RunDetailPage() {
       <div className="relative">
         <DetailBreadcrumb levels={[
           { label: show.title, href: `/performances/${encodeURIComponent(show.id)}` },
-          { label: run.title || company?.name || "Production" },
+          { label: run.title || company?.name || run.venues?.[0]?.name || "Production" },
         ]} />
         <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
         <RunHero
@@ -320,7 +320,7 @@ export default function RunDetailPage() {
     <div className="relative">
       <DetailBreadcrumb levels={[
         { label: show.title, href: `/performances/${encodeURIComponent(show.id)}` },
-        { label: run.title || company?.name || "Production" },
+        { label: run.title || company?.name || run.venues?.[0]?.name || "Production" },
       ]} />
       <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
       <RunHero

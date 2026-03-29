@@ -171,7 +171,7 @@ export default function PerformanceDetailPage() {
   }
 
   // Build breadcrumb
-  const runLabel = run.title || company?.name || "Production";
+  const runLabel = run.title || company?.name || run.venues?.[0]?.name || "Production";
   const breadcrumbLevels = [
     { label: show.title, href: `/performances/${encodeURIComponent(show.id)}` },
     { label: runLabel, href: `/runs/${encodeURIComponent(run.id)}` },
