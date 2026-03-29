@@ -223,9 +223,6 @@ export function MobileFloatingBar() {
                     <span className="text-[8px] font-medium leading-none">{tab.label}</span>
                   </button>
                 ))}
-                <button type="button" onClick={() => setBarState("default")} className={`${iconBtn} w-8 text-curtn-muted hover:text-curtn-cream hover:bg-curtn-cream/5`} aria-label="Close">
-                  <Icon name="plus" weight="regular" size={18} className="rotate-45" />
-                </button>
               </StateLayer>
 
               {/* SEARCH */}
@@ -242,9 +239,6 @@ export function MobileFloatingBar() {
                     className="flex-1 bg-transparent text-sm text-curtn-cream placeholder:text-curtn-muted/50 outline-none py-2 min-w-0"
                   />
                 </div>
-                <button type="button" onClick={handleCloseSearch} className={`${iconBtn} w-8 text-curtn-muted hover:text-curtn-cream hover:bg-curtn-cream/5 shrink-0`} aria-label="Close search">
-                  <Icon name="plus" weight="regular" size={18} className="rotate-45" />
-                </button>
               </StateLayer>
 
               {/* DETAIL */}
@@ -263,12 +257,22 @@ export function MobileFloatingBar() {
             </div>
           </div>
 
-          {/* Plus button — always outside the bar, to the right */}
+          {/* Plus button — doubles as close button when rotated */}
           <button
             type="button"
-            onClick={handleLog}
-            className="flex items-center justify-center w-9 h-9 rounded-full bg-curtn-coral text-curtn-deep transition-all hover:bg-curtn-red active:scale-95 shadow-lg shadow-black/20 shrink-0"
-            aria-label="Log a performance"
+            onClick={
+              barState === "expanded" ? () => setBarState("default") :
+              barState === "search" ? handleCloseSearch :
+              handleLog
+            }
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-curtn-coral text-curtn-deep hover:bg-curtn-red active:scale-95 shadow-lg shadow-black/20 shrink-0"
+            style={{
+              transition: `transform ${DURATION} ${EASE}`,
+              transform: (barState === "expanded" || barState === "search") ? "rotate(45deg)" : "rotate(0deg)",
+            }}
+            aria-label={
+              barState === "expanded" || barState === "search" ? "Close" : "Log a performance"
+            }
           >
             <Icon name="plus" weight="bold" size={20} />
           </button>
