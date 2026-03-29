@@ -599,7 +599,7 @@ export default function WikidataImportPage() {
           {/* Action bar */}
           <div className="flex items-center gap-3">
             <Button
-              variant="ghost"
+              variant="tertiary"
               onClick={() => {
                 setStep("search");
                 setImportResult(null);
@@ -608,7 +608,7 @@ export default function WikidataImportPage() {
               Back
             </Button>
             <Button
-              variant="ghost"
+              variant="tertiary"
               onClick={() => handleImport(true)}
               disabled={selected.size === 0 || importing}
             >
@@ -689,7 +689,7 @@ export default function WikidataImportPage() {
               Search Again
             </Button>
             <Button
-              variant="ghost"
+              variant="tertiary"
               onClick={() => (window.location.href = "/admin/editor")}
             >
               Browse Data

@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Layout tokens */
+:root {
+  --content-width: 896px;   /* ~golden ratio of 1440px viewport — same as max-w-4xl */
+  --content-narrow: 672px;  /* max-w-2xl — for feed/reviews where narrow is better */
+}
+
 @font-face {
   font-family: "Phosphor";
   src: url("../fonts/Phosphor.ttf") format("truetype");

@@ -1072,7 +1072,7 @@ export default function CsvImportPage() {
           </Card>
 
           <div className="flex gap-3">
-            <Button variant="ghost" onClick={() => setStep("upload")}>
+            <Button variant="tertiary" onClick={() => setStep("upload")}>
               Back
             </Button>
             <Button
@@ -1115,7 +1115,7 @@ export default function CsvImportPage() {
               </div>
               <div className="flex gap-2">
                 <Button
-                  variant="ghost"
+                  variant="tertiary"
                   onClick={() => handleImport(true)}
                   disabled={!!activity}
                 >
@@ -1259,7 +1259,7 @@ export default function CsvImportPage() {
 
           <div className="flex gap-3">
             <Button
-              variant="ghost"
+              variant="tertiary"
               onClick={() => {
                 setStep("map");
                 setImportResult(null);
@@ -1344,7 +1344,7 @@ export default function CsvImportPage() {
               Import Another File
             </Button>
             <Button
-              variant="ghost"
+              variant="tertiary"
               onClick={() => (window.location.href = "/performances")}
             >
               Browse Performances

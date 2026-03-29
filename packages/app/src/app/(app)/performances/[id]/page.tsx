@@ -61,7 +61,7 @@ export default function ShowDetailPage() {
 
   if (fetching) {
     return (
-      <div className="px-6 py-8 max-w-2xl mx-auto animate-pulse space-y-4">
+      <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto animate-pulse space-y-4">
         <div className="flex gap-1.5">
           <div className="h-4 w-14 bg-curtn-dark/60" />
           <div className="h-4 w-18 bg-curtn-dark/60" />
@@ -76,7 +76,7 @@ export default function ShowDetailPage() {
 
   if (!show) {
     return (
-      <div className="px-6 py-8 max-w-2xl mx-auto">
+      <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto">
         <p className="text-curtn-muted text-sm">Show not found.</p>
       </div>
     );
@@ -111,9 +111,9 @@ export default function ShowDetailPage() {
       singlePerf.soldOut === true || singlePerf.soldOut === "true";
 
     return (
-      <div>
+      <div className="relative">
         <DetailBreadcrumb levels={[{ label: show.title }]} />
-        <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
+        <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
         <RunHero
           showTitle={show.title}
           showId={show.id}
@@ -195,9 +195,9 @@ export default function ShowDetailPage() {
     );
 
     return (
-      <div>
+      <div className="relative">
         <DetailBreadcrumb levels={[{ label: show.title }]} />
-        <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
+        <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
         <RunHero
           showTitle={show.title}
           showId={show.id}
@@ -273,9 +273,9 @@ export default function ShowDetailPage() {
 
   // --- SCENARIO C: multiple runs — show info + run list ---
   return (
-    <div>
+    <div className="relative">
       <DetailBreadcrumb levels={[{ label: show.title }]} />
-      <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
+      <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
         <ShowHero
           title={show.title}
           description={show.description}
@@ -305,7 +305,7 @@ export default function ShowDetailPage() {
           </Link>
         )}
 
-        <div>
+        <div className="relative">
           <h2 className="mb-3 text-xs uppercase tracking-widest text-curtn-muted">
             Productions ({runs.length})
           </h2>
@@ -329,7 +329,7 @@ export default function ShowDetailPage() {
         </div>
 
         {/* Reviews — All Productions */}
-        <div>
+        <div className="relative">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs uppercase tracking-widest text-curtn-muted">
               Reviews &middot; All Productions
@@ -401,7 +401,7 @@ function ReviewsSection({
   onDeleted: () => void;
 }) {
   return (
-    <div>
+    <div className="relative">
       <h2 className="mb-3 text-xs uppercase tracking-widest text-curtn-muted">
         Reviews
         {edges.length > 0 &&

@@ -92,7 +92,8 @@ const REVIEW_PAGE_SIZE = 12;
 export default function RunDetailPage() {
   const params = useParams();
   const id = decodeURIComponent(params.id as string);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const isAdmin = !!user?.isAdmin;
 
   const [{ data, fetching }, reexecuteRun] = useQuery({
     query: SINGLE_RUN_QUERY,
@@ -120,7 +121,7 @@ export default function RunDetailPage() {
 
   if (fetching) {
     return (
-      <div className="px-6 py-8 max-w-2xl mx-auto animate-pulse space-y-4">
+      <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto animate-pulse space-y-4">
         <div className="flex gap-1.5">
           <div className="h-4 w-14 bg-curtn-dark/60" />
           <div className="h-4 w-18 bg-curtn-dark/60" />
@@ -135,7 +136,7 @@ export default function RunDetailPage() {
 
   if (!run) {
     return (
-      <div className="px-6 py-8 max-w-2xl mx-auto">
+      <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto">
         <div className="empty-state">
           <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">Run Not Found</p>
           <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">This production may have been removed.</p>
@@ -196,12 +197,12 @@ export default function RunDetailPage() {
     const month = dateObj.toLocaleString("en-US", { month: "short" });
 
     return (
-      <div>
+      <div className="relative">
         <DetailBreadcrumb levels={[
           { label: show.title, href: `/performances/${encodeURIComponent(show.id)}` },
-          { label: company?.name ? `${company.name}${run.venues?.[0] ? ` @ ${run.venues[0].name}` : ""}` : run.venues?.[0]?.name || "Production" },
+          { label: run.title || company?.name || "Production" },
         ]} />
-        <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
+        <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
         <RunHero
           showTitle={show.title}
           showId={show.id}
@@ -234,7 +235,7 @@ export default function RunDetailPage() {
             <div className="ticket-month">{month}</div>
           </div>
           <div className="ticket-body flex items-center justify-between">
-            <div>
+            <div className="relative">
               <div className="ticket-title text-curtn-cream">
                 {formatShowDate(singlePerf.date)}
               </div>
@@ -266,7 +267,7 @@ export default function RunDetailPage() {
 
         <CreditsList cast={run.cast ?? []} crew={run.crew ?? []} />
 
-        {isAuthenticated && (
+        {isAdmin && (
           <div className="card-ledger space-y-6">
             <AddShowCreditForm showId={show.id} onAdded={handleCreditAdded} />
             <AddCreditForm runId={id} onAdded={handleCreditAdded} />
@@ -274,7 +275,7 @@ export default function RunDetailPage() {
         )}
 
         {/* Reviews */}
-        <div>
+        <div className="relative">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs uppercase tracking-widest text-curtn-muted">
               Reviews{displayReviewEdges.length > 0 && ` (${displayReviewEdges.length}${reviewPageInfo?.hasNextPage ? "+" : ""})`}
@@ -316,12 +317,12 @@ export default function RunDetailPage() {
 
   // --- Multiple performances: show listings ---
   return (
-    <div>
+    <div className="relative">
       <DetailBreadcrumb levels={[
         { label: show.title, href: `/performances/${encodeURIComponent(show.id)}` },
-        { label: company?.name ? `${company.name}${run.venues?.[0] ? ` @ ${run.venues[0].name}` : ""}` : run.venues?.[0]?.name || "Production" },
+        { label: run.title || company?.name || "Production" },
       ]} />
-      <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
+      <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
       <RunHero
         showTitle={show.title}
         showId={show.id}
@@ -342,7 +343,7 @@ export default function RunDetailPage() {
         reviewCount={run.reviewCount}
       />
 
-      {isAuthenticated &&          <AddToListButton listType="runs" itemId={id} />
+      {isAuthenticated && <AddToListButton listType="runs" itemId={id} />
       }
 
       {upcomingShowings.length > 0 && (
@@ -358,7 +359,7 @@ export default function RunDetailPage() {
 
       <CreditsList cast={run.cast ?? []} crew={run.crew ?? []} />
 
-      {isAuthenticated && (
+      {isAdmin && (
         <div className="card-ledger space-y-6">
           <AddShowCreditForm showId={show.id} onAdded={handleCreditAdded} />
           <AddCreditForm runId={id} onAdded={handleCreditAdded} />
@@ -366,7 +367,7 @@ export default function RunDetailPage() {
       )}
 
       {/* Reviews */}
-      <div>
+      <div className="relative">
         <h2 className="mb-3 text-xs uppercase tracking-widest text-curtn-muted">
           Reviews{displayReviewEdges.length > 0 && ` (${displayReviewEdges.length}${reviewPageInfo?.hasNextPage ? "+" : ""})`}
         </h2>

@@ -348,7 +348,7 @@ export default function IncomingEventsPage() {
                       Save
                     </Button>
                     <Button
-                      variant="ghost"
+                      variant="tertiary"
                       onClick={() => setEditingId(null)}
                     >
                       Cancel
@@ -405,13 +405,13 @@ export default function IncomingEventsPage() {
                     {item.status === "pending" && (
                       <div className="flex shrink-0 gap-1.5">
                         <Button
-                          variant="ghost"
+                          variant="tertiary"
                           onClick={() => startEditing(item)}
                         >
                           Edit
                         </Button>
                         <Button
-                          variant="ghost"
+                          variant="tertiary"
                           onClick={() => handleReject(item)}
                         >
                           Reject

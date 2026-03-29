@@ -126,7 +126,7 @@ export default function PerformanceDetailPage() {
     return (
       <div className="animate-pulse">
         <div className="h-10 bg-curtn-surface" />
-        <div className="px-6 py-8 max-w-2xl mx-auto space-y-4">
+        <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-4">
           <div className="h-8 w-3/4 bg-curtn-dark/60" />
           <div className="h-4 w-1/2 bg-curtn-dark/60" />
           <div className="h-4 w-1/3 bg-curtn-dark/60" />
@@ -137,7 +137,7 @@ export default function PerformanceDetailPage() {
 
   if (!perf || !run || !show) {
     return (
-      <div className="px-6 py-8 max-w-2xl mx-auto">
+      <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto">
         <div className="empty-state">
           <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">Performance Not Found</p>
           <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">This showing may have been removed.</p>
@@ -171,24 +171,20 @@ export default function PerformanceDetailPage() {
   }
 
   // Build breadcrumb
+  const runLabel = run.title || company?.name || "Production";
   const breadcrumbLevels = [
     { label: show.title, href: `/performances/${encodeURIComponent(show.id)}` },
-    {
-      label: company?.name
-        ? `${company.name}${venue ? ` @ ${venue.name}` : ""}`
-        : venue?.name || "Production",
-      href: `/runs/${encodeURIComponent(run.id)}`,
-    },
+    { label: runLabel, href: `/runs/${encodeURIComponent(run.id)}` },
     { label: `${dateStr}${timeStr ? ` · ${timeStr}` : ""}` },
   ];
 
   return (
-    <div>
+    <div className="relative">
       <DetailBreadcrumb levels={breadcrumbLevels} />
 
-      <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
+      <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
         {/* Hero */}
-        <div>
+        <div className="relative">
           <h1 className="font-display text-2xl font-bold text-curtn-cream leading-tight">
             {show.title}
           </h1>
@@ -241,7 +237,7 @@ export default function PerformanceDetailPage() {
 
         {/* Description */}
         {perf.effectiveDescription && (
-          <div>
+          <div className="relative">
             <h2 className="mb-2 text-xs uppercase tracking-widest text-curtn-muted">About</h2>
             <p className="text-sm text-curtn-cream/80 leading-relaxed">
               {perf.effectiveDescription}
@@ -250,7 +246,7 @@ export default function PerformanceDetailPage() {
         )}
 
         {/* Reviews */}
-        <div>
+        <div className="relative">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs uppercase tracking-widest text-curtn-muted">
               Reviews{displayReviewEdges.length > 0 && ` (${displayReviewEdges.length}${reviewPageInfo?.hasNextPage ? "+" : ""})`}

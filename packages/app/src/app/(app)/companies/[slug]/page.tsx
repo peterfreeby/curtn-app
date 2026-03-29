@@ -21,7 +21,7 @@ export default function CompanyDetailPage() {
 
   if (fetching) {
     return (
-      <div className="px-6 py-8 max-w-2xl mx-auto animate-pulse space-y-4">
+      <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto animate-pulse space-y-4">
         <div className="flex gap-6">
           <div className="h-20 w-20 rounded-lg bg-curtn-dark/60 shrink-0" />
           <div className="flex-1 space-y-3">
@@ -39,7 +39,7 @@ export default function CompanyDetailPage() {
 
   if (!company) {
     return (
-      <div className="px-6 py-8 max-w-2xl mx-auto">
+      <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto">
         <p className="text-curtn-muted text-sm">Company not found.</p>
       </div>
     );
@@ -50,7 +50,7 @@ export default function CompanyDetailPage() {
   const people = company.people ?? [];
 
   return (
-    <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
+    <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
       <CompanyHero
         name={company.name}
         description={company.description}

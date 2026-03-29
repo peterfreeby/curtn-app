@@ -108,7 +108,7 @@ export function RunHero({
       {hasHeroMedia ? (
         <div className="relative -mx-6 -mt-8 mb-6">
           {/* Backdrop — only show cover image when a separate poster exists */}
-          <div className="relative h-[240px] sm:h-[300px] overflow-hidden torn-bottom">
+          <div className="relative h-[280px] sm:h-[400px] overflow-hidden">
             {effectiveImage && effectivePoster ? (
               <img src={effectiveImage} alt="" className="h-full w-full object-cover" onError={() => setBackdropFailed(true)} />
             ) : (
@@ -121,7 +121,7 @@ export function RunHero({
           {/* Poster overlay — falls back to imageUrl */}
           <div className="relative -mt-28 sm:-mt-36 px-6 flex gap-5 items-end">
             <div className="w-[110px] sm:w-[140px] shrink-0">
-              <div className="dog-ear relative aspect-[2/3] border-2 border-curtn-dark/50 bg-curtn-surface shadow-2xl">
+              <div className="relative aspect-[2/3] rounded-sm border-2 border-curtn-dark/50 bg-curtn-surface shadow-2xl overflow-hidden">
                 <img src={(effectivePoster || effectiveImage)!} alt={showTitle} className="h-full w-full object-cover" onError={() => setPosterFailed(true)} />
               </div>
             </div>

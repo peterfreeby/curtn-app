@@ -206,7 +206,7 @@ function ConfirmDialog({
         <h3 className="text-sm font-semibold text-curtn-cream">{title}</h3>
         <p className="text-xs text-curtn-muted">{message}</p>
         <div className="flex gap-2 justify-end">
-          <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+          <Button variant="tertiary" onClick={onCancel}>Cancel</Button>
           <button
             type="button"
             onClick={onConfirm}
@@ -266,7 +266,7 @@ function MergePicker({
           ))}
         </div>
         <div className="flex justify-end">
-          <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+          <Button variant="tertiary" onClick={onCancel}>Cancel</Button>
         </div>
       </div>
     </div>
@@ -452,7 +452,7 @@ function RunsSection({
           </div>
           <div className="flex gap-2">
             <Button variant="primary" onClick={handleAdd}>Add</Button>
-            <Button variant="ghost" onClick={() => { setAdding(false); setMessage(null); }}>Cancel</Button>
+            <Button variant="tertiary" onClick={() => { setAdding(false); setMessage(null); }}>Cancel</Button>
           </div>
         </div>
       )}
@@ -645,7 +645,7 @@ function ShowsEditor() {
 
                   <div className="flex gap-2">
                     <Button variant="primary" onClick={handleSave}>Save</Button>
-                    <Button variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
+                    <Button variant="tertiary" onClick={() => setEditingId(null)}>Cancel</Button>
                   </div>
                 </div>
               ) : (
@@ -663,7 +663,7 @@ function ShowsEditor() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Button variant="ghost" onClick={() => startEdit(show)}>Edit</Button>
+                    <Button variant="tertiary" onClick={() => startEdit(show)}>Edit</Button>
                     <EntityActions
                       onDelete={() => setConfirmDelete(show)}
                       onMerge={() => setMergeSource(show)}
@@ -914,7 +914,7 @@ function VenuesEditor() {
                   />
                   <div className="flex gap-2">
                     <Button variant="primary" onClick={handleSave}>Save</Button>
-                    <Button variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
+                    <Button variant="tertiary" onClick={() => setEditingId(null)}>Cancel</Button>
                   </div>
                 </div>
               ) : (
@@ -932,7 +932,7 @@ function VenuesEditor() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Button variant="ghost" onClick={() => startEdit(venue)}>Edit</Button>
+                    <Button variant="tertiary" onClick={() => startEdit(venue)}>Edit</Button>
                     <EntityActions
                       onDelete={() => setConfirmDelete(venue)}
                       onMerge={() => setMergeSource(venue)}
@@ -1146,7 +1146,7 @@ function CreditEditor({
           />
           <div className="flex gap-2">
             <Button variant="primary" onClick={handleAdd}>Add</Button>
-            <Button variant="ghost" onClick={() => { setAdding(false); setMessage(null); }}>Cancel</Button>
+            <Button variant="tertiary" onClick={() => { setAdding(false); setMessage(null); }}>Cancel</Button>
           </div>
         </div>
       )}
@@ -1464,7 +1464,7 @@ function RunsEditor() {
 
                   <div className="flex gap-2">
                     <Button variant="primary" onClick={handleSave}>Save</Button>
-                    <Button variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
+                    <Button variant="tertiary" onClick={() => setEditingId(null)}>Cancel</Button>
                   </div>
                 </div>
               ) : (
@@ -1487,7 +1487,7 @@ function RunsEditor() {
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Button variant="ghost" onClick={() => startEdit(run)}>Edit</Button>
+                    <Button variant="tertiary" onClick={() => startEdit(run)}>Edit</Button>
                     <EntityActions
                       onDelete={() => setConfirmDelete(run)}
                       onMerge={() => setMergeSource(run)}
@@ -1798,7 +1798,7 @@ function PerformancesEditor() {
                           />
                           <div className="flex gap-2">
                             <Button variant="primary" onClick={handleCreateRun}>Create Run</Button>
-                            <Button variant="ghost" onClick={() => { setCreatingRun(false); setNewRunShowId(null); }}>Cancel</Button>
+                            <Button variant="tertiary" onClick={() => { setCreatingRun(false); setNewRunShowId(null); }}>Cancel</Button>
                           </div>
                         </div>
                       )}
@@ -1849,7 +1849,7 @@ function PerformancesEditor() {
 
                   <div className="flex gap-2">
                     <Button variant="primary" onClick={handleSave}>Save</Button>
-                    <Button variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
+                    <Button variant="tertiary" onClick={() => setEditingId(null)}>Cancel</Button>
                   </div>
                 </div>
               ) : (
@@ -1872,7 +1872,7 @@ function PerformancesEditor() {
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Button variant="ghost" onClick={() => startEdit(perf)}>Edit</Button>
+                    <Button variant="tertiary" onClick={() => startEdit(perf)}>Edit</Button>
                     <EntityActions
                       onDelete={() => setConfirmDelete(perf)}
                       onMerge={() => setMergeSource(perf)}
@@ -2045,7 +2045,7 @@ function PeopleEditor() {
                   />
                   <div className="flex gap-2">
                     <Button variant="primary" onClick={handleSave}>Save</Button>
-                    <Button variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
+                    <Button variant="tertiary" onClick={() => setEditingId(null)}>Cancel</Button>
                   </div>
                 </div>
               ) : (
@@ -2066,7 +2066,7 @@ function PeopleEditor() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Button variant="ghost" onClick={() => startEdit(person)}>Edit</Button>
+                    <Button variant="tertiary" onClick={() => startEdit(person)}>Edit</Button>
                     <EntityActions
                       onDelete={() => setConfirmDelete(person)}
                       onMerge={() => setMergeSource(person)}

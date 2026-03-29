@@ -73,9 +73,11 @@ export function WatchlistButton({
         />
         {isOn ? "On your watchlist" : "Want to see"}
       </button>
-      <span className="text-xs text-curtn-muted/60">
-        {count} {count === 1 ? "wants" : "want"} to see
-      </span>
+      {count > 0 && (
+        <span className="text-xs text-curtn-muted/60">
+          {count} {count === 1 ? "wants" : "want"} to see
+        </span>
+      )}
     </div>
   );
 }
