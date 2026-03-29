@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useCallback, useMemo } from "react
 
 interface NowViewing {
   title: string;
+  subtitle?: string | null;
   posterUrl?: string | null;
   href: string;
 }

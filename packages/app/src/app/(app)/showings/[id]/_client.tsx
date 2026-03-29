@@ -107,8 +107,10 @@ export default function PerformanceDetailPage() {
 
   useEffect(() => {
     if (show) {
+      const sub = run?.title || run?.productionCompany?.name || perf?.venue?.name || run?.venues?.[0]?.name || null;
       setNowViewing({
         title: show.title,
+        subtitle: sub,
         posterUrl: perf?.effectivePosterUrl || show.posterUrl || show.imageUrl,
         href: `/showings/${encodeURIComponent(id)}`,
       });

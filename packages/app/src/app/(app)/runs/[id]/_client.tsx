@@ -130,8 +130,10 @@ export default function RunDetailPage() {
 
   useEffect(() => {
     if (run?.show) {
+      const sub = run.title || run.productionCompany?.name || run.venues?.[0]?.name || null;
       setNowViewing({
         title: run.show.title,
+        subtitle: sub,
         posterUrl: run.posterUrl || run.imageUrl || run.show.posterUrl || run.show.imageUrl,
         href: `/runs/${encodeURIComponent(id)}`,
       });

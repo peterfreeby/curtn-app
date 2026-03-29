@@ -43,19 +43,21 @@ export default function ShowDetailPage() {
   const show = data?.singleShow;
   const runs = show?.runs?.edges?.map((e: any) => e.node) ?? [];
 
-  // Set now viewing for the floating bar
+  const runCount = runs.length;
+  const singleRun = runCount === 1 ? runs[0] : null;
+
   useEffect(() => {
     if (show) {
+      const sub = singleRun?.title || singleRun?.productionCompany?.name || singleRun?.venues?.[0]?.name || (runCount > 1 ? `${runCount} productions` : null);
       setNowViewing({
         title: show.title,
+        subtitle: sub,
         posterUrl: show.posterUrl || show.imageUrl,
         href: `/performances/${encodeURIComponent(id)}`,
       });
     }
     return () => setNowViewing(null);
-  }, [show?.title, show?.posterUrl, show?.imageUrl, id, setNowViewing]);
-  const runCount = runs.length;
-  const singleRun = runCount === 1 ? runs[0] : null;
+  }, [show?.title, singleRun, runCount, id, setNowViewing]);
   const performances = singleRun?.performances?.edges?.map((e: any) => e.node) ?? [];
   const perfCount = performances.length;
   const singlePerf = perfCount === 1 ? performances[0] : null;

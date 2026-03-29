@@ -243,7 +243,7 @@ export function MobileFloatingBar() {
                   <Icon name="plus" weight="bold" size={14} />
                 </div>
               )}
-              <span className="text-xs font-bold truncate max-w-[120px]">{nowViewing.title}</span>
+              <span className="truncate max-w-[120px]"><span className="text-xs font-bold block leading-tight">{nowViewing.title}</span>{nowViewing.subtitle && (<span className="text-[9px] font-normal opacity-70 block leading-tight">{nowViewing.subtitle}</span>)}</span>
             </button>
           ) : (
             <button
