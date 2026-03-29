@@ -322,7 +322,7 @@ export function MobileFloatingBar() {
           {/* Action button — morphs between + (log), × (close), and show info pill */}
           {barState === "detail" && nowViewing ? (
             <div
-              className="nav-bar flex items-center gap-0.5 h-9 pl-1.5 pr-0.5 shrink-0"
+              className="nav-bar flex items-center gap-2 h-9 pl-1.5 pr-0.5 shrink-0"
               style={{ transition: `all ${DURATION} ${EASE}` }}
             >
               {/* Poster + info */}
