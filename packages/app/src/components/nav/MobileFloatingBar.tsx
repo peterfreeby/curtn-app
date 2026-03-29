@@ -70,10 +70,15 @@ export function MobileFloatingBar() {
   }, [pathname]);
 
   useEffect(() => {
-    // Only auto-set state on navigation — don't override expanded/search
+    // Close search when navigating away from /search
+    if (!pathname.startsWith("/search")) {
+      setBarState((prev) => prev === "search" ? (isDetailRoute(pathname) ? "detail" : "default") : prev);
+      setSearchQuery("");
+    }
+    // Auto-set detail on detail routes, but don't override expanded
     if (isDetailRoute(pathname)) {
-      setBarState((prev) => prev === "expanded" || prev === "search" ? prev : "detail");
-    } else {
+      setBarState((prev) => prev === "expanded" ? prev : "detail");
+    } else if (!pathname.startsWith("/search")) {
       setBarState((prev) => prev === "detail" ? "default" : prev);
     }
   }, [pathname]);
@@ -190,16 +195,15 @@ export function MobileFloatingBar() {
                     placeholder="Shows, venues, people..."
                     className="flex-1 bg-transparent text-sm text-curtn-cream placeholder:text-curtn-muted/50 outline-none py-2 min-w-0"
                   />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => { setSearchQuery(""); handleSearchInput(""); searchInputRef.current?.focus(); }}
-                      className="flex items-center justify-center w-6 h-6 rounded-full text-curtn-muted hover:text-curtn-cream shrink-0"
-                      aria-label="Clear search"
-                    >
-                      <Icon name="plus" weight="regular" size={14} className="rotate-45" />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => { setSearchQuery(""); handleSearchInput(""); searchInputRef.current?.focus(); }}
+                    className="flex items-center justify-center w-6 h-6 rounded-full text-curtn-muted hover:text-curtn-cream shrink-0 transition-opacity"
+                    style={{ opacity: searchQuery ? 1 : 0, pointerEvents: searchQuery ? "auto" : "none" }}
+                    aria-label="Clear search"
+                  >
+                    <Icon name="plus" weight="regular" size={14} className="rotate-45" />
+                  </button>
                 </div>
               </StateLayer>
 
