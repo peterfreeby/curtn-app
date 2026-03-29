@@ -333,8 +333,15 @@ export function MobileFloatingBar() {
                   className="w-7 h-7 rounded-full object-cover shrink-0"
                 />
               )}
-              <div className="flex flex-col justify-center truncate max-w-[120px]">
-                <span className="text-xs font-bold text-curtn-cream leading-none truncate">{nowViewing.title}</span>
+              <div className="flex flex-col justify-center max-w-[120px]">
+                <div className="ticker-container">
+                  <span
+                    className="text-xs font-bold text-curtn-cream leading-none ticker-scroll"
+                    style={{ "--ticker-offset": nowViewing.title.length > 16 ? `-${(nowViewing.title.length - 14) * 6}px` : "0px" } as React.CSSProperties}
+                  >
+                    {nowViewing.title}
+                  </span>
+                </div>
                 {nowViewing.subtitle && (
                   <span className="flex items-baseline gap-1 mt-0.5">
                     {nowViewing.parentHref && (
@@ -344,7 +351,7 @@ export function MobileFloatingBar() {
                         className="text-curtn-muted hover:text-curtn-coral transition-colors shrink-0 leading-none"
                         aria-label="Go to parent"
                       >
-                        <Icon name="caret-down" size={8} className="rotate-90 inline-block" style={{ position: "relative", top: "1px" }} />
+                        <span className="inline-block rotate-90 relative top-[1px]"><Icon name="caret-down" size={8} /></span>
                       </a>
                     )}
                     {nowViewing.parentHref ? (
