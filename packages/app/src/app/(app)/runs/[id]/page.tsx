@@ -291,6 +291,8 @@ export default function RunDetailPage() {
             runId={id}
             venueId={run.venues?.[0]?.id}
             showId={show.id}
+            effectiveCast={(run.cast ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
+            effectiveCrew={(run.crew ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
             initialValues={{
               title: run.title || "",
               description: run.description || "",

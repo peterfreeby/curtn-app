@@ -194,6 +194,9 @@ export default function ShowDetailPage() {
               entityId={decodeId(singleRun.id)}
               runId={singleRun.id}
               venueId={venues[0]?.id}
+              showId={show.id}
+              effectiveCast={(singleRun.cast ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
+              effectiveCrew={(singleRun.crew ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
               initialValues={{
                 title: singleRun.title || "",
                 description: singleRun.description || "",
@@ -320,6 +323,9 @@ export default function ShowDetailPage() {
               entityId={decodeId(singleRun.id)}
               runId={singleRun.id}
               venueId={venues[0]?.id}
+              showId={show.id}
+              effectiveCast={(singleRun.cast ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
+              effectiveCrew={(singleRun.crew ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
               initialValues={{
                 title: singleRun.title || "",
                 description: singleRun.description || "",

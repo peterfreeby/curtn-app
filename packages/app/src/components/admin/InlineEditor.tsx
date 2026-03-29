@@ -11,8 +11,8 @@ import {
 } from "@/lib/graphql/admin";
 import { RUN_FIND_OR_CREATE_MUTATION } from "@/lib/graphql/runs";
 import { PERFORMANCE_CREATE_MUTATION } from "@/lib/graphql/performances";
-import { AddCreditForm } from "@/components/credits/AddCreditForm";
 import { AddShowCreditForm } from "@/components/credits/AddShowCreditForm";
+import { RunCreditEditor } from "@/components/admin/RunCreditEditor";
 import { PerformanceCreditEditor } from "@/components/admin/PerformanceCreditEditor";
 
 // --- Field definitions ---
@@ -368,7 +368,13 @@ export function InlineEditor({
       )}
 
       {section === "credits" && entityType === "run" && runId && (
-        <AddCreditForm runId={runId} onAdded={() => onSaved?.()} />
+        <RunCreditEditor
+          runId={runId}
+          showId={showId}
+          cast={effectiveCast ?? []}
+          crew={effectiveCrew ?? []}
+          onChanged={() => onSaved?.()}
+        />
       )}
 
       {section === "credits" && entityType === "performance" && (
