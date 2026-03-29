@@ -1,4 +1,5 @@
 import {
+  GraphQLBoolean,
   GraphQLID,
   GraphQLInt,
   ThunkObjMap,
@@ -13,6 +14,7 @@ import { performanceType } from '../performance/performanceTypes'
 import { UserModel } from '../user/userModel'
 import { PerformanceModel } from '../performance/performanceModel'
 import { RunModel } from '../run/runModel'
+import { FollowModel } from '../follow/followModel'
 import { nodeInterface } from '../../graphql/nodeInterface'
 import { entityRegister } from '../../graphql/entityHelpers'
 import { connectionDefinitions, globalIdField, connectionFromArray, connectionArgs } from 'graphql-relay'
@@ -78,6 +80,15 @@ export const reviewType = new GraphQLObjectType({
         type: GraphQLInt,
         description: `Total number of comments on this review`,
         resolve: review => review.comments.length
+      },
+      isFollowedByViewer: {
+        type: GraphQLBoolean,
+        description: 'Whether the current viewer follows this review author',
+        resolve: async (review: any, _args: any, ctx: any) => {
+          if (!ctx.user || ctx.user.id === String(review.user)) return false
+          const doc = await FollowModel.findOne({ follower: ctx.user.id, following: review.user })
+          return !!doc
+        }
       },
       createdAt: {
         type: GraphQLString,

@@ -1,8 +1,9 @@
-import { GraphQLFieldConfig, GraphQLFieldConfigArgumentMap, GraphQLID, GraphQLInt, GraphQLString } from 'graphql'
+import { GraphQLBoolean, GraphQLFieldConfig, GraphQLFieldConfigArgumentMap, GraphQLID, GraphQLInt, GraphQLString } from 'graphql'
 import { ReviewConnection } from '../reviewTypes'
 import { ReviewModel } from '../reviewModel'
 import { connectionArgs, connectionFromArray, fromGlobalId } from 'graphql-relay'
 import { UserModel } from '../../user/userModel'
+import { FollowModel } from '../../follow/followModel'
 import { Types } from 'mongoose'
 
 const usernameToObjectID = async (username: string): Promise<Types.ObjectId | undefined> => {
@@ -19,6 +20,7 @@ type Args = GraphQLFieldConfigArgumentMap & {
   runId?: string
   showId?: string
   username?: string
+  followedOnly?: boolean
 }
 
 export const reviewList: GraphQLFieldConfig<any, any, Args> = {
@@ -52,10 +54,14 @@ export const reviewList: GraphQLFieldConfig<any, any, Args> = {
     username: {
       type: GraphQLString,
       description: 'Filter reviews by this username'
+    },
+    followedOnly: {
+      type: GraphQLBoolean,
+      description: 'Only return reviews from users the viewer follows'
     }
   },
-  resolve: async (_, args) => {
-    const { sort, rating, direction, performance, runId, showId, username, ...connnectionArgs } = args
+  resolve: async (_, args, ctx) => {
+    const { sort, rating, direction, performance, runId, showId, username, followedOnly, ...connnectionArgs } = args
 
     const performanceId = performance && new Types.ObjectId(fromGlobalId(performance).id)
     const userId = username && await usernameToObjectID(username)
@@ -81,16 +87,41 @@ export const reviewList: GraphQLFieldConfig<any, any, Args> = {
       performanceFilter = { performance: { $in: perfIds } }
     }
 
+    // Get followed user IDs for filtering or pinning
+    let followedUserIds: Types.ObjectId[] = []
+    if (ctx.user && (followedOnly || !sort)) {
+      const follows = await FollowModel.find({ follower: ctx.user.id }, 'following')
+      followedUserIds = follows.map((f: any) => f.following)
+    }
+
     const filter = {
       ...(userId && { user: userId }),
       ...performanceFilter,
-      ...(rating && { rating })
+      ...(rating && { rating }),
+      ...(followedOnly && followedUserIds.length > 0 && { user: { $in: followedUserIds } })
     }
 
-    const reviews = await ReviewModel.aggregate([
-      { $match: filter },
-      { $sort: { [sort || 'createdAt']: direction || -1 } }
-    ])
+    // If authenticated and no explicit sort, pin followed users' reviews to top
+    const shouldPin = ctx.user && !sort && followedUserIds.length > 0 && !followedOnly
+
+    let reviews
+    if (shouldPin) {
+      reviews = await ReviewModel.aggregate([
+        { $match: filter },
+        {
+          $addFields: {
+            _isFollowed: { $in: ['$user', followedUserIds] }
+          }
+        },
+        { $sort: { _isFollowed: -1, createdAt: -1 } },
+        { $project: { _isFollowed: 0 } }
+      ])
+    } else {
+      reviews = await ReviewModel.aggregate([
+        { $match: filter },
+        { $sort: { [sort || 'createdAt']: direction || -1 } }
+      ])
+    }
 
     return connectionFromArray(reviews, connnectionArgs)
   }

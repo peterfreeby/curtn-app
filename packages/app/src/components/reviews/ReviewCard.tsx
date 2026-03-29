@@ -16,6 +16,7 @@ interface ReviewCardProps {
     venue?: string | null;
     attendedAt?: string | null;
     createdAt?: string | null;
+    isFollowedByViewer?: boolean | null;
     user?: { id: string; username: string; fullName?: string; avatarUrl?: string | null } | null;
     run?: { id: string; show: { id: string; title: string; imageUrl?: string | null; posterUrl?: string | null } } | null;
   };
@@ -51,7 +52,7 @@ export function ReviewCard({ review, showPerformanceLink = false, onDeleted }: R
   const reviewerName = review.user?.fullName || review.user?.username || "Anonymous";
 
   return (
-    <div className="flex gap-[var(--spacing-2)] binding-left bg-curtn-surface p-[var(--spacing-2)]">
+    <div className={`flex gap-[var(--spacing-2)] binding-left bg-curtn-surface p-[var(--spacing-2)] ${review.isFollowedByViewer ? "border-l-2 border-l-curtn-coral/60" : ""}`}>
       {/* Poster thumbnail */}
       {showPerformanceLink && (
         <Link

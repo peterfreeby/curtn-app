@@ -17,6 +17,75 @@ import { useAuth } from "@/lib/auth/useAuth";
 import { AddToListButton } from "@/components/lists/AddToListButton";
 import { formatShowDate, formatShowTime } from "@/lib/format";
 
+function ReviewFilters({
+  followedOnly,
+  onFollowedChange,
+  reviewScope,
+  onScopeChange,
+  isAuthenticated,
+}: {
+  followedOnly: boolean;
+  onFollowedChange: (v: boolean) => void;
+  reviewScope: "run" | "show";
+  onScopeChange: (v: "run" | "show") => void;
+  isAuthenticated: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3 flex-wrap">
+      {isAuthenticated && (
+        <div className="flex rounded-lg border border-curtn-dark overflow-hidden text-xs">
+          <button
+            type="button"
+            onClick={() => onFollowedChange(false)}
+            className={`px-2.5 py-1 transition-colors cursor-pointer ${
+              !followedOnly
+                ? "bg-curtn-dark text-curtn-cream"
+                : "text-curtn-muted hover:text-curtn-cream"
+            }`}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => onFollowedChange(true)}
+            className={`px-2.5 py-1 transition-colors cursor-pointer ${
+              followedOnly
+                ? "bg-curtn-dark text-curtn-cream"
+                : "text-curtn-muted hover:text-curtn-cream"
+            }`}
+          >
+            Friends
+          </button>
+        </div>
+      )}
+      <div className="flex rounded-lg border border-curtn-dark overflow-hidden text-xs">
+        <button
+          type="button"
+          onClick={() => onScopeChange("run")}
+          className={`px-2.5 py-1 transition-colors cursor-pointer ${
+            reviewScope === "run"
+              ? "bg-curtn-dark text-curtn-cream"
+              : "text-curtn-muted hover:text-curtn-cream"
+          }`}
+        >
+          This Run
+        </button>
+        <button
+          type="button"
+          onClick={() => onScopeChange("show")}
+          className={`px-2.5 py-1 transition-colors cursor-pointer ${
+            reviewScope === "show"
+              ? "bg-curtn-dark text-curtn-cream"
+              : "text-curtn-muted hover:text-curtn-cream"
+          }`}
+        >
+          All Productions
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const REVIEW_PAGE_SIZE = 12;
 
 export default function RunDetailPage() {
@@ -31,10 +100,19 @@ export default function RunDetailPage() {
 
   const [reviewAfter, setReviewAfter] = useState<string | null>(null);
   const [allReviewEdges, setAllReviewEdges] = useState<any[]>([]);
+  const [followedOnly, setFollowedOnly] = useState(false);
+  const [reviewScope, setReviewScope] = useState<"run" | "show">("run");
+
+  const reviewVariables = {
+    ...(reviewScope === "run" ? { runId: id } : { showId: data?.singleRun?.show?.id }),
+    first: REVIEW_PAGE_SIZE,
+    after: reviewAfter,
+    followedOnly: followedOnly || undefined,
+  };
 
   const [{ data: reviewData, fetching: reviewsFetching }, reexecuteReviews] = useQuery({
     query: RUN_REVIEWS_QUERY,
-    variables: { runId: id, first: REVIEW_PAGE_SIZE, after: reviewAfter },
+    variables: reviewVariables,
   });
 
   const run = data?.singleRun;
@@ -91,6 +169,18 @@ export default function RunDetailPage() {
     setReviewAfter(null);
     setAllReviewEdges([]);
     reexecuteReviews({ requestPolicy: "network-only" });
+  }
+
+  function handleFilterChange(newFollowedOnly: boolean) {
+    setFollowedOnly(newFollowedOnly);
+    setReviewAfter(null);
+    setAllReviewEdges([]);
+  }
+
+  function handleScopeChange(newScope: "run" | "show") {
+    setReviewScope(newScope);
+    setReviewAfter(null);
+    setAllReviewEdges([]);
   }
 
   function handleCreditAdded() {
@@ -179,9 +269,18 @@ export default function RunDetailPage() {
 
         {/* Reviews */}
         <div>
-          <h2 className="mb-3 text-xs uppercase tracking-widest text-curtn-muted">
-            Reviews{displayReviewEdges.length > 0 && ` (${displayReviewEdges.length}${reviewPageInfo?.hasNextPage ? "+" : ""})`}
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs uppercase tracking-widest text-curtn-muted">
+              Reviews{displayReviewEdges.length > 0 && ` (${displayReviewEdges.length}${reviewPageInfo?.hasNextPage ? "+" : ""})`}
+            </h2>
+            <ReviewFilters
+              followedOnly={followedOnly}
+              onFollowedChange={handleFilterChange}
+              reviewScope={reviewScope}
+              onScopeChange={handleScopeChange}
+              isAuthenticated={isAuthenticated}
+            />
+          </div>
           {!reviewsFetching && displayReviewEdges.length === 0 && (
             <div className="empty-state">
               <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">No Reviews Yet</p>

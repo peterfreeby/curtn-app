@@ -113,8 +113,8 @@ export const UPCOMING_PERFORMANCES_QUERY = gql`
 `;
 
 export const RUN_REVIEWS_QUERY = gql`
-  query RunReviews($runId: ID!, $first: Int, $after: String) {
-    reviewList(runId: $runId, first: $first, after: $after) {
+  query RunReviews($runId: ID, $showId: ID, $first: Int, $after: String, $followedOnly: Boolean) {
+    reviewList(runId: $runId, showId: $showId, first: $first, after: $after, followedOnly: $followedOnly) {
       edges {
         cursor
         node {
@@ -124,9 +124,12 @@ export const RUN_REVIEWS_QUERY = gql`
           attendedAt
           createdAt
           venue
+          isFollowedByViewer
           user {
             id
             username
+            fullName
+            avatarUrl
           }
         }
       }
