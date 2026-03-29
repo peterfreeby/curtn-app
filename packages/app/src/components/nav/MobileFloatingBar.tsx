@@ -333,7 +333,7 @@ export function MobileFloatingBar() {
                   className="w-7 h-7 rounded-full object-cover shrink-0"
                 />
               )}
-              <div className="flex flex-col justify-center max-w-[120px]">
+              <div className="flex flex-col justify-center max-w-[120px] -translate-y-[2px]">
                 {nowViewing.title.length > 16 ? (
                   <div className="ticker-container">
                     <span
