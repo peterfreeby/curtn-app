@@ -1,5 +1,6 @@
 import { DesktopNav } from "@/components/nav/DesktopNav";
-import { MobileNav } from "@/components/nav/MobileNav";
+import { MobileTopBar } from "@/components/nav/MobileTopBar";
+import { MobileFloatingBar } from "@/components/nav/MobileFloatingBar";
 
 export default function AppLayout({
   children,
@@ -11,11 +12,12 @@ export default function AppLayout({
   return (
     <div className="h-dvh w-full flex flex-col md:block">
       <DesktopNav />
-      <main className="flex-1 overflow-y-auto overflow-x-hidden pt-[env(safe-area-inset-top)] md:pt-16 md:pb-0">
+      <MobileTopBar />
+      <main className="flex-1 overflow-y-auto overflow-x-hidden md:pt-16 md:pb-0 pb-20">
         {children}
       </main>
       {modal}
-      <MobileNav />
+      <MobileFloatingBar />
     </div>
   );
 }

@@ -16,6 +16,7 @@ interface User {
   username: string;
   isAdmin: boolean;
   reviewCount: number;
+  avatarUrl?: string | null;
 }
 
 interface AuthContextValue {
@@ -34,7 +35,7 @@ export const AuthContext = createContext<AuthContextValue>({
   refreshUser: async () => {},
 });
 
-const ME_QUERY = `query { me { id fullName username isAdmin reviewCount } }`;
+const ME_QUERY = `query { me { id fullName username isAdmin reviewCount avatarUrl } }`;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
