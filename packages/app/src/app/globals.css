@@ -873,45 +873,52 @@ h1, h2, h3, h4, h5, h6 {
 /* --- Dithered Glass Bar --- */
 .dithered-glass {
   position: relative;
-  background: rgba(26,26,26,0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  
+  background: rgba(26,26,26,0.82);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
   border-radius: 999px;
+  /* Halftone texture on the surface */
+  background-image:
+    radial-gradient(circle, rgba(245,241,227,0.03) 1px, transparent 1px);
+  background-size: 4px 4px;
 }
 
-/* Stippled dotted border */
+/* Stippled border + outer glow rings */
 .dithered-glass::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  
-  border: 1.5px dotted rgba(245,241,227,0.12);
+  border: 1.5px dotted rgba(245,241,227,0.18);
+  box-shadow:
+    0 0 0 1px rgba(248,67,49,0.08),
+    0 0 0 3px rgba(248,67,49,0.04),
+    inset 0 1px 0 rgba(245,241,227,0.06);
   pointer-events: none;
   z-index: 1;
 }
 
-/* Dithered halftone glow underneath */
+/* Dithered halftone glow — bigger and bolder */
 .dithered-glass::after {
   content: '';
   position: absolute;
-  left: 15%;
-  right: 15%;
-  bottom: -6px;
-  height: 14px;
+  left: 8%;
+  right: 8%;
+  bottom: -8px;
+  height: 20px;
   border-radius: 50%;
   background: radial-gradient(
     ellipse at center,
-    rgba(248,67,49,0.15) 0%,
-    rgba(248,67,49,0.08) 40%,
-    transparent 70%
+    rgba(248,67,49,0.25) 0%,
+    rgba(248,67,49,0.12) 35%,
+    rgba(248,67,49,0.04) 60%,
+    transparent 80%
   );
-  /* Halftone dot pattern overlay on the glow */
   mask-image: radial-gradient(circle, black 1px, transparent 1px);
   mask-size: 3px 3px;
   -webkit-mask-image: radial-gradient(circle, black 1px, transparent 1px);
   -webkit-mask-size: 3px 3px;
+  filter: blur(1px);
   pointer-events: none;
   z-index: -1;
 }
