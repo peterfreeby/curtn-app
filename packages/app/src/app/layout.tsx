@@ -20,8 +20,26 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Curtn",
-  description: "The stage is yours.",
+  title: {
+    default: "Curtn",
+    template: "%s — Curtn",
+  },
+  description: "Discover, log, and talk about live performance. The living archive of theater, comedy, and everything on stage.",
+  metadataBase: new URL("https://curtn.vercel.app"),
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
+  openGraph: {
+    type: "website",
+    siteName: "Curtn",
+    title: "Curtn",
+    description: "Discover, log, and talk about live performance.",
+    images: [{ url: "/og-default.jpg", width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export default function RootLayout({
