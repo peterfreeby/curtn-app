@@ -136,6 +136,8 @@ export default function RunDetailPage() {
         title: run.show.title,
         subtitle: sub,
         posterUrl: run.posterUrl || run.imageUrl || run.show.posterUrl || run.show.imageUrl,
+        showId: run.show.id,
+        runId: run.id,
         href: `/runs/${encodeURIComponent(id)}`,
         parentHref: `/performances/${encodeURIComponent(run.show.id)}`,
       });

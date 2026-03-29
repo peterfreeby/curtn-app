@@ -55,6 +55,8 @@ export default function ShowDetailPage() {
         title: show.title,
         subtitle: sub,
         posterUrl: show.posterUrl || show.imageUrl,
+        showId: show.id,
+        runId: singleRun?.id || null,
         href: `/performances/${encodeURIComponent(id)}`,
       });
     }

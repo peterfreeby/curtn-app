@@ -6,6 +6,8 @@ import Link from "next/link";
 import { Icon, type IconName } from "@/components/icons/Icons";
 import { useAuth } from "@/lib/auth/useAuth";
 import { useNowViewing } from "@/lib/NowViewingContext";
+import { useMutation } from "urql";
+import { WATCHLIST_ADD_MUTATION } from "@/lib/graphql/watchlist";
 
 type BarState = "default" | "expanded" | "search" | "detail";
 type TabId = "browse" | "upcoming" | "feed";
@@ -66,6 +68,9 @@ export function MobileFloatingBar() {
   const [lastTab, setLastTab] = useState<TabId>("browse");
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [showListPicker, setShowListPicker] = useState(false);
+  const [, executeWatchlistAdd] = useMutation(WATCHLIST_ADD_MUTATION);
 
   useEffect(() => {
     const tab = getTabFromPathname(pathname);
@@ -140,11 +145,75 @@ export function MobileFloatingBar() {
 
   const handleBack = useCallback(() => { router.back(); }, [router]);
 
+  const handleAddToWatchlist = useCallback(async () => {
+    if (!nowViewing?.showId) return;
+    const result = await executeWatchlistAdd({ input: { showId: nowViewing.showId } });
+    if (!result.error && !result.data?.watchlistAdd?.error) {
+      setToast("Added to watchlist");
+      setTimeout(() => setToast(null), 3000);
+    }
+  }, [nowViewing?.showId, executeWatchlistAdd]);
+
   const lastTabConfig = TAB_CONFIG.find((t) => t.id === lastTab)!;
   const currentTab = getTabFromPathname(pathname);
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 pb-[env(safe-area-inset-bottom)]">
+
+      {/* Toast */}
+      <div
+        className="flex justify-center px-5 pb-2"
+        style={{
+          transition: `all ${DURATION} ${EASE}`,
+          opacity: toast ? 1 : 0,
+          transform: toast ? "translateY(0)" : "translateY(8px)",
+          pointerEvents: toast ? "auto" : "none",
+        }}
+      >
+        <div className="nav-bar inline-flex items-center gap-3 px-3 py-1.5 text-xs">
+          <span className="text-curtn-cream">{toast}</span>
+          <button
+            type="button"
+            onClick={() => { setToast(null); setShowListPicker(true); }}
+            className="text-curtn-coral hover:text-curtn-red transition-colors"
+          >
+            Change list
+          </button>
+        </div>
+      </div>
+
+      {/* List picker */}
+      {showListPicker && (
+        <div className="px-5 pb-2">
+          <div className="nav-bar p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-curtn-muted uppercase tracking-wider">Save to list</span>
+              <button
+                type="button"
+                onClick={() => setShowListPicker(false)}
+                className="text-curtn-muted hover:text-curtn-cream"
+              >
+                <Icon name="plus" weight="regular" size={14} className="rotate-45" />
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => { setShowListPicker(false); setToast("Added to watchlist"); setTimeout(() => setToast(null), 3000); }}
+              className="w-full text-left px-2 py-1.5 text-sm text-curtn-cream hover:bg-curtn-cream/5 rounded-sm transition-colors"
+            >
+              Watchlist
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowListPicker(false); }}
+              className="w-full text-left px-2 py-1.5 text-sm text-curtn-muted hover:bg-curtn-cream/5 rounded-sm transition-colors"
+            >
+              + Create new list
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="px-5 pb-0.5">
 
         {/* Bar + plus button */}
@@ -265,14 +334,14 @@ export function MobileFloatingBar() {
                   </span>
                 )}
               </div>
-              {/* Heart + Plus on the right */}
+              {/* Add to list + Log on the right */}
               <button
                 type="button"
-                onClick={() => {}}
+                onClick={handleAddToWatchlist}
                 className="flex items-center justify-center w-8 h-8 text-curtn-muted hover:text-curtn-cream transition-colors shrink-0"
-                aria-label="Watchlist"
+                aria-label="Add to watchlist"
               >
-                <Icon name="heart" size={20} />
+                <Icon name="list-plus" size={20} />
               </button>
               <button
                 type="button"

@@ -8,6 +8,8 @@ interface NowViewing {
   posterUrl?: string | null;
   href: string;
   parentHref?: string | null;
+  showId?: string | null;
+  runId?: string | null;
 }
 
 interface NowViewingContextValue {

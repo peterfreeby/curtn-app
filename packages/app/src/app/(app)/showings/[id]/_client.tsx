@@ -113,6 +113,8 @@ export default function PerformanceDetailPage() {
         title: show.title,
         subtitle: sub,
         posterUrl: perf?.effectivePosterUrl || show.posterUrl || show.imageUrl,
+        showId: show.id,
+        runId: run?.id || null,
         href: `/showings/${encodeURIComponent(id)}`,
         parentHref: run?.id ? `/runs/${encodeURIComponent(run.id)}` : null,
       });
