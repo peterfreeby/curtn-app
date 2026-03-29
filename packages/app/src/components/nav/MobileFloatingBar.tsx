@@ -30,9 +30,9 @@ function getTabFromPathname(pathname: string): TabId | null {
 const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 const DURATION = "220ms";
 
-const iconBtn = "flex items-center justify-center w-9 h-9 rounded-full transition-all";
+const iconBtn = "flex items-center justify-center w-8 h-8 rounded-full transition-all";
 const iconBtnMuted = `${iconBtn} text-curtn-muted hover:bg-curtn-cream/5 hover:text-curtn-cream`;
-const iconBtnActive = `${iconBtn} text-curtn-cream hover:bg-curtn-cream/5`;
+const iconBtnActive = `${iconBtn} text-curtn-coral hover:bg-curtn-cream/5`;
 
 function StateLayer({ active, children }: { active: boolean; children: React.ReactNode }) {
   return (
@@ -194,7 +194,7 @@ export function MobileFloatingBar() {
             className="nav-bar inline-flex"
             style={{ transition: `all ${DURATION} ${EASE}` }}
           >
-            <div className="relative p-1 flex items-center justify-center">
+            <div className="relative p-0.5 flex items-center justify-center">
 
               {/* DEFAULT */}
               <StateLayer active={barState === "default"}>
@@ -213,9 +213,9 @@ export function MobileFloatingBar() {
                     key={tab.id}
                     type="button"
                     onClick={() => handleExpandedTab(tab)}
-                    className={`flex flex-col items-center justify-center gap-0.5 w-9 h-9 rounded-full transition-all ${
+                    className={`flex flex-col items-center justify-center gap-0.5 w-8 h-8 rounded-full transition-all ${
                       currentTab === tab.id
-                        ? "text-curtn-cream bg-curtn-cream/10"
+                        ? "text-curtn-coral bg-curtn-cream/5"
                         : "text-curtn-muted hover:text-curtn-cream hover:bg-curtn-cream/5"
                     }`}
                   >
@@ -224,7 +224,7 @@ export function MobileFloatingBar() {
                   </button>
                 ))}
                 <button type="button" onClick={() => setBarState("default")} className={`${iconBtn} w-8 text-curtn-muted hover:text-curtn-cream hover:bg-curtn-cream/5`} aria-label="Close">
-                  <Icon name="plus" weight="regular" size={14} className="rotate-45" />
+                  <Icon name="plus" weight="regular" size={18} className="rotate-45" />
                 </button>
               </StateLayer>
 
@@ -243,7 +243,7 @@ export function MobileFloatingBar() {
                   />
                 </div>
                 <button type="button" onClick={handleCloseSearch} className={`${iconBtn} w-8 text-curtn-muted hover:text-curtn-cream hover:bg-curtn-cream/5 shrink-0`} aria-label="Close search">
-                  <Icon name="plus" weight="regular" size={14} className="rotate-45" />
+                  <Icon name="plus" weight="regular" size={18} className="rotate-45" />
                 </button>
               </StateLayer>
 
