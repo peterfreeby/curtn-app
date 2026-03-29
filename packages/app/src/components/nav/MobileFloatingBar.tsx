@@ -191,7 +191,7 @@ export function MobileFloatingBar() {
         onClick={shrunk ? unShrink : undefined}
       >
         <div
-          className="mx-auto max-w-sm rounded-2xl border border-curtn-dark/40 bg-curtn-surface/90 backdrop-blur-md shadow-lg shadow-black/30 overflow-hidden"
+          className="mx-auto max-w-sm dithered-glass overflow-hidden"
           style={{ transition: `all ${DURATION} ${EASE}` }}
         >
           <div className="relative p-1.5" style={{ minHeight: 52 }}>
