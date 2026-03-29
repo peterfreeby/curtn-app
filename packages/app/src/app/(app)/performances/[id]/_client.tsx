@@ -48,7 +48,9 @@ export default function ShowDetailPage() {
 
   useEffect(() => {
     if (show) {
-      const sub = singleRun?.title || singleRun?.productionCompany?.name || singleRun?.venues?.[0]?.name || (runCount > 1 ? `${runCount} productions` : null);
+      const perfDate = singlePerf?.date ? new Date(singlePerf.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+      const runDate = singleRun?.startDate ? new Date(singleRun.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+      const sub = singleRun?.title || singleRun?.productionCompany?.name || singleRun?.venues?.[0]?.name || (runCount > 1 ? `${runCount} productions` : null) || perfDate || runDate;
       setNowViewing({
         title: show.title,
         subtitle: sub,
