@@ -9,6 +9,7 @@ import { DetailBreadcrumb } from "@/components/nav/DetailBreadcrumb";
 import { CreditsList } from "@/components/credits/CreditsList";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { Icon } from "@/components/icons/Icons";
+import { Button } from "@/components/Button";
 import { useAuth } from "@/lib/auth/useAuth";
 import { formatShowDate, formatShowTime } from "@/lib/format";
 
@@ -183,67 +184,90 @@ export default function PerformanceDetailPage() {
       <DetailBreadcrumb levels={breadcrumbLevels} />
 
       <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
-        {/* Hero */}
-        <div className="relative">
-          <h1 className="font-display text-2xl font-bold text-curtn-cream leading-tight">
-            {show.title}
-          </h1>
-          <div className="mt-2 space-y-1 text-sm text-curtn-muted">
-            <p>{dateStr}{timeStr ? ` · ${timeStr}` : ""}</p>
-            {venue && <p>{venue.name}{venue.city ? `, ${venue.city}` : ""}</p>}
-            {company && <p>{company.name}</p>}
+        {/* Performance record card */}
+        <div className="dinn-panel">
+          <div className="dinn-header">
+            <span className="dinn-title">{show.title}</span>
+            {!isSoldOut && perf.ticketUrl && (
+              <a
+                href={perf.ticketUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-curtn-coral hover:underline"
+              >
+                <Icon name="ticket" size={12} />
+                Tickets
+              </a>
+            )}
           </div>
-          {isSoldOut && (
-            <span className="inline-block mt-2 badge badge-muted">Sold Out</span>
+
+          <div className="dinn-grid">
+            <span className="dinn-label">Date</span>
+            <span className="dinn-value">{dateStr}{timeStr ? ` · ${timeStr}` : ""}</span>
+
+            {venue && (
+              <>
+                <span className="dinn-label">Venue</span>
+                <span className="dinn-value">
+                  <Link href={`/venues/${venue.slug}`} className="text-curtn-coral hover:underline">
+                    {venue.name}
+                  </Link>
+                  {venue.city ? `, ${venue.city}` : ""}
+                </span>
+              </>
+            )}
+
+            {company && (
+              <>
+                <span className="dinn-label">Company</span>
+                <span className="dinn-value">
+                  <Link href={`/companies/${company.slug}`} className="text-curtn-coral hover:underline">
+                    {company.name}
+                  </Link>
+                </span>
+              </>
+            )}
+
+            {isSoldOut && (
+              <>
+                <span className="dinn-label">Status</span>
+                <span className="dinn-value text-curtn-muted">Sold Out</span>
+              </>
+            )}
+          </div>
+
+          {/* Cast & Crew inside the record */}
+          {((perf.effectiveCast?.length ?? 0) > 0 || (perf.effectiveCrew?.length ?? 0) > 0) && (
+            <div className="border-t border-curtn-dark/40 mt-3 pt-3">
+              <CreditsList
+                cast={(perf.effectiveCast ?? []).map((c: any) => ({
+                  id: c.id,
+                  role: c.role,
+                  person: c.person,
+                }))}
+                crew={(perf.effectiveCrew ?? []).map((c: any) => ({
+                  id: c.id,
+                  role: c.role,
+                  person: c.person,
+                }))}
+              />
+            </div>
+          )}
+
+          {/* Description inside the record */}
+          {perf.effectiveDescription && (
+            <div className="border-t border-curtn-dark/40 mt-3 pt-3">
+              <p className="text-sm text-curtn-cream/80 leading-relaxed">
+                {perf.effectiveDescription}
+              </p>
+            </div>
           )}
         </div>
 
-        {/* Ticket link */}
-        {!isSoldOut && perf.ticketUrl && (
-          <a
-            href={perf.ticketUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 border border-curtn-coral/30 px-4 py-2.5 text-sm text-curtn-coral transition-colors hover:bg-curtn-coral/10"
-          >
-            <Icon name="ticket" size={14} />
-            Get Tickets
-          </a>
-        )}
-
         {/* Log CTA */}
-        <Link
-          href={`/log?run=${run.id}`}
-          className="block w-full dog-ear dog-ear-dark bg-curtn-coral py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-curtn-deep transition-colors hover:bg-curtn-red"
-        >
+        <Button variant="primary" size="lg" fullWidth href={`/log?run=${run.id}`}>
           Log This Show
-        </Link>
-
-        {/* Credits */}
-        {((perf.effectiveCast?.length ?? 0) > 0 || (perf.effectiveCrew?.length ?? 0) > 0) && (
-          <CreditsList
-            cast={(perf.effectiveCast ?? []).map((c: any) => ({
-              id: c.id,
-              role: c.role,
-              person: c.person,
-            }))}
-            crew={(perf.effectiveCrew ?? []).map((c: any) => ({
-              id: c.id,
-              role: c.role,
-              person: c.person,
-            }))}
-          />
-        )}
-
-        {/* Description */}
-        {perf.effectiveDescription && (
-          <div className="relative">
-            <h2 className="mb-2 text-xs uppercase tracking-widest text-curtn-muted">About</h2>
-            <p className="text-sm text-curtn-cream/80 leading-relaxed">
-              {perf.effectiveDescription}
-            </p>
-          </div>
-        )}
+        </Button>
 
         {/* Reviews */}
         <div className="relative">

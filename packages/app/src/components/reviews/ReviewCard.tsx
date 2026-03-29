@@ -52,75 +52,73 @@ export function ReviewCard({ review, showPerformanceLink = false, onDeleted }: R
   const reviewerName = review.user?.fullName || review.user?.username || "Anonymous";
 
   return (
-    <div className={`flex gap-[var(--spacing-2)] binding-left bg-curtn-surface p-[var(--spacing-2)] ${review.isFollowedByViewer ? "border-l-2 border-l-curtn-coral/60" : ""}`}>
-      {/* Poster thumbnail */}
-      {showPerformanceLink && (
-        <Link
-          href={runId ? `/runs/${encodeURIComponent(runId)}` : "#"}
-          className="w-[var(--spacing-9)] shrink-0"
-        >
-          <div className="aspect-[2/3] overflow-hidden dog-ear bg-curtn-dark/30 border border-curtn-dark/50">
-            {showImageUrl ? (
-              <img src={showImageUrl} alt={showTitle || ""} className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center">
-                <Icon name="ticket" weight="thin" size={20} className="text-curtn-dark" />
+    <div
+      className={`border-b border-curtn-dark/40 py-3 ${
+        review.isFollowedByViewer ? "border-l-2 border-l-curtn-coral/50 pl-3" : ""
+      }`}
+    >
+      {/* Show link when in feed/profile context */}
+      {showPerformanceLink && showTitle && runId && (
+        <div className="flex items-center gap-2 mb-2">
+          {showImageUrl && (
+            <Link
+              href={`/runs/${encodeURIComponent(runId)}`}
+              className="w-8 shrink-0"
+            >
+              <div className="aspect-[2/3] overflow-hidden rounded-sm bg-curtn-dark/30">
+                <img src={showImageUrl} alt={showTitle} className="h-full w-full object-cover" />
               </div>
-            )}
-          </div>
-        </Link>
+            </Link>
+          )}
+          <Link
+            href={`/runs/${encodeURIComponent(runId)}`}
+            className="text-sm font-medium text-curtn-cream hover:text-curtn-coral transition-colors truncate"
+          >
+            {showTitle}
+          </Link>
+        </div>
       )}
 
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-[var(--spacing-1_5)]">
-          <div className="space-y-[var(--spacing-0_5)] min-w-0">
-            {showPerformanceLink && showTitle && runId && (
-              <Link
-                href={`/runs/${encodeURIComponent(runId)}`}
-                className="text-sm font-semibold text-curtn-cream hover:text-curtn-coral transition-colors block truncate"
-              >
-                {showTitle}
-              </Link>
-            )}
-            <div className="flex items-center gap-[var(--spacing-1)] text-sm">
-              <Avatar
-                src={review.user?.avatarUrl}
-                name={reviewerName}
-                size="sm"
-              />
-              {review.user ? (
-                <Link
-                  href={`/u/${encodeURIComponent(review.user.username)}`}
-                  className="text-curtn-cream font-medium hover:text-curtn-coral transition-colors"
-                >
-                  {reviewerName}
-                </Link>
-              ) : (
-                <span className="text-curtn-cream font-medium">Anonymous</span>
-              )}
-              <StarRating value={review.rating} size={14} readOnly />
-            </div>
-          </div>
-          <div className="flex items-center gap-[var(--spacing-1)] shrink-0">
-            <span className="text-xs text-curtn-muted/50">{dateStr}</span>
-            {isOwner && (
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={deleting}
-                className="text-curtn-muted/50 hover:text-curtn-red transition-colors cursor-pointer disabled:opacity-40"
-                aria-label="Delete review"
-              >
-                <Icon name="plus" weight="regular" size={14} className="rotate-45" />
-              </button>
-            )}
-          </div>
-        </div>
-        {review.text && (
-          <p className="mt-[var(--spacing-1)] text-sm text-curtn-cream/80 leading-relaxed line-clamp-3">
-            {review.text}
-          </p>
+      {/* Author line */}
+      <div className="flex items-center gap-2">
+        <Avatar
+          src={review.user?.avatarUrl}
+          name={reviewerName}
+          size="sm"
+        />
+        {review.user ? (
+          <Link
+            href={`/u/${encodeURIComponent(review.user.username)}`}
+            className="text-sm text-curtn-cream font-medium hover:text-curtn-coral transition-colors"
+          >
+            {reviewerName}
+          </Link>
+        ) : (
+          <span className="text-sm text-curtn-cream font-medium">Anonymous</span>
+        )}
+        <StarRating value={review.rating} size={13} readOnly />
+        <span className="text-xs text-curtn-muted/40 ml-auto">{dateStr}</span>
+      </div>
+
+      {/* Review text */}
+      {review.text && (
+        <p className="mt-1.5 text-sm text-curtn-cream/80 leading-relaxed line-clamp-4">
+          {review.text}
+        </p>
+      )}
+
+      {/* Actions */}
+      <div className="mt-2 flex items-center gap-4 text-xs text-curtn-muted/50">
+        {/* Placeholder slots for future reply/share */}
+        {isOwner && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="hover:text-curtn-red transition-colors cursor-pointer disabled:opacity-40"
+          >
+            Delete
+          </button>
         )}
       </div>
     </div>
