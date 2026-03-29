@@ -14,6 +14,7 @@ import { CreditsList } from "@/components/credits/CreditsList";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { WatchlistButton } from "@/components/watchlist/WatchlistButton";
 import { AddToListButton } from "@/components/lists/AddToListButton";
+import { DetailBreadcrumb } from "@/components/nav/DetailBreadcrumb";
 import { Icon } from "@/components/icons/Icons";
 import { useAuth } from "@/lib/auth/useAuth";
 
@@ -38,21 +39,24 @@ export default function ShowDetailPage() {
   const singlePerf = perfCount === 1 ? performances[0] : null;
   const creators = show?.creators?.edges?.map((e: any) => e.node) ?? [];
 
-  // For reviews, use the single run's ID when in Scenario A or B
+  // Reviews: use runId for scenarios A/B, showId for scenario C
   const reviewRunId = singleRun?.id || null;
+  const reviewShowId = !singleRun && show ? show.id : null;
 
   const [reviewAfter, setReviewAfter] = useState<string | null>(null);
   const [allReviewEdges, setAllReviewEdges] = useState<any[]>([]);
+  const [followedOnly, setFollowedOnly] = useState(false);
 
   const [{ data: reviewData, fetching: reviewsFetching }, reexecuteReviews] =
     useQuery({
       query: RUN_REVIEWS_QUERY,
       variables: {
-        runId: reviewRunId,
+        ...(reviewRunId ? { runId: reviewRunId } : { showId: reviewShowId }),
         first: REVIEW_PAGE_SIZE,
         after: reviewAfter,
+        followedOnly: followedOnly || undefined,
       },
-      pause: !reviewRunId,
+      pause: !reviewRunId && !reviewShowId,
     });
 
   if (fetching) {
@@ -107,7 +111,9 @@ export default function ShowDetailPage() {
       singlePerf.soldOut === true || singlePerf.soldOut === "true";
 
     return (
-      <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
+      <div>
+        <DetailBreadcrumb levels={[{ label: show.title }]} />
+        <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
         <RunHero
           showTitle={show.title}
           showId={show.id}
@@ -173,6 +179,7 @@ export default function ShowDetailPage() {
           onDeleted={handleReviewDeleted}
         />
       </div>
+      </div>
     );
   }
 
@@ -188,7 +195,9 @@ export default function ShowDetailPage() {
     );
 
     return (
-      <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
+      <div>
+        <DetailBreadcrumb levels={[{ label: show.title }]} />
+        <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
         <RunHero
           showTitle={show.title}
           showId={show.id}
@@ -258,61 +267,119 @@ export default function ShowDetailPage() {
           <ShowingsList showings={pastShowings} label="Past Shows" />
         )}
       </div>
+      </div>
     );
   }
 
   // --- SCENARIO C: multiple runs — show info + run list ---
   return (
-    <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
-      <ShowHero
-        title={show.title}
-        description={show.description}
-        performanceTypes={show.performanceTypes}
-        duration={show.duration}
-        languages={show.languages}
-        imageUrl={show.imageUrl}
-        posterUrl={show.posterUrl}
-        creators={creators}
-        averageRating={show.averageRating}
-        reviewCount={show.reviewCount}
-      />
+    <div>
+      <DetailBreadcrumb levels={[{ label: show.title }]} />
+      <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
+        <ShowHero
+          title={show.title}
+          description={show.description}
+          performanceTypes={show.performanceTypes}
+          duration={show.duration}
+          languages={show.languages}
+          imageUrl={show.imageUrl}
+          posterUrl={show.posterUrl}
+          creators={creators}
+          averageRating={show.averageRating}
+          reviewCount={show.reviewCount}
+        />
 
-      <WatchlistButton
-        showId={show.id}
-        initialIsOnWatchlist={show.isOnMyWatchlist ?? false}
-        initialWatchlistCount={show.watchlistCount ?? 0}
-      />
+        <WatchlistButton
+          showId={show.id}
+          initialIsOnWatchlist={show.isOnMyWatchlist ?? false}
+          initialWatchlistCount={show.watchlistCount ?? 0}
+        />
 
-      {user?.isAdmin && (
-        <Link
-          href="/admin/editor"
-          className="flex items-center justify-center gap-2 rounded-lg border border-curtn-dark px-4 py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream"
-        >
-          <Icon name="pencil" size={14} />
-          Edit Performance
-        </Link>
-      )}
+        {user?.isAdmin && (
+          <Link
+            href="/admin/editor"
+            className="flex items-center justify-center gap-2 rounded-lg border border-curtn-dark px-4 py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream"
+          >
+            <Icon name="pencil" size={14} />
+            Edit Performance
+          </Link>
+        )}
 
-      <div>
-        <h2 className="mb-3 text-xs uppercase tracking-widest text-curtn-muted">
-          Productions ({runs.length})
-        </h2>
-        <div className="space-y-3">
-          {runs.map((run: any) => (
-            <RunCard
-              key={run.id}
-              id={run.id}
-              showTitle={run.effectiveTitle || show.title}
-              companyName={run.productionCompany?.name}
-              companySlug={run.productionCompany?.slug}
-              venueName={run.venues?.[0]?.name}
-              venueCity={run.venues?.[0]?.city}
-              startDate={run.startDate}
-              endDate={run.endDate}
-              averageRating={run.averageRating}
-              reviewCount={run.reviewCount}
-            />
-          ))}
+        <div>
+          <h2 className="mb-3 text-xs uppercase tracking-widest text-curtn-muted">
+            Productions ({runs.length})
+          </h2>
+          <div className="space-y-3">
+            {runs.map((run: any) => (
+              <RunCard
+                key={run.id}
+                id={run.id}
+                showTitle={run.effectiveTitle || show.title}
+                companyName={run.productionCompany?.name}
+                companySlug={run.productionCompany?.slug}
+                venueName={run.venues?.[0]?.name}
+                venueCity={run.venues?.[0]?.city}
+                startDate={run.startDate}
+                endDate={run.endDate}
+                averageRating={run.averageRating}
+                reviewCount={run.reviewCount}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Reviews — All Productions */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs uppercase tracking-widest text-curtn-muted">
+              Reviews &middot; All Productions
+              {displayReviewEdges.length > 0 && ` (${displayReviewEdges.length}${reviewPageInfo?.hasNextPage ? "+" : ""})`}
+            </h2>
+            {!!user && (
+              <div className="flex rounded-lg border border-curtn-dark overflow-hidden text-xs">
+                <button
+                  type="button"
+                  onClick={() => { setFollowedOnly(false); setReviewAfter(null); setAllReviewEdges([]); }}
+                  className={`px-2.5 py-1 transition-colors cursor-pointer ${!followedOnly ? "bg-curtn-dark text-curtn-cream" : "text-curtn-muted hover:text-curtn-cream"}`}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setFollowedOnly(true); setReviewAfter(null); setAllReviewEdges([]); }}
+                  className={`px-2.5 py-1 transition-colors cursor-pointer ${followedOnly ? "bg-curtn-dark text-curtn-cream" : "text-curtn-muted hover:text-curtn-cream"}`}
+                >
+                  Friends
+                </button>
+              </div>
+            )}
+          </div>
+
+          {!reviewsFetching && displayReviewEdges.length === 0 && (
+            <div className="empty-state">
+              <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">No Reviews Yet</p>
+              <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">Be the first to share your thoughts.</p>
+            </div>
+          )}
+          <div className="space-y-3">
+            {displayReviewEdges.map((edge: any) => (
+              <ReviewCard key={edge.node.id} review={edge.node} onDeleted={handleReviewDeleted} />
+            ))}
+          </div>
+          {reviewsFetching && (
+            <div className="mt-3 flex justify-center">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-curtn-muted/30 border-t-curtn-coral" />
+            </div>
+          )}
+          {!reviewsFetching && reviewPageInfo?.hasNextPage && (
+            <button
+              type="button"
+              onClick={loadMoreReviews}
+              className="mt-4 w-full border border-curtn-dark py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer"
+            >
+              Load more reviews
+            </button>
+          )}
         </div>
       </div>
     </div>

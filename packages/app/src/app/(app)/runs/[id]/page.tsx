@@ -15,6 +15,7 @@ import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { Icon } from "@/components/icons/Icons";
 import { useAuth } from "@/lib/auth/useAuth";
 import { AddToListButton } from "@/components/lists/AddToListButton";
+import { DetailBreadcrumb } from "@/components/nav/DetailBreadcrumb";
 import { formatShowDate, formatShowTime } from "@/lib/format";
 
 function ReviewFilters({
@@ -195,7 +196,12 @@ export default function RunDetailPage() {
     const month = dateObj.toLocaleString("en-US", { month: "short" });
 
     return (
-      <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
+      <div>
+        <DetailBreadcrumb levels={[
+          { label: show.title, href: `/performances/${encodeURIComponent(show.id)}` },
+          { label: company?.name ? `${company.name}${run.venues?.[0] ? ` @ ${run.venues[0].name}` : ""}` : run.venues?.[0]?.name || "Production" },
+        ]} />
+        <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
         <RunHero
           showTitle={show.title}
           showId={show.id}
@@ -304,12 +310,18 @@ export default function RunDetailPage() {
           )}
         </div>
       </div>
+      </div>
     );
   }
 
   // --- Multiple performances: show listings ---
   return (
-    <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
+    <div>
+      <DetailBreadcrumb levels={[
+        { label: show.title, href: `/performances/${encodeURIComponent(show.id)}` },
+        { label: company?.name ? `${company.name}${run.venues?.[0] ? ` @ ${run.venues[0].name}` : ""}` : run.venues?.[0]?.name || "Production" },
+      ]} />
+      <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
       <RunHero
         showTitle={show.title}
         showId={show.id}
@@ -384,6 +396,7 @@ export default function RunDetailPage() {
       {pastShowings.length > 0 && (
         <ShowingsList showings={pastShowings} label="Past Shows" />
       )}
+    </div>
     </div>
   );
 }

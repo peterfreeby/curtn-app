@@ -16,6 +16,16 @@ export const SINGLE_PERFORMANCE_QUERY = gql`
       ticketUrl
       soldOut
       effectiveDescription
+      effectiveCast {
+        id
+        role
+        person { id name slug headshotUrl }
+      }
+      effectiveCrew {
+        id
+        role
+        person { id name slug headshotUrl }
+      }
       run {
         id
         show {
@@ -23,13 +33,23 @@ export const SINGLE_PERFORMANCE_QUERY = gql`
           title
           performanceTypes
           duration
+          imageUrl
+          posterUrl
         }
         productionCompany {
           id
           name
           slug
         }
+        venues {
+          id
+          name
+          slug
+          city
+        }
         intermissions
+        startDate
+        endDate
         averageRating
         reviewCount
       }
@@ -113,8 +133,8 @@ export const UPCOMING_PERFORMANCES_QUERY = gql`
 `;
 
 export const RUN_REVIEWS_QUERY = gql`
-  query RunReviews($runId: ID, $showId: ID, $first: Int, $after: String, $followedOnly: Boolean) {
-    reviewList(runId: $runId, showId: $showId, first: $first, after: $after, followedOnly: $followedOnly) {
+  query RunReviews($runId: ID, $showId: ID, $performance: ID, $first: Int, $after: String, $followedOnly: Boolean) {
+    reviewList(runId: $runId, showId: $showId, performance: $performance, first: $first, after: $after, followedOnly: $followedOnly) {
       edges {
         cursor
         node {

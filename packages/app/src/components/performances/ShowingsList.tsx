@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { formatShowDate, formatShowTime } from "@/lib/format";
 import { Icon } from "@/components/icons/Icons";
 
 interface Showing {
+  id?: string;
   date: string;
   time: string;
   venue: { id: string; name: string } | null;
@@ -37,11 +39,9 @@ export function ShowingsList({ showings, label }: ShowingsListProps) {
           const dateObj = new Date(showing.date);
           const day = dateObj.getDate().toString().padStart(2, "0");
           const month = dateObj.toLocaleString("en-US", { month: "short" });
-          return (
-            <div
-              key={`${showing.date}-${i}`}
-              className="card-ticket"
-            >
+
+          const cardContent = (
+            <>
               <div className={`ticket-stub ${isSoldOut ? "!bg-curtn-muted" : ""}`}>
                 <div className="ticket-date">{day}</div>
                 <div className="ticket-month">{month}</div>
@@ -69,6 +69,29 @@ export function ShowingsList({ showings, label }: ShowingsListProps) {
                   )}
                 </div>
               </div>
+              {showing.id && (
+                <div className="flex items-center pr-3 text-curtn-muted/40 text-sm">
+                  &rsaquo;
+                </div>
+              )}
+            </>
+          );
+
+          if (showing.id) {
+            return (
+              <Link
+                key={`${showing.date}-${i}`}
+                href={`/showings/${encodeURIComponent(showing.id)}`}
+                className="card-ticket transition-colors hover:border-curtn-muted/50"
+              >
+                {cardContent}
+              </Link>
+            );
+          }
+
+          return (
+            <div key={`${showing.date}-${i}`} className="card-ticket">
+              {cardContent}
             </div>
           );
         })}
@@ -78,7 +101,7 @@ export function ShowingsList({ showings, label }: ShowingsListProps) {
         <button
           type="button"
           onClick={() => setShowAll(!showAll)}
-          className="mt-3 text-xs text-curtn-coral hover:underline"
+          className="mt-3 text-xs text-curtn-coral hover:underline cursor-pointer"
         >
           {showAll ? "Show fewer" : `Show all ${showings.length} dates`}
         </button>
