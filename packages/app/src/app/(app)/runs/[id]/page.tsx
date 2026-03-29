@@ -408,6 +408,47 @@ export default function RunDetailPage() {
 
       <CreditsList cast={run.cast ?? []} crew={run.crew ?? []} />
 
+      {isAdmin && !editing && !batchCreating && (
+        <div className="flex gap-2">
+          <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing(true)}>
+            Edit Run
+          </Button>
+          <Button variant="tertiary" size="sm" icon="plus" onClick={() => setBatchCreating(true)}>
+            Add Performances
+          </Button>
+        </div>
+      )}
+      {editing && (
+        <InlineEditor
+          entityType="run"
+          entityId={decodeId(id)}
+          runId={id}
+          venueId={run.venues?.[0]?.id}
+          showId={show.id}
+          effectiveCast={(run.cast ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
+          effectiveCrew={(run.crew ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
+          initialValues={{
+            title: run.title || "",
+            description: run.description || "",
+            intermissions: run.intermissions ?? 0,
+            startDate: run.startDate || "",
+            endDate: run.endDate || "",
+          }}
+          onSaved={() => { setEditing(false); window.location.reload(); }}
+          onCancel={() => setEditing(false)}
+        />
+      )}
+      {batchCreating && (
+        <BatchPerformanceCreator
+          runId={id}
+          venueId={run.venues?.[0]?.id || ""}
+          startDate={run.startDate}
+          endDate={run.endDate}
+          onCreated={() => { setBatchCreating(false); window.location.reload(); }}
+          onCancel={() => setBatchCreating(false)}
+        />
+      )}
+
       {/* Reviews */}
       <div className="relative">
         <h2 className="mb-3 text-xs uppercase tracking-widest text-curtn-muted">
@@ -416,7 +457,15 @@ export default function RunDetailPage() {
         {!reviewsFetching && displayReviewEdges.length === 0 && (
           <div className="empty-state">
             <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">No Reviews Yet</p>
-            <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">Be the first to share your thoughts.</p>
+            <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">Be the first to share your thoughts about this production.</p>
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-2">
+              <Button variant="primary" size="sm" href={`/log?run=${id}`}>
+                Write a Review
+              </Button>
+              <Button variant="tertiary" size="sm" href={`/performances/${encodeURIComponent(show.id)}`}>
+                View Other Productions
+              </Button>
+            </div>
           </div>
         )}
         <div className="space-y-3">
