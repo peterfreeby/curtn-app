@@ -13,7 +13,7 @@ export default function AppLayout({
     <div className="h-dvh w-full flex flex-col md:block">
       <DesktopNav />
       <MobileTopBar />
-      <main className="flex-1 overflow-y-auto overflow-x-hidden pt-[calc(env(safe-area-inset-top)+3rem)] md:pt-16 pb-16 md:pb-0">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden pt-[calc(env(safe-area-inset-top)+3rem)] md:pt-16 pb-16 md:pb-0 border-t-4 border-t-green-500 border-b-4 border-b-green-500">
         {children}
       </main>
       {modal}
