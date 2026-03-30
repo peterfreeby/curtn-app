@@ -31,7 +31,7 @@ export function MobileTopBar() {
                   className="!w-8 !h-8"
                 />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-curtn-dark flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full nav-bar flex items-center justify-center">
                   <Icon name="user" size={16} className="text-curtn-muted" />
                 </div>
               )}
