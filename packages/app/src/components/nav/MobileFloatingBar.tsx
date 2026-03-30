@@ -322,7 +322,7 @@ export function MobileFloatingBar() {
           {/* Action button — morphs between + (log), × (close), and show info pill */}
           {barState === "detail" && nowViewing ? (
             <div
-              className="nav-bar flex items-center gap-1 h-9 pl-1 pr-0.5 shrink-0"
+              className="nav-bar flex items-center gap-0.5 h-9 pl-1 pr-0.5 shrink-0"
               style={{ transition: `all ${DURATION} ${EASE}` }}
             >
               {/* Poster + info */}
@@ -333,7 +333,7 @@ export function MobileFloatingBar() {
                   className="w-7 h-7 rounded-full object-cover shrink-0"
                 />
               )}
-              <div className="flex flex-col justify-center max-w-[120px] -translate-y-[2px]">
+              <div className="flex flex-col justify-center max-w-[120px] -translate-y-[2px] ml-2">
                 {nowViewing.title.length > 16 ? (
                   <div className="ticker-container">
                     <span
@@ -387,7 +387,7 @@ export function MobileFloatingBar() {
               <button
                 type="button"
                 onClick={handleLog}
-                className="flex items-center justify-center w-8 h-8 text-curtn-coral hover:text-curtn-red transition-colors shrink-0"
+                className="flex items-center justify-center w-8 h-8 text-curtn-coral hover:text-curtn-red transition-colors shrink-0 -ml-1.5"
                 aria-label={`Log ${nowViewing.title}`}
               >
                 <Icon name="plus" weight="bold" size={20} />
@@ -401,7 +401,7 @@ export function MobileFloatingBar() {
                 barState === "search" ? handleCloseSearch :
                 handleLog
               }
-              className="flex items-center justify-center w-9 h-9 rounded-full bg-curtn-coral text-curtn-deep hover:bg-curtn-red active:scale-95 shadow-[0_4px_20px_rgba(0,0,0,1)] shrink-0"
+              className="flex items-center justify-center w-9 h-9 rounded-full bg-curtn-coral text-curtn-deep hover:bg-curtn-red active:scale-95 shadow-[0_4px_20px_rgba(17,17,17,0.2)] shrink-0"
               style={{
                 transition: `transform ${DURATION} ${EASE}`,
                 transform: (barState === "expanded" || barState === "search") ? "rotate(45deg)" : "rotate(0deg)",
