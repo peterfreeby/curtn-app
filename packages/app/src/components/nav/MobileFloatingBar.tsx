@@ -283,7 +283,7 @@ export function MobileFloatingBar() {
 
               {/* SEARCH */}
               <StateLayer active={barState === "search"}>
-                <div className="flex items-center gap-2 pl-3" style={{ width: "200px" }}>
+                <div className="flex items-center gap-2 pl-3" style={{ width: "260px" }}>
                   <Icon name="magnifying-glass" size={16} className="text-curtn-muted shrink-0" />
                   <input
                     ref={searchInputRef}
