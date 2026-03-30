@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/useAuth";
 import { Avatar } from "@/components/Avatar";
+import { Icon } from "@/components/icons/Icons";
 
 export function MobileTopBar() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -17,25 +18,23 @@ export function MobileTopBar() {
           >
             Curtn
           </Link>
-          {!isLoading && isAuthenticated && user && (
+          {!isLoading && (
             <Link
-              href={`/u/${user.username}`}
+              href={isAuthenticated && user ? `/u/${user.username}` : "/login"}
               className="w-8 h-8 rounded-full shadow-md shadow-black/30 block"
             >
-              <Avatar
-                src={user.avatarUrl || undefined}
-                name={user.fullName}
-                size="sm"
-                className="!w-8 !h-8"
-              />
-            </Link>
-          )}
-          {!isLoading && !isAuthenticated && (
-            <Link
-              href="/login"
-              className="text-xs text-curtn-muted hover:text-curtn-cream transition-colors font-display uppercase drop-shadow-md"
-            >
-              Sign In
+              {isAuthenticated && user?.avatarUrl ? (
+                <Avatar
+                  src={user.avatarUrl}
+                  name={user.fullName}
+                  size="sm"
+                  className="!w-8 !h-8"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-curtn-dark flex items-center justify-center">
+                  <Icon name="user" size={16} className="text-curtn-muted" />
+                </div>
+              )}
             </Link>
           )}
         </div>
