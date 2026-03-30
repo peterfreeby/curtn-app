@@ -283,7 +283,7 @@ export function MobileFloatingBar() {
 
               {/* SEARCH */}
               <StateLayer active={barState === "search"}>
-                <div className="flex-1 flex items-center gap-2 pl-3">
+                <div className="flex items-center gap-2 pl-3" style={{ width: "200px" }}>
                   <Icon name="magnifying-glass" size={16} className="text-curtn-muted shrink-0" />
                   <input
                     ref={searchInputRef}
@@ -297,7 +297,7 @@ export function MobileFloatingBar() {
                   <button
                     type="button"
                     onClick={() => { setSearchQuery(""); handleSearchInput(""); searchInputRef.current?.focus(); }}
-                    className="flex items-center justify-center w-8 h-8 rounded-full text-curtn-muted hover:text-curtn-cream shrink-0 transition-opacity"
+                    className="flex items-center justify-center w-7 h-7 rounded-full text-curtn-muted hover:text-curtn-cream shrink-0 transition-opacity"
                     style={{ opacity: searchQuery ? 1 : 0, pointerEvents: searchQuery ? "auto" : "none" }}
                     aria-label="Clear search"
                   >
