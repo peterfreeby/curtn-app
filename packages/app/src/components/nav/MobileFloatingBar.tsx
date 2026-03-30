@@ -203,7 +203,7 @@ export function MobileFloatingBar() {
 
   return (
     <div
-      className="md:hidden fixed left-0 right-0 z-50 bg-[#141414]"
+      className="md:hidden fixed left-0 right-0 z-50 bg-[#111111]"
       style={{
         bottom: keyboardOffset > 0 ? `${keyboardOffset}px` : 0,
         paddingBottom: keyboardOffset > 0 ? "4px" : "env(safe-area-inset-bottom)",
