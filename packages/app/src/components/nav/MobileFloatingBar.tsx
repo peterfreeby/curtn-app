@@ -95,26 +95,9 @@ export function MobileFloatingBar() {
 
   useEffect(() => {
     if (barState === "search") {
-      setTimeout(() => { searchInputRef.current?.focus(); searchInputRef.current?.click(); }, 200);
+      setTimeout(() => { requestAnimationFrame(() => searchInputRef.current?.focus()); }, 200);
     }
   }, [barState]);
-
-  // Move bar above keyboard when it opens
-  const [keyboardOffset, setKeyboardOffset] = useState(0);
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    function onResize() {
-      const offset = window.innerHeight - (vv!.height + vv!.offsetTop);
-      setKeyboardOffset(offset > 50 ? offset : 0);
-    }
-    vv.addEventListener("resize", onResize);
-    vv.addEventListener("scroll", onResize);
-    return () => {
-      vv.removeEventListener("resize", onResize);
-      vv.removeEventListener("scroll", onResize);
-    };
-  }, []);
 
   const navigateTo = useCallback((href: string) => { router.push(href); }, [router]);
 
@@ -202,14 +185,7 @@ export function MobileFloatingBar() {
   const currentTab = getTabFromPathname(pathname);
 
   return (
-    <div
-      className="md:hidden fixed left-0 right-0 z-50 bg-[#111111]"
-      style={{
-        bottom: keyboardOffset > 0 ? `${keyboardOffset}px` : 0,
-        paddingBottom: keyboardOffset > 0 ? "4px" : "env(safe-area-inset-bottom)",
-        transition: `bottom 100ms ${EASE}`,
-      }}
-    >
+    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 pb-[env(safe-area-inset-bottom)]">
 
       {/* Toast */}
       <div
@@ -265,7 +241,7 @@ export function MobileFloatingBar() {
         </div>
       )}
 
-      <div className="px-4 pb-0.5">
+      <div className="px-5 pb-0.5">
 
         {/* Bar + plus button */}
         <div className="flex items-center justify-center gap-2">
@@ -321,7 +297,7 @@ export function MobileFloatingBar() {
                   <button
                     type="button"
                     onClick={() => { setSearchQuery(""); handleSearchInput(""); searchInputRef.current?.focus(); }}
-                    className="flex items-center justify-center w-6 h-6 rounded-full text-curtn-muted hover:text-curtn-cream shrink-0 transition-opacity"
+                    className="flex items-center justify-center w-8 h-8 rounded-full text-curtn-muted hover:text-curtn-cream shrink-0 transition-opacity"
                     style={{ opacity: searchQuery ? 1 : 0, pointerEvents: searchQuery ? "auto" : "none" }}
                     aria-label="Clear search"
                   >

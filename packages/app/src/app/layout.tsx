@@ -49,8 +49,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${workSans.variable} ${jetbrainsMono.variable}`}>
-      <body className="font-sans min-h-dvh overflow-x-hidden">
+    <html lang="en" className={`${workSans.variable} ${jetbrainsMono.variable}`} style={{ backgroundColor: "#111111" }}>
+      <body className="font-sans min-h-dvh overflow-x-hidden" style={{ backgroundColor: "#111111" }}>
         <Providers>{children}</Providers>
       </body>
     </html>
