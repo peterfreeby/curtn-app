@@ -111,6 +111,16 @@ html {
   background-color: #111111;
 }
 
+/* Full-bleed helper — fixed element triggers Safari to render behind its chrome */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background: #111111;
+}
+
 body {
   background-color: var(--color-curtn-deep);
   color: var(--color-curtn-cream);
@@ -327,7 +337,17 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-curtn-deep);
   opacity: 0.7;
 }
-.ticket-body {
+.ticket-/* Full-bleed helper — fixed element triggers Safari to render behind its chrome */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background: #111111;
+}
+
+body {
   padding: 14px 16px;
   flex: 1;
 }
