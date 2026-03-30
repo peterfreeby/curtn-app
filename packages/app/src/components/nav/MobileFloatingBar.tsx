@@ -401,7 +401,7 @@ export function MobileFloatingBar() {
                 barState === "search" ? handleCloseSearch :
                 handleLog
               }
-              className="flex items-center justify-center w-9 h-9 rounded-full bg-curtn-coral text-curtn-deep hover:bg-curtn-red active:scale-95 shadow-lg shadow-black/20 shrink-0"
+              className="flex items-center justify-center w-9 h-9 rounded-full bg-curtn-coral text-curtn-deep hover:bg-curtn-red active:scale-95 shadow-[0_4px_20px_rgba(0,0,0,1)] shrink-0"
               style={{
                 transition: `transform ${DURATION} ${EASE}`,
                 transform: (barState === "expanded" || barState === "search") ? "rotate(45deg)" : "rotate(0deg)",

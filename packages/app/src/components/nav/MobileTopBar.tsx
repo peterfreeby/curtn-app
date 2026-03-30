@@ -14,14 +14,14 @@ export function MobileTopBar() {
         <div className="flex items-center justify-between px-4 py-2">
           <Link
             href={isAuthenticated ? "/feed" : "/"}
-            className="text-lg font-bold tracking-tight text-curtn-cream font-display uppercase drop-shadow-md"
+            className="text-lg font-bold tracking-tight text-curtn-cream font-display uppercase drop-shadow-[0_4px_20px_rgba(0,0,0,1)]"
           >
             Curtn
           </Link>
           {!isLoading && (
             <Link
               href={isAuthenticated && user ? `/u/${user.username}` : "/login"}
-              className="w-8 h-8 rounded-full shadow-md shadow-black/30 block"
+              className="w-8 h-8 rounded-full shadow-[0_4px_20px_rgba(0,0,0,1)] block"
             >
               {isAuthenticated && user?.avatarUrl ? (
                 <Avatar

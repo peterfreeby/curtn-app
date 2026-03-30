@@ -741,6 +741,7 @@ body {
 .dinn-panel {
   background: #0a0a0a;
   border: 1px solid rgba(245,241,227,0.08);
+  box-shadow: 0 4px 20px rgba(0,0,0,1);
   padding: 32px;
   position: relative;
 }
@@ -752,6 +753,7 @@ body {
   background: #0a0a0a;
   border-radius: 0 0 4px 4px;
   border: 1px solid rgba(245,241,227,0.08);
+  box-shadow: 0 4px 20px rgba(0,0,0,1);
   border-top: none;
 }
 .dinn-header {
@@ -846,7 +848,7 @@ body {
   border: 1px solid #393E41;
   --popup-radius: 8px;
   border-radius: var(--popup-radius);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 20px rgba(0,0,0,1);
 }
 .curtn-popup .leaflet-popup-tip {
   background: #1E1B1E;
@@ -888,6 +890,7 @@ body {
   -webkit-backdrop-filter: blur(20px);
   border-radius: 999px;
   border: 1px solid rgba(245,241,227,0.08);
+  box-shadow: 0 4px 20px rgba(0,0,0,1);
 }
 
 /* --- Ticker tape continuous scroll with pause --- */
