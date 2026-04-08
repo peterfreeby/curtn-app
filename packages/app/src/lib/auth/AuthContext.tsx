@@ -88,6 +88,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!auth) {
+      setIsLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
       setFirebaseUser(fbUser);
       fetchUser(fbUser);
@@ -97,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchUser]);
 
   const logout = useCallback(async () => {
-    await firebaseSignOut(auth);
+    if (auth) await firebaseSignOut(auth);
     setUser(null);
     router.push("/");
   }, [router]);

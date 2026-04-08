@@ -13,7 +13,7 @@ export function createClient() {
       // calls getIdToken() which handles refresh automatically.
       // URQL's sync fetchOptions can't await, so we rely on
       // the token being cached by Firebase after onAuthStateChanged.
-      const user = auth.currentUser;
+      const user = auth?.currentUser;
       // @ts-ignore — accessToken is available on the internal user object
       const token = user?.accessToken as string | undefined;
       return {
