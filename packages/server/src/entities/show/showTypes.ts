@@ -8,7 +8,8 @@ import {
   GraphQLBoolean
 } from 'graphql'
 import { nodeInterface } from '../../graphql/nodeInterface'
-import { globalIdField, connectionDefinitions } from 'graphql-relay'
+import { globalIdField, connectionDefinitions, connectionArgs } from 'graphql-relay'
+import { applyCursorToQuery, buildConnection } from '../../graphql/cursorPagination'
 import { entityRegister } from '../../graphql/entityHelpers'
 import { ShowModel } from './showModel'
 import { RunModel } from '../run/runModel'
@@ -65,33 +66,46 @@ export const showType: GraphQLObjectType = new GraphQLObjectType({
       runs: {
         type: RunConnection,
         description: 'All production runs of this show',
-        resolve: async show => {
-          const runs = await RunModel.find({ show: show._id }).sort({ startDate: -1 })
-          return { edges: runs.map(r => ({ node: r, cursor: r._id.toString() })), pageInfo: { hasNextPage: false, hasPreviousPage: false } }
+        args: { ...connectionArgs },
+        resolve: async (show: any, args: any, ctx: any) => {
+          // If no pagination args, use DataLoader for batching
+          if (!args.first && !args.after && ctx.loaders) {
+            const runs = await ctx.loaders.runsByShowLoader.load(show._id.toString())
+            return { edges: runs.map((r: any) => ({ node: r, cursor: r._id.toString() })), pageInfo: { hasNextPage: false, hasPreviousPage: false } }
+          }
+          const { filter, sort, limit } = applyCursorToQuery({ show: show._id }, {
+            after: args.after, first: args.first, sortField: 'startDate', sortDirection: -1, maxLimit: 200
+          })
+          const runs = await RunModel.find(filter).sort(sort).limit(limit).lean()
+          return buildConnection(runs, { first: args.first, sortField: 'startDate', maxLimit: 200 })
         }
       },
       averageRating: {
         type: GraphQLFloat,
-        resolve: async show => {
+        resolve: async (show: any, _args: any, ctx: any) => {
           const { PerformanceModel } = require('../performance/performanceModel')
-          const runs = await RunModel.find({ show: show._id }, '_id')
+          const runs = ctx.loaders
+            ? await ctx.loaders.runsByShowLoader.load(show._id.toString())
+            : await RunModel.find({ show: show._id }, '_id')
           if (runs.length === 0) return null
-          const runIds = runs.map(r => r._id)
+          const runIds = runs.map((r: any) => r._id)
           const performances = await PerformanceModel.find({ run: { $in: runIds } }, '_id')
           if (performances.length === 0) return null
           const perfIds = performances.map((p: any) => p._id)
           const reviews = await ReviewModel.find({ performance: { $in: perfIds } })
           if (reviews.length === 0) return null
-          const sum = reviews.reduce((acc, r) => acc + r.rating, 0)
+          const sum = reviews.reduce((acc: number, r: any) => acc + r.rating, 0)
           return Math.round((sum / reviews.length) * 10) / 10
         }
       },
       reviewCount: {
         type: GraphQLInt,
-        resolve: async show => {
+        resolve: async (show: any, _args: any, ctx: any) => {
           const { PerformanceModel } = require('../performance/performanceModel')
-          const runs = await RunModel.find({ show: show._id }, '_id')
-          const runIds = runs.map(r => r._id)
+          const runs = ctx.loaders
+            ? await ctx.loaders.runsByShowLoader.load(show._id.toString())
+            : await RunModel.find({ show: show._id }, '_id')
+          const runIds = runs.map((r: any) => r._id)
           const performances = await PerformanceModel.find({ run: { $in: runIds } }, '_id')
           const perfIds = performances.map((p: any) => p._id)
           return await ReviewModel.countDocuments({ performance: { $in: perfIds } })
@@ -99,14 +113,15 @@ export const showType: GraphQLObjectType = new GraphQLObjectType({
       },
       watchlistCount: {
         type: GraphQLInt,
-        resolve: async (show) => {
+        resolve: async (show: any, _args: any, ctx: any) => {
+          if (ctx.loaders) return ctx.loaders.watchlistCountByShowLoader.load(show._id.toString())
           const { WatchlistItemModel } = require('../watchlist/watchlistModel')
-          return await WatchlistItemModel.countDocuments({ show: show._id })
+          return WatchlistItemModel.countDocuments({ show: show._id })
         }
       },
       isOnMyWatchlist: {
         type: GraphQLBoolean,
-        resolve: async (show, _args, ctx) => {
+        resolve: async (show: any, _args: any, ctx: any) => {
           if (!ctx.user) return false
           const { WatchlistItemModel } = require('../watchlist/watchlistModel')
           const item = await WatchlistItemModel.findOne({ user: ctx.user.id, show: show._id })
@@ -116,19 +131,29 @@ export const showType: GraphQLObjectType = new GraphQLObjectType({
       creators: {
         type: require('../showCredit/showCreditTypes').ShowCreditConnection,
         description: 'Show-level credits (playwrights, composers, etc.)',
-        resolve: async (show: any) => {
-          const { ShowCreditModel } = require('../showCredit/showCreditModel')
-          const showCredits = await ShowCreditModel.find({ show: show._id }).sort({ order: 1 })
-          return {
-            edges: showCredits.map((sc: any) => ({ node: sc, cursor: sc._id.toString() })),
-            pageInfo: { hasNextPage: false, hasPreviousPage: false }
+        args: { ...connectionArgs },
+        resolve: async (show: any, args: any, ctx: any) => {
+          // If no pagination args, use DataLoader for batching
+          if (!args.first && !args.after && ctx.loaders) {
+            const showCredits = await ctx.loaders.showCreditsByShowLoader.load(show._id.toString())
+            return {
+              edges: showCredits.map((sc: any) => ({ node: sc, cursor: sc._id.toString() })),
+              pageInfo: { hasNextPage: false, hasPreviousPage: false }
+            }
           }
+          const { ShowCreditModel } = require('../showCredit/showCreditModel')
+          const { filter, sort, limit } = applyCursorToQuery({ show: show._id }, {
+            after: args.after, first: args.first, sortField: 'order', sortDirection: 1, maxLimit: 100
+          })
+          const showCredits = await ShowCreditModel.find(filter).sort(sort).limit(limit).lean()
+          return buildConnection(showCredits, { first: args.first, sortField: 'order', maxLimit: 100 })
         }
       },
       source: {
         type: require('../dataSource/dataSourceTypes').dataSourceType,
-        resolve: async (show: any) => {
+        resolve: async (show: any, _args: any, ctx: any) => {
           if (!show.source) return null
+          if (ctx.loaders) return ctx.loaders.dataSourceLoader.load(show.source.toString())
           const { DataSourceModel } = require('../dataSource/dataSourceModel')
           return DataSourceModel.findById(show.source)
         }

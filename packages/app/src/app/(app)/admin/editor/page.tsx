@@ -2059,7 +2059,14 @@ function PeopleEditor() {
                       />
                     )}
                     <div className="min-w-0">
-                      <h3 className="text-sm font-medium text-curtn-cream truncate">{person.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-medium text-curtn-cream truncate">{person.name}</h3>
+                        {person.isClaimed && (
+                          <span className="inline-block rounded-full bg-green-500/20 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-green-400 shrink-0">
+                            Claimed{person.user?.username ? ` by @${person.user.username}` : ""}
+                          </span>
+                        )}
+                      </div>
                       {person.bio && (
                         <p className="text-xs text-curtn-muted mt-0.5 truncate">{person.bio}</p>
                       )}

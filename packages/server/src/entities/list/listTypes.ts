@@ -7,7 +7,8 @@ import {
   GraphQLUnionType,
   GraphQLList
 } from 'graphql'
-import { globalIdField, connectionDefinitions } from 'graphql-relay'
+import { globalIdField, connectionDefinitions, connectionArgs } from 'graphql-relay'
+import { applyCursorToQuery, buildConnection } from '../../graphql/cursorPagination'
 import { nodeInterface } from '../../graphql/nodeInterface'
 import { entityRegister } from '../../graphql/entityHelpers'
 import { ListModel, LIST_TYPES } from './listModel'
@@ -81,7 +82,9 @@ export const listItemType: GraphQLObjectType = new GraphQLObjectType({
       },
       addedBy: {
         type: userType,
-        resolve: async (item: any) => {
+        resolve: async (item: any, _args: any, ctx: any) => {
+          if (!item.addedBy) return null
+          if (ctx.loaders) return ctx.loaders.userLoader.load(item.addedBy.toString())
           const { UserModel } = require('../user/userModel')
           return UserModel.findById(item.addedBy)
         }
@@ -140,21 +143,23 @@ export const listType: GraphQLObjectType = new GraphQLObjectType({
       },
       owner: {
         type: userType,
-        resolve: async (list: any) => {
+        resolve: async (list: any, _args: any, ctx: any) => {
+          if (ctx.loaders) return ctx.loaders.userLoader.load(list.owner.toString())
           const { UserModel } = require('../user/userModel')
           return UserModel.findById(list.owner)
         }
       },
       collaborators: {
         type: UserConnection,
-        resolve: async (list: any) => {
+        resolve: async (list: any, _args: any, ctx: any) => {
           if (!list.collaborators || list.collaborators.length === 0) {
             return { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false } }
           }
-          const { UserModel } = require('../user/userModel')
-          const users = await UserModel.find({ _id: { $in: list.collaborators } })
+          const users = ctx.loaders
+            ? await Promise.all(list.collaborators.map((id: any) => ctx.loaders.userLoader.load(id.toString())))
+            : await (require('../user/userModel').UserModel).find({ _id: { $in: list.collaborators } })
           return {
-            edges: users.map((u: any) => ({ node: u, cursor: u._id.toString() })),
+            edges: users.filter(Boolean).map((u: any) => ({ node: u, cursor: u._id.toString() })),
             pageInfo: { hasNextPage: false, hasPreviousPage: false }
           }
         }
@@ -166,12 +171,21 @@ export const listType: GraphQLObjectType = new GraphQLObjectType({
       items: {
         type: ListItemConnection,
         description: 'Items in this list, ordered by position',
-        resolve: async (list: any) => {
-          const items = await ListItemModel.find({ list: list._id }).sort({ position: 1 })
-          return {
-            edges: items.map((i: any) => ({ node: i, cursor: i._id.toString() })),
-            pageInfo: { hasNextPage: false, hasPreviousPage: false }
+        args: { ...connectionArgs },
+        resolve: async (list: any, args: any, ctx: any) => {
+          // If no pagination args, use DataLoader for batching
+          if (!args.first && !args.after && ctx.loaders) {
+            const items = await ctx.loaders.listItemsByListLoader.load(list._id.toString())
+            return {
+              edges: items.map((i: any) => ({ node: i, cursor: i._id.toString() })),
+              pageInfo: { hasNextPage: false, hasPreviousPage: false }
+            }
           }
+          const { filter, sort, limit } = applyCursorToQuery({ list: list._id }, {
+            after: args.after, first: args.first, sortField: 'position', sortDirection: 1, maxLimit: 200
+          })
+          const items = await ListItemModel.find(filter).sort(sort).limit(limit).lean()
+          return buildConnection(items, { first: args.first, sortField: 'position', maxLimit: 200 })
         }
       },
       isCollaborator: {

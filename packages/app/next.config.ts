@@ -2,12 +2,12 @@ import type { NextConfig } from 'next'
 import path from 'path'
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['mongoose', 'bcrypt', 'mongodb', 'bson'],
+  serverExternalPackages: ['mongoose', 'bcrypt', 'mongodb', 'bson', 'firebase-admin'],
   outputFileTracingRoot: path.join(__dirname, '../../'),
   transpilePackages: ['server'],
   webpack: (config, { isServer }) => {
     if (isServer) {
-      const nativeModules = /^(bcrypt|mongodb|mongoose|bson)($|\/)/
+      const nativeModules = /^(bcrypt|mongodb|mongoose|bson|firebase-admin)($|\/)/
 
       const prevExternals = config.externals
       config.externals = async (ctx: any) => {

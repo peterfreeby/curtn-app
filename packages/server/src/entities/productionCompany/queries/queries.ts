@@ -2,6 +2,7 @@ import { GraphQLFieldConfig, GraphQLID, GraphQLNonNull, GraphQLString } from 'gr
 import { ProductionCompanyConnection, productionCompanyType } from '../productionCompanyTypes'
 import { ProductionCompanyModel } from '../productionCompanyModel'
 import { connectionArgs, connectionFromArray, fromGlobalId } from 'graphql-relay'
+import { applyCursorToQuery, buildConnection, connectionFromArrayLean } from '../../../graphql/cursorPagination'
 
 export const singleProductionCompany: GraphQLFieldConfig<any, any, { id: string }> = {
   type: productionCompanyType,
@@ -55,15 +56,28 @@ export const productionCompanyList: GraphQLFieldConfig<any, any, any> = {
       filter.$text = { $search: search }
     }
 
+    const empty = { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null } }
     try {
-      const limit = connArgs.first ?? 100
-      const companies = await ProductionCompanyModel.find(filter)
-        .sort(search ? { score: { $meta: 'textScore' } } : { name: 1 })
-        .limit(limit)
-      return connectionFromArray(companies, connArgs)
+      if (search) {
+        const limit = (connArgs as any).first ?? 100
+        const companies = await ProductionCompanyModel.find(filter)
+          .sort({ score: { $meta: 'textScore' } })
+          .limit(limit)
+          .lean()
+        return connectionFromArrayLean(companies, connArgs)
+      }
+
+      const { filter: cursorFilter, sort, limit } = applyCursorToQuery(filter, {
+        after: (connArgs as any).after,
+        first: (connArgs as any).first,
+        sortField: 'name',
+        sortDirection: 1
+      })
+      const companies = await ProductionCompanyModel.find(cursorFilter).sort(sort).limit(limit).lean()
+      return buildConnection(companies, { first: (connArgs as any).first, sortField: 'name' })
     } catch (error) {
       console.error('Error fetching production companies:', error)
-      return connectionFromArray([], connArgs)
+      return empty
     }
   }
 }

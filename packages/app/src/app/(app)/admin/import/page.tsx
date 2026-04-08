@@ -6,47 +6,11 @@ import JSZip from "jszip";
 import { CSV_IMPORT_MUTATION } from "@/lib/graphql/admin";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
-import { getStoredAccessToken, setTokens, isTokenExpired } from "@/lib/auth/token";
+import { auth } from "@/lib/firebase/config";
 
-const REFRESH_MUTATION = `mutation RefreshToken($input: userRefreshTokenInput!) {
-  userRefreshToken(input: $input) { accessToken error }
-}`;
-
-// Refresh the access token if it's expired or about to expire (within 2 minutes)
-async function ensureFreshToken(): Promise<void> {
-  const token = localStorage.getItem("curtn_access_token");
-  if (!token) return;
-
-  // Check if token expires within 2 minutes
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-    const expiresIn = payload.exp * 1000 - Date.now();
-    if (expiresIn > 2 * 60 * 1000) return; // Still fresh enough
-  } catch {
-    return;
-  }
-
-  const refreshToken = localStorage.getItem("curtn_refresh_token");
-  if (!refreshToken) return;
-
-  try {
-    const res = await fetch("/api/graphql", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        query: REFRESH_MUTATION,
-        variables: { input: { refreshToken } },
-      }),
-    });
-    const json = await res.json();
-    const newAccessToken = json.data?.userRefreshToken?.accessToken;
-    if (newAccessToken) {
-      setTokens(newAccessToken, refreshToken);
-    }
-  } catch {
-    // Silently fail — next request will get a 401
-  }
-}
+// Firebase SDK handles token refresh automatically.
+// This is a no-op kept for call-site compatibility.
+async function ensureFreshToken(): Promise<void> {}
 
 // All fields that can contain image filenames or URLs
 const IMAGE_FIELDS = new Set([
@@ -126,6 +90,11 @@ const CURTN_FIELDS = [
   { value: "personRole", label: "Person Role", group: "Credit" },
   { value: "creditType", label: "Credit Type", group: "Credit" },
   { value: "creditDepartment", label: "Credit Department", group: "Credit" },
+  // List
+  { value: "listName", label: "List Name", group: "List" },
+  { value: "listType", label: "List Type (shows, venues, runs, performances, people)", group: "List" },
+  { value: "listDescription", label: "List Description", group: "List" },
+  { value: "listItemNote", label: "List Item Note", group: "List" },
 ];
 
 // Group labels for optgroup rendering
@@ -136,6 +105,7 @@ const FIELD_GROUPS = [
   "Performance",
   "Company",
   "Credit",
+  "List",
 ];
 
 type Step = "upload" | "map" | "preview" | "results";
@@ -155,6 +125,9 @@ interface ImportResult {
   personsCreated: number;
   personsMatched: number;
   creditsCreated: number;
+  listsCreated: number;
+  listsMatched: number;
+  listItemsAdded: number;
   errors: string[];
 }
 
@@ -655,6 +628,9 @@ export default function CsvImportPage() {
       personsCreated: base.personsCreated + chunk.personsCreated,
       personsMatched: base.personsMatched + chunk.personsMatched,
       creditsCreated: base.creditsCreated + chunk.creditsCreated,
+      listsCreated: base.listsCreated + chunk.listsCreated,
+      listsMatched: base.listsMatched + chunk.listsMatched,
+      listItemsAdded: base.listItemsAdded + chunk.listItemsAdded,
       errors: [...base.errors, ...chunk.errors],
     };
   }
@@ -663,7 +639,7 @@ export default function CsvImportPage() {
     totalRows: 0, showsCreated: 0, showsMatched: 0, runsCreated: 0, runsMatched: 0,
     performancesCreated: 0, performancesMatched: 0, venuesCreated: 0, venuesMatched: 0,
     companiesCreated: 0, companiesMatched: 0, personsCreated: 0, personsMatched: 0,
-    creditsCreated: 0, errors: [],
+    creditsCreated: 0, listsCreated: 0, listsMatched: 0, listItemsAdded: 0, errors: [],
   };
 
   // Summarize a batch result into a log line
@@ -675,6 +651,7 @@ export default function CsvImportPage() {
     if (r.runsCreated) parts.push(`${r.runsCreated} run${r.runsCreated > 1 ? "s" : ""} created`);
     if (r.performancesCreated) parts.push(`${r.performancesCreated} perf${r.performancesCreated > 1 ? "s" : ""} created`);
     if (r.creditsCreated) parts.push(`${r.creditsCreated} credit${r.creditsCreated > 1 ? "s" : ""} created`);
+    if (r.listItemsAdded) parts.push(`${r.listItemsAdded} list item${r.listItemsAdded > 1 ? "s" : ""} added`);
     if (r.errors.length) parts.push(`${r.errors.length} error${r.errors.length > 1 ? "s" : ""}`);
     return parts.join(", ") || "no changes";
   }
@@ -1182,6 +1159,16 @@ export default function CsvImportPage() {
                       {importResult.personsMatched} matched
                     </span>
                   </div>
+                  {(importResult.listsCreated > 0 || importResult.listsMatched > 0 || importResult.listItemsAdded > 0) && (
+                    <div>
+                      <span className="text-curtn-muted">Lists: </span>
+                      <span className="text-curtn-cream">
+                        {importResult.listsCreated > 0 && `${importResult.listsCreated} new`}
+                        {importResult.listsMatched > 0 && `${importResult.listsCreated > 0 ? ", " : ""}${importResult.listsMatched} matched`}
+                        {importResult.listItemsAdded > 0 && `, ${importResult.listItemsAdded} items added`}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 {importResult.errors.length > 0 && (
                   <div className="mt-2">
@@ -1307,6 +1294,9 @@ export default function CsvImportPage() {
                 { label: "Credits Created", value: importResult.creditsCreated },
                 { label: "People Created", value: importResult.personsCreated },
                 { label: "People Matched", value: importResult.personsMatched },
+                { label: "Lists Created", value: importResult.listsCreated },
+                { label: "Lists Matched", value: importResult.listsMatched },
+                { label: "List Items Added", value: importResult.listItemsAdded },
               ]
                 .filter((item) => item.value > 0)
                 .map((item) => (

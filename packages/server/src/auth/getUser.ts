@@ -1,14 +1,6 @@
 import Koa from 'koa'
-import * as jwt from 'jsonwebtoken'
-import { getEnvironmentVariables } from '../config/env'
+import { firebaseAuth } from '../firebase/admin'
 import { UserModel } from '../entities/user/userModel'
-
-const jwtSecret = getEnvironmentVariables().ACCESS_TOKEN_SECRET || ''
-
-type TokenPayload = {
-  id: string,
-  admin: boolean
-}
 
 export async function getUser(ctx: Koa.Context): Promise<any>
 export async function getUser(ctx: { authorization?: string }): Promise<any>
@@ -30,9 +22,9 @@ export async function getUser(ctx: Koa.Context | { authorization?: string }) {
   const [_, token] = parts
 
   try {
-    const payload = jwt.verify(token, jwtSecret) as jwt.JwtPayload & TokenPayload
+    const decoded = await firebaseAuth.verifyIdToken(token)
 
-    return await UserModel.findById(payload.id)
+    return await UserModel.findOne({ firebaseUid: decoded.uid })
   } catch {
     return null
   }

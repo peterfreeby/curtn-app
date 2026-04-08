@@ -54,6 +54,7 @@ const schema = new Schema<IReview>({
 })
 
 schema.index({ performance: 1 })
+schema.index({ createdAt: -1, _id: -1 }) // cursor pagination for feeds
 schema.index({ run: 1, createdAt: -1 })
 schema.index({ user: 1, createdAt: -1 })
 schema.index({ rating: 1 })

@@ -1,8 +1,9 @@
 import { GraphQLFieldConfig } from 'graphql'
-import { connectionArgs, connectionFromArray } from 'graphql-relay'
+import { connectionArgs } from 'graphql-relay'
 import { DataSourceConnection } from '../dataSourceTypes'
 import { DataSourceModel } from '../dataSourceModel'
 import { UserModel } from '../../user/userModel'
+import { applyCursorToQuery, buildConnection } from '../../../graphql/cursorPagination'
 
 export const dataSourceList: GraphQLFieldConfig<any, any> = {
   type: DataSourceConnection,
@@ -14,7 +15,14 @@ export const dataSourceList: GraphQLFieldConfig<any, any> = {
     const adminUser = await UserModel.findById(ctx.user.id)
     if (!adminUser?.isAdmin) throw new Error('Admin access required')
 
-    const dataSources = await DataSourceModel.find().sort({ createdAt: -1 })
-    return connectionFromArray(dataSources, args)
+    const { filter, sort, limit } = applyCursorToQuery({}, {
+      after: args.after,
+      first: args.first,
+      sortField: 'createdAt',
+      sortDirection: -1,
+      maxLimit: 200
+    })
+    const dataSources = await DataSourceModel.find(filter).sort(sort).limit(limit).lean()
+    return buildConnection(dataSources, { first: args.first, sortField: 'createdAt', maxLimit: 200 })
   }
 }

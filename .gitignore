@@ -2,6 +2,7 @@ node_modules/
 dist/
 **/.env
 **/.env.local
+firebase-service-account.json
 .vscode
 __generated__
 .next/

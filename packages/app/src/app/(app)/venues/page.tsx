@@ -1,13 +1,12 @@
 "use client";
 
-import { Suspense, useState, useCallback } from "react";
+import { Suspense, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useQuery } from "urql";
 import { VenueFilters } from "@/components/venues/VenueFilters";
 import { VenueGrid } from "@/components/venues/VenueGrid";
 import { VENUE_LIST_QUERY } from "@/lib/graphql/venues";
-
-const PAGE_SIZE = 12;
+import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
+import { usePaginatedConnection } from "@/hooks/usePaginatedConnection";
 
 function VenuesBrowser() {
   const searchParams = useSearchParams();
@@ -18,26 +17,19 @@ function VenuesBrowser() {
   const selectedType = searchParams.get("type") ?? "";
   const autoFocus = searchParams.has("focus");
 
-  const [after, setAfter] = useState<string | null>(null);
-  const [prevEdges, setPrevEdges] = useState<any[]>([]);
+  const { edges, loading, loadingMore, hasNextPage, sentinelRef } =
+    usePaginatedConnection({
+      query: VENUE_LIST_QUERY,
+      variables: {
+        city: selectedCity || undefined,
+        venueType: selectedType || undefined,
+        search: search || undefined,
+      },
+      pageSize: 12,
+      getConnection: (data: any) => data?.venueList,
+    });
 
-  const [{ data, fetching }] = useQuery({
-    query: VENUE_LIST_QUERY,
-    variables: {
-      first: PAGE_SIZE,
-      after,
-      city: selectedCity || undefined,
-      venueType: selectedType || undefined,
-      search: search || undefined,
-    },
-  });
-
-  const connection = data?.venueList;
-  const currentEdges = connection?.edges ?? [];
-  const pageInfo = connection?.pageInfo;
-
-  const displayEdges = after === null ? currentEdges : [...prevEdges, ...currentEdges];
-  const venues = displayEdges.map((e: any) => e.node);
+  const venues = edges.map((e: any) => e.node);
 
   function updateParams(updates: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString());
@@ -46,8 +38,6 @@ function VenuesBrowser() {
       else params.set(key, value);
     }
     params.delete("focus");
-    setAfter(null);
-    setPrevEdges([]);
     router.replace(`/venues?${params.toString()}`, { scroll: false });
   }
 
@@ -66,13 +56,6 @@ function VenuesBrowser() {
     [searchParams]
   );
 
-  function handleLoadMore() {
-    if (pageInfo?.endCursor) {
-      setPrevEdges(displayEdges);
-      setAfter(pageInfo.endCursor);
-    }
-  }
-
   return (
     <>
       <VenueFilters
@@ -86,26 +69,14 @@ function VenuesBrowser() {
       />
 
       <div className="mt-6">
-        <VenueGrid venues={venues} loading={fetching && after === null} />
+        <VenueGrid venues={venues} loading={loading} />
       </div>
 
-      {!fetching && pageInfo?.hasNextPage && (
-        <div className="mt-6 flex justify-center">
-          <button
-            type="button"
-            onClick={handleLoadMore}
-            className="rounded-lg border border-curtn-dark px-6 py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream"
-          >
-            Load more
-          </button>
-        </div>
-      )}
-
-      {fetching && after !== null && (
-        <div className="mt-6 flex justify-center">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-curtn-muted/30 border-t-curtn-coral" />
-        </div>
-      )}
+      <InfiniteScrollSentinel
+        sentinelRef={sentinelRef}
+        loadingMore={loadingMore}
+        hasNextPage={hasNextPage}
+      />
     </>
   );
 }

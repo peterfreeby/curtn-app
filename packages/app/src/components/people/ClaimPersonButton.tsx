@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation } from "urql";
+import { useMutation, useQuery } from "urql";
 import Link from "next/link";
-import { USER_CLAIM_PERSON_MUTATION } from "@/lib/graphql/users";
+import { SUBMIT_CLAIM_REQUEST_MUTATION, MY_CLAIM_REQUEST_QUERY } from "@/lib/graphql/claims";
 import { useAuth } from "@/lib/auth/useAuth";
 
 interface ClaimPersonButtonProps {
@@ -20,8 +20,16 @@ export function ClaimPersonButton({
   onClaimed,
 }: ClaimPersonButtonProps) {
   const { user } = useAuth();
-  const [{ fetching }, executeClaim] = useMutation(USER_CLAIM_PERSON_MUTATION);
+  const [{ fetching }, submitClaim] = useMutation(SUBMIT_CLAIM_REQUEST_MUTATION);
   const [error, setError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [message, setMessage] = useState("");
+  const [{ data: claimData }] = useQuery({
+    query: MY_CLAIM_REQUEST_QUERY,
+    pause: !user,
+    requestPolicy: "cache-first",
+  });
 
   if (!user) return null;
 
@@ -49,29 +57,84 @@ export function ClaimPersonButton({
     );
   }
 
-  async function handleClaim() {
+  // User has a pending claim
+  const pendingClaim = claimData?.myClaimRequest;
+  if (submitted || pendingClaim) {
+    return (
+      <p className="text-xs text-curtn-muted">
+        Request pending
+      </p>
+    );
+  }
+
+  async function handleSubmit() {
     setError(null);
-    const result = await executeClaim({ input: { personId } });
-    if (result.data?.userClaimPerson?.error) {
-      setError(result.data.userClaimPerson.error);
+    const result = await submitClaim({ input: { personId, message: message || undefined } });
+    if (result.data?.submitClaimRequest?.error) {
+      setError(result.data.submitClaimRequest.error);
     } else if (result.error) {
       setError("Something went wrong");
     } else {
+      setSubmitted(true);
+      setShowModal(false);
       onClaimed?.();
     }
   }
 
   return (
-    <div className="space-y-1">
+    <>
       <button
         type="button"
-        onClick={handleClaim}
-        disabled={fetching}
-        className="rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-1.5 text-xs text-curtn-cream hover:border-curtn-coral transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        onClick={() => setShowModal(true)}
+        className="flex items-center gap-1.5 border border-curtn-dark px-3 py-1.5 text-xs text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer"
       >
-        {fetching ? "Claiming..." : "This is me"}
+        This is me
       </button>
-      {error && <p className="text-xs text-curtn-red">{error}</p>}
-    </div>
+
+      {showModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowModal(false); setMessage(""); setError(null); } }}
+        >
+          <div className="w-full max-w-sm border border-curtn-dark bg-curtn-surface p-5 space-y-4 mx-4">
+            <div>
+              <p className="text-sm text-curtn-cream font-medium">Claim this profile</p>
+              <p className="text-xs text-curtn-muted mt-1">
+                Your request will be reviewed by an admin.
+              </p>
+            </div>
+
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Link a social profile, portfolio, or anything that helps us verify (optional)"
+              rows={3}
+              className="w-full border border-curtn-dark bg-curtn-deep px-3 py-2 text-xs text-curtn-cream placeholder:text-curtn-muted/40 focus:border-curtn-coral focus:outline-none resize-none"
+              autoFocus
+            />
+
+            {error && <p className="text-xs text-curtn-red">{error}</p>}
+
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => { setShowModal(false); setMessage(""); setError(null); }}
+                className="px-3 py-1.5 text-xs text-curtn-muted hover:text-curtn-cream transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={fetching}
+                className="border border-curtn-coral bg-curtn-coral/10 px-4 py-1.5 text-xs font-medium text-curtn-coral transition-colors hover:bg-curtn-coral/20 cursor-pointer disabled:opacity-50"
+              >
+                {fetching ? "Submitting..." : "Submit request"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -3,12 +3,8 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-
-interface CastMember {
-  id: string;
-  person: { id: string; name: string; headshotUrl: string | null };
-  role: string;
-}
+import "leaflet.markercluster";
+import "leaflet.markercluster/dist/MarkerCluster.css";
 
 interface Performance {
   id: string;
@@ -23,22 +19,15 @@ interface Performance {
   } | null;
   ticketUrl: string | null;
   soldOut: boolean | string | null;
-  effectiveDescription?: string | null;
   run: {
     id: string;
     show: {
       id: string;
       title: string;
-      description?: string | null;
       posterUrl: string | null;
       performanceTypes: string[];
-      averageRating?: number | null;
-      reviewCount?: number;
     };
     productionCompany: { name: string } | null;
-    averageRating?: number | null;
-    reviewCount?: number;
-    cast?: CastMember[];
   } | null;
 }
 
@@ -64,78 +53,52 @@ function esc(str: string): string {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-function stars(rating: number, count: number): string {
-  return `<span style="color:#f84331;font-size:12px;">${"★".repeat(Math.floor(rating))}${rating % 1 >= 0.25 ? "½" : ""}</span> <span style="color:#8b8679;font-size:10px;">(${count})</span>`;
-}
-
-function buildSinglePopup(perf: Performance): string {
-  const show = perf.run?.show;
-  const company = perf.run?.productionCompany;
-  const rating = perf.run?.averageRating ?? show?.averageRating;
-  const reviewCount = perf.run?.reviewCount ?? show?.reviewCount ?? 0;
-  const desc = (perf.effectiveDescription || show?.description || "").slice(0, 120);
-  const cast = perf.run?.cast ?? [];
-  const isSoldOut = perf.soldOut === true || perf.soldOut === "true";
-
-  const facepile = cast.length > 0
-    ? `<div style="display:flex;margin:8px 0 4px;">
-        ${cast.slice(0, 5).map(c =>
-          c.person.headshotUrl
-            ? `<img src="${c.person.headshotUrl}" title="${esc(c.person.name)}" style="width:24px;height:24px;border-radius:50%;border:2px solid #111;margin-left:-4px;object-fit:cover;" />`
-            : `<div title="${esc(c.person.name)}" style="width:24px;height:24px;border-radius:50%;border:2px solid #111;margin-left:-4px;background:#393E41;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#B5BBBF;">${c.person.name.charAt(0)}</div>`
-        ).join("")}
-        ${cast.length > 5 ? `<div style="width:24px;height:24px;border-radius:50%;border:2px solid #111;margin-left:-4px;background:#f84331;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#111;">+${cast.length - 5}</div>` : ""}
-      </div>`
-    : "";
-
-  // Phosphor icon unicodes
-  const iconPlus = "\uE3D4";
-  const iconEye = "\uE220";
-  const iconTicket = "\uE490";
-  // Nested rounded corners: popup border-radius is 4px, padding ~10px → inner radius ~0 but we use 2px for feel
-  const innerRadius = "2px";
-
-  return `<a href="/showings/${perf.id}" style="font-family:sans-serif;max-width:280px;display:block;text-decoration:none;color:inherit;cursor:pointer;">
-    <div style="display:flex;gap:10px;">
-      ${show?.posterUrl ? `<img src="${show.posterUrl}" alt="" style="width:60px;height:90px;object-fit:cover;border-radius:${innerRadius};flex-shrink:0;" />` : ""}
-      <div style="flex:1;min-width:0;">
-        <div style="font-weight:700;font-size:14px;line-height:1.2;margin-bottom:3px;color:#f3ebd5;">${esc(show?.title || "Untitled")}</div>
-        ${company ? `<div style="font-size:11px;color:#8b8679;">${esc(company.name)}</div>` : ""}
-        ${rating ? `<div style="margin-top:4px;">${stars(rating, reviewCount)}</div>` : ""}
-      </div>
-    </div>
-    ${desc ? `<div style="font-size:11px;color:#B5BBBF;margin-top:8px;line-height:1.5;">${esc(desc)}${desc.length >= 120 ? "…" : ""}</div>` : ""}
-    ${facepile}
-    <div style="display:flex;gap:6px;margin-top:10px;align-items:center;">
-      <span onclick="event.preventDefault();event.stopPropagation();window.location.href='/log?run=${perf.run?.id}'" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:#f84331;color:#111;border-radius:${innerRadius};cursor:pointer;font-family:'Phosphor';font-size:14px;" title="Log">${iconPlus}</span>
-      <span onclick="event.preventDefault();event.stopPropagation();" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid #393E41;color:#8b8679;border-radius:${innerRadius};cursor:pointer;font-family:'Phosphor';font-size:14px;" title="Watchlist">${iconEye}</span>
-      ${!isSoldOut && perf.ticketUrl ? `<a href="${perf.ticketUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation();" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(248,67,49,0.3);color:#f84331;border-radius:${innerRadius};cursor:pointer;font-family:'Phosphor';font-size:14px;text-decoration:none;" title="Tickets">${iconTicket}</a>` : ""}
-    </div>
-  </a>`;
-}
-
-function buildMultiPopup(venue: NonNullable<Performance["venue"]>, performances: Performance[]): string {
-  const showMap = new Map<string, { title: string; posterUrl: string | null; perfId: string }>();
+// Build popup HTML lazily — only when marker is clicked
+function buildPopup(venue: NonNullable<Performance["venue"]>, performances: Performance[]): string {
+  const showMap = new Map<string, { title: string; posterUrl: string | null; perfId: string; runId: string }>();
   for (const p of performances) {
     if (p.run?.show && !showMap.has(p.run.show.id)) {
-      showMap.set(p.run.show.id, { title: p.run.show.title, posterUrl: p.run.show.posterUrl, perfId: p.id });
+      showMap.set(p.run.show.id, { title: p.run.show.title, posterUrl: p.run.show.posterUrl, perfId: p.id, runId: p.run.id });
     }
   }
   const shows = Array.from(showMap.values());
 
-  const posters = shows.slice(0, 8).map(s =>
-    `<a href="/showings/${s.perfId}" style="flex-shrink:0;width:55px;display:block;text-decoration:none;transition:transform 0.15s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''">
-      <div style="width:55px;height:82px;background:#1a1a1a;border-radius:2px;overflow:hidden;border:1px solid #393E41;">
+  if (shows.length === 1) {
+    const perf = performances[0];
+    const show = perf.run?.show;
+    const company = perf.run?.productionCompany;
+    const isSoldOut = perf.soldOut === true || perf.soldOut === "true";
+
+    return `<a href="/showings/${perf.id}" style="font-family:sans-serif;max-width:260px;display:block;text-decoration:none;color:inherit;cursor:pointer;">
+      <div style="display:flex;gap:10px;">
+        ${show?.posterUrl ? `<img src="${show.posterUrl}" alt="" loading="lazy" style="width:50px;height:75px;object-fit:cover;border-radius:2px;flex-shrink:0;" />` : ""}
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:13px;line-height:1.2;margin-bottom:3px;color:#f3ebd5;">${esc(show?.title || "Untitled")}</div>
+          ${company ? `<div style="font-size:11px;color:#8b8679;">${esc(company.name)}</div>` : ""}
+          <div style="font-size:10px;color:#8b8679;margin-top:4px;">${performances.length} showing${performances.length !== 1 ? "s" : ""}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <span onclick="event.preventDefault();event.stopPropagation();window.location.href='/log?run=${perf.run?.id}'" style="flex:1;height:28px;display:flex;align-items:center;justify-content:center;background:#f84331;color:#111;border-radius:2px;cursor:pointer;font-size:11px;font-weight:600;">Log</span>
+        ${!isSoldOut && perf.ticketUrl ? `<a href="${perf.ticketUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation();" style="flex:1;height:28px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(248,67,49,0.3);color:#f84331;border-radius:2px;font-size:11px;text-decoration:none;">Tickets</a>` : ""}
+      </div>
+    </a>`;
+  }
+
+  // Multi-show venue popup
+  const posters = shows.slice(0, 6).map(s =>
+    `<a href="/showings/${s.perfId}" style="flex-shrink:0;width:48px;display:block;text-decoration:none;">
+      <div style="width:48px;height:72px;background:#1a1a1a;border-radius:2px;overflow:hidden;border:1px solid #393E41;">
         ${s.posterUrl
-          ? `<img src="${s.posterUrl}" alt="" style="width:100%;height:100%;object-fit:cover;" />`
+          ? `<img src="${s.posterUrl}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;" />`
           : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:8px;color:#8b8679;text-align:center;padding:4px;">${esc(s.title)}</div>`}
       </div>
     </a>`
   ).join("");
 
-  return `<div style="font-family:sans-serif;max-width:320px;">
+  return `<div style="font-family:sans-serif;max-width:280px;">
     <div style="font-weight:700;font-size:13px;margin-bottom:2px;">${esc(venue.name)}</div>
-    <div style="font-size:11px;color:#8b8679;margin-bottom:8px;">${shows.length} show${shows.length !== 1 ? "s" : ""} · ${performances.length} performance${performances.length !== 1 ? "s" : ""}</div>
+    <div style="font-size:11px;color:#8b8679;margin-bottom:8px;">${shows.length} show${shows.length !== 1 ? "s" : ""} · ${performances.length} showing${performances.length !== 1 ? "s" : ""}</div>
     <div style="display:flex;gap:4px;overflow-x:auto;padding-bottom:4px;">
       ${posters}
     </div>
@@ -146,6 +109,7 @@ function buildMultiPopup(venue: NonNullable<Performance["venue"]>, performances:
 export function PerformanceMap({ performances, className = "" }: PerformanceMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
+  const clusterRef = useRef<L.MarkerClusterGroup | null>(null);
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -162,7 +126,26 @@ export function PerformanceMap({ performances, className = "" }: PerformanceMapP
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
-    map.eachLayer(layer => { if (layer instanceof L.Marker) map.removeLayer(layer); });
+
+    // Remove old cluster layer
+    if (clusterRef.current) {
+      map.removeLayer(clusterRef.current);
+    }
+
+    const cluster = L.markerClusterGroup({
+      maxClusterRadius: 40,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      iconCreateFunction: (c) => {
+        const count = c.getChildCount();
+        return L.divIcon({
+          html: `<div style="width:32px;height:32px;background:#f84331;border:2px solid #111;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#111;box-shadow:0 0 8px rgba(248,67,49,0.4);">${count}</div>`,
+          className: "curtn-cluster",
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
+        });
+      },
+    });
 
     const groups = groupByVenue(performances);
     const bounds: L.LatLngExpression[] = [];
@@ -178,17 +161,23 @@ export function PerformanceMap({ performances, className = "" }: PerformanceMapP
       const { lat, lng } = venue.coordinates;
       bounds.push([lat, lng]);
 
-      const uniqueShows = new Set(venuePerfs.map(p => p.run?.show?.id).filter(Boolean));
-      const popup = uniqueShows.size === 1
-        ? buildSinglePopup(venuePerfs[0])
-        : buildMultiPopup(venue, venuePerfs);
-
-      L.marker([lat, lng], { icon }).addTo(map).bindPopup(popup, {
-        className: "curtn-popup",
-        closeButton: false,
-        maxWidth: 320,
+      // Lazy popup: build HTML only when marker is clicked
+      const marker = L.marker([lat, lng], { icon });
+      marker.on("click", () => {
+        if (!marker.getPopup()) {
+          marker.bindPopup(buildPopup(venue, venuePerfs), {
+            className: "curtn-popup",
+            closeButton: false,
+            maxWidth: 300,
+          });
+        }
+        marker.openPopup();
       });
+      cluster.addLayer(marker);
     }
+
+    map.addLayer(cluster);
+    clusterRef.current = cluster;
 
     if (bounds.length > 1) map.fitBounds(bounds as L.LatLngBoundsExpression, { padding: [40, 40] });
     else if (bounds.length === 1) map.setView(bounds[0] as L.LatLngExpression, 15);

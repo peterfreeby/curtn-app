@@ -1,61 +1,77 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
+import { auth } from "@/lib/firebase/config";
+import { useAuth } from "@/lib/auth/useAuth";
 import { Card } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
-import { setTokens } from "@/lib/auth/token";
-import { useAuth } from "@/lib/auth/useAuth";
+
+type Step = "phone" | "otp";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { refreshUser } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const { firebaseUser } = useAuth();
+  const recaptchaRef = useRef<HTMLDivElement>(null);
+  const [step, setStep] = useState<Step>("phone");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
+  useEffect(() => {
+    if (firebaseUser) {
+      router.push("/feed");
+    }
+  }, [firebaseUser, router]);
+
+  const setupRecaptcha = () => {
+    if (!(window as any).recaptchaVerifier) {
+      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaRef.current!, {
+        size: "invisible",
+      });
+    }
+  };
+
+  async function handleSendCode(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    const cleaned = phoneNumber.replace(/\D/g, "");
+    if (cleaned.length < 10) {
+      setError("Enter a valid phone number.");
+      return;
+    }
+
     setLoading(true);
-
     try {
-      const res = await fetch("/api/graphql", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query: `
-            mutation LoginUser($email: String!, $password: String!) {
-              loginUser(input: { email: $email, password: $password }) {
-                token {
-                  accessToken
-                  refreshToken {
-                    value
-                  }
-                }
-                error
-              }
-            }
-          `,
-          variables: { email, password },
-        }),
-      });
+      setupRecaptcha();
+      const formatted = phoneNumber.startsWith("+") ? phoneNumber : `+1${cleaned}`;
+      const result = await signInWithPhoneNumber(auth, formatted, (window as any).recaptchaVerifier);
+      setConfirmation(result);
+      setStep("otp");
+    } catch (err: any) {
+      setError(err.message || "Failed to send code. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
-      const json = await res.json();
-      const result = json.data?.loginUser;
+  async function handleVerifyCode(e: React.FormEvent) {
+    e.preventDefault();
+    if (!confirmation) return;
 
-      if (result?.error) {
-        setError(result.error);
-      } else if (result?.token) {
-        setTokens(result.token.accessToken, result.token.refreshToken.value);
-        await refreshUser();
-        router.push("/feed");
-      }
+    setError("");
+    setLoading(true);
+    try {
+      await confirmation.confirm(otp);
+      // onAuthStateChanged in AuthContext handles the rest
     } catch {
-      setError("Something went wrong. Try again.");
+      setError("Invalid code. Check and try again.");
+      setOtp("");
     } finally {
       setLoading(false);
     }
@@ -64,44 +80,73 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen flex items-center justify-center px-6">
       <Card className="w-full max-w-sm space-y-8">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Sign in</h1>
-          <p className="text-sm text-curtn-muted">Welcome back to Curtn.</p>
-        </div>
+        {step === "phone" ? (
+          <>
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold tracking-tight">Sign in</h1>
+              <p className="text-sm text-curtn-muted">
+                Enter your phone number and we&apos;ll send you a code.
+              </p>
+            </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <Input
-            label="Email"
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <Input
-            label="Password"
-            type="password"
-            placeholder="Your password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+            <form onSubmit={handleSendCode} className="space-y-6">
+              <Input
+                label="Phone number"
+                type="tel"
+                placeholder="+1 (555) 555-0100"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                required
+              />
 
-          {error && (
-            <p className="text-curtn-coral text-xs">{error}</p>
-          )}
+              {error && <p className="text-curtn-coral text-xs">{error}</p>}
 
-          <Button type="submit" fullWidth disabled={loading}>
-            {loading ? "Signing in..." : "Sign In"}
-          </Button>
-        </form>
+              <Button type="submit" fullWidth disabled={loading}>
+                {loading ? "Sending..." : "Send Code"}
+              </Button>
+            </form>
+          </>
+        ) : (
+          <>
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold tracking-tight">Enter code</h1>
+              <p className="text-sm text-curtn-muted">
+                We sent a 6-digit code to {phoneNumber}
+              </p>
+            </div>
 
-        <p className="text-xs text-curtn-muted text-center">
-          No account?{" "}
-          <Link href="/signup" className="text-curtn-coral hover:underline">
-            Create one
-          </Link>
-        </p>
+            <form onSubmit={handleVerifyCode} className="space-y-6">
+              <Input
+                label="Verification code"
+                type="text"
+                placeholder="123456"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                required
+              />
+
+              {error && <p className="text-curtn-coral text-xs">{error}</p>}
+
+              <Button type="submit" fullWidth disabled={loading || otp.length < 6}>
+                {loading ? "Verifying..." : "Verify"}
+              </Button>
+            </form>
+
+            <button
+              onClick={() => {
+                setStep("phone");
+                setOtp("");
+                setConfirmation(null);
+                setError("");
+              }}
+              className="text-xs text-curtn-muted hover:text-curtn-cream transition-colors"
+            >
+              Use a different number
+            </button>
+          </>
+        )}
+
+        <div ref={recaptchaRef} />
       </Card>
     </main>
   );

@@ -150,7 +150,7 @@ export default function ProfilePage() {
       )}
 
       {isOwnProfile && !profileUser.person && (
-        <ClaimPrompt onClaimed={() => reexecuteUser({ requestPolicy: "network-only" })} />
+        <ClaimPrompt onSubmitted={() => reexecuteUser({ requestPolicy: "network-only" })} />
       )}
 
       <div className="tabs-ledger">

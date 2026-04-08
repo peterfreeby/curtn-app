@@ -256,3 +256,39 @@ export const BROWSE_PERFORMANCES_QUERY = gql`
     }
   }
 `;
+
+// Lightweight version for map view — skips cast, description, and other heavy fields
+export const MAP_PERFORMANCES_QUERY = gql`
+  query MapPerformances($first: Int) {
+    performanceList(first: $first) {
+      edges {
+        node {
+          id
+          date
+          time
+          venue {
+            id
+            name
+            slug
+            city
+            coordinates { lat lng }
+          }
+          ticketUrl
+          soldOut
+          run {
+            id
+            show {
+              id
+              title
+              posterUrl
+              performanceTypes
+            }
+            productionCompany {
+              name
+            }
+          }
+        }
+      }
+    }
+  }
+`;

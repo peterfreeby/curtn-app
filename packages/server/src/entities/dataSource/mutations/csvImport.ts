@@ -21,6 +21,8 @@ import { StageModel } from '../../stage/stageModel'
 import { PersonModel } from '../../person/personModel'
 import { CreditModel } from '../../credit/creditModel'
 import { ShowCreditModel } from '../../showCredit/showCreditModel'
+import { ListModel, LIST_TYPES } from '../../list/listModel'
+import { ListItemModel } from '../../list/listItemModel'
 
 const VALID_PERFORMANCE_TYPES = new Set([
   'theater', 'play', 'musical', 'dance', 'comedy', 'improv',
@@ -112,6 +114,12 @@ const CsvRowInput = new GraphQLInputObjectType({
     personRole: { type: GraphQLString },           // e.g. "Hamlet", "Director", "Playwright"
     creditType: { type: GraphQLString },           // cast, crew, or creator (show-level)
     creditDepartment: { type: GraphQLString },     // cast, crew, creative, production, music
+
+    // List fields
+    listName: { type: GraphQLString },             // name of the list to add this entity to
+    listType: { type: GraphQLString },             // shows, venues, runs, performances, people
+    listDescription: { type: GraphQLString },      // description for the list (used on create)
+    listItemNote: { type: GraphQLString },         // optional note on this list item
   }
 })
 
@@ -132,6 +140,9 @@ const ImportResultType = new GraphQLObjectType({
     personsCreated: { type: GraphQLInt },
     personsMatched: { type: GraphQLInt },
     creditsCreated: { type: GraphQLInt },
+    listsCreated: { type: GraphQLInt },
+    listsMatched: { type: GraphQLInt },
+    listItemsAdded: { type: GraphQLInt },
     errors: { type: new GraphQLList(GraphQLString) }
   }
 })
@@ -200,6 +211,9 @@ export const csvImport = mutationWithClientMutationId({
       personsCreated: 0,
       personsMatched: 0,
       creditsCreated: 0,
+      listsCreated: 0,
+      listsMatched: 0,
+      listItemsAdded: 0,
       errors: [] as string[]
     }
 
@@ -545,6 +559,86 @@ export const csvImport = mutationWithClientMutationId({
                 submittedBy: ctx.user.id
               }).save()
               result.creditsCreated++
+            }
+          }
+        }
+
+        // 7. Add to List (if listName provided)
+        if (row.listName?.trim()) {
+          const listTypeRaw = (row.listType || 'shows').trim().toLowerCase()
+          if (!LIST_TYPES.includes(listTypeRaw as any)) {
+            result.errors.push(`Row ${rowNum}: Invalid list type "${listTypeRaw}". Must be one of: ${LIST_TYPES.join(', ')}`)
+          } else {
+            // Determine which entity to add based on listType
+            let targetItemId: string | null = null
+            if (listTypeRaw === 'shows' && show) {
+              targetItemId = show._id.toString()
+            } else if (listTypeRaw === 'venues' && venueIds.length > 0) {
+              targetItemId = venueIds[0]
+            } else if (listTypeRaw === 'runs' && run) {
+              targetItemId = run._id.toString()
+            } else if (listTypeRaw === 'performances' && performance) {
+              targetItemId = performance._id.toString()
+            } else if (listTypeRaw === 'people') {
+              // Find the person created/matched in this row
+              if (row.personName?.trim()) {
+                const personSlug = toSlug(row.personName.trim())
+                const person = await PersonModel.findOne({ slug: personSlug })
+                if (person) targetItemId = person._id.toString()
+              }
+            }
+
+            if (!targetItemId) {
+              result.errors.push(`Row ${rowNum}: No matching ${listTypeRaw.slice(0, -1)} found to add to list "${row.listName.trim()}"`)
+            } else {
+              // Find or create the list (keyed by name + type + owner)
+              const listNameClean = row.listName.trim()
+              const listSlug = toSlug(listNameClean)
+              let list = await ListModel.findOne({ slug: listSlug, owner: ctx.user.id, listType: listTypeRaw })
+
+              if (list) {
+                result.listsMatched++
+              } else {
+                if (!dryRun) {
+                  // Check for slug collision with different name
+                  let finalSlug = listSlug
+                  let suffix = 1
+                  while (await ListModel.findOne({ slug: finalSlug, owner: ctx.user.id })) {
+                    suffix++
+                    finalSlug = `${listSlug}-${suffix}`
+                  }
+                  list = await new ListModel({
+                    name: listNameClean,
+                    slug: finalSlug,
+                    description: row.listDescription?.trim() || '',
+                    listType: listTypeRaw,
+                    isPublic: true,
+                    isEditorial: true,
+                    owner: ctx.user.id
+                  }).save()
+                }
+                result.listsCreated++
+              }
+
+              if (!dryRun && list) {
+                // Dedup: skip if item already in list
+                const existing = await ListItemModel.findOne({ list: list._id, itemId: targetItemId })
+                if (!existing) {
+                  const maxPos = await ListItemModel.findOne({ list: list._id }).sort({ position: -1 })
+                  const position = maxPos ? maxPos.position + 1 : 0
+
+                  await ListItemModel.create({
+                    list: list._id,
+                    itemId: targetItemId,
+                    position,
+                    addedBy: ctx.user.id,
+                    ...(row.listItemNote?.trim() && { note: row.listItemNote.trim() })
+                  })
+
+                  await ListModel.findByIdAndUpdate(list._id, { $inc: { itemCount: 1 } })
+                  result.listItemsAdded++
+                }
+              }
             }
           }
         }

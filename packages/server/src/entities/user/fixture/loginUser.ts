@@ -1,17 +1,9 @@
-import * as jwt from 'jsonwebtoken'
 import { IUser } from '../userModel'
-import { getEnvironmentVariables } from '../../../config/env'
 
+// In tests, we bypass Firebase token verification and pass the user directly via context.
+// This fixture returns a mock authorization header for test compatibility.
 export function loginUser(user: IUser): { token: string } {
-  const jwtSecret = getEnvironmentVariables().ACCESS_TOKEN_SECRET || ''
-
-  const token = jwt.sign(
-    { id: user._id.toString(), admin: user.isAdmin },
-    jwtSecret,
-    { expiresIn: '0.1h' }
-  )
-
   return {
-    token
+    token: `test-token-${user._id.toString()}`
   }
 }

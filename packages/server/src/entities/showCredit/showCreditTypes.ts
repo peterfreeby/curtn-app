@@ -22,11 +22,17 @@ export const showCreditType: GraphQLObjectType = new GraphQLObjectType({
       id: globalIdField('ShowCredit', showCredit => showCredit._id),
       person: {
         type: new GraphQLNonNull(personType),
-        resolve: async showCredit => await PersonModel.findById(showCredit.person)
+        resolve: async (showCredit: any, _args: any, ctx: any) => {
+          if (ctx.loaders) return ctx.loaders.personLoader.load(showCredit.person.toString())
+          return PersonModel.findById(showCredit.person)
+        }
       },
       show: {
         type: new GraphQLNonNull(showType),
-        resolve: async showCredit => await ShowModel.findById(showCredit.show)
+        resolve: async (showCredit: any, _args: any, ctx: any) => {
+          if (ctx.loaders) return ctx.loaders.showLoader.load(showCredit.show.toString())
+          return ShowModel.findById(showCredit.show)
+        }
       },
       role: {
         type: new GraphQLNonNull(GraphQLString),

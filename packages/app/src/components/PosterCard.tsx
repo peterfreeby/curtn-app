@@ -191,7 +191,7 @@ export function PosterCard({
                   e.stopPropagation();
                   action.onClick?.();
                 }}
-                className="flex h-[var(--spacing-4)] w-[var(--spacing-4)] items-center justify-center bg-curtn-deep/60 text-curtn-cream/70 transition-colors hover:text-curtn-cream cursor-pointer"
+                className="flex h-[var(--spacing-4)] w-[var(--spacing-4)] items-center justify-center text-curtn-cream/70 transition-colors hover:text-curtn-cream cursor-pointer"
                 aria-label={action.label}
               >
                 <Icon

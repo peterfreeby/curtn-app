@@ -68,19 +68,20 @@ export function MobileFloatingBar() {
   const [lastTab, setLastTab] = useState<TabId>("browse");
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [toast, setToast] = useState<string | null>(null);
-  const [showListPicker, setShowListPicker] = useState(false);
+  const [toast, setToast] = useState<{ message: string; canChangeList?: boolean } | null>(null);
   const [, executeWatchlistAdd] = useMutation(WATCHLIST_ADD_MUTATION);
   const [, executeWatchlistRemove] = useMutation(WATCHLIST_REMOVE_MUTATION);
   const [isOnWatchlist, setIsOnWatchlist] = useState(false);
+
 
   useEffect(() => {
     const tab = getTabFromPathname(pathname);
     if (tab) setLastTab(tab);
   }, [pathname]);
 
+  const isListAdd = pathname === "/lists/add";
+
   useEffect(() => {
-    // Close search when navigating away from /search
     if (!pathname.startsWith("/search")) {
       setBarState((prev) => prev === "search" ? (isDetailRoute(pathname) ? "detail" : "default") : prev);
       setSearchQuery("");
@@ -92,6 +93,7 @@ export function MobileFloatingBar() {
       setBarState((prev) => prev === "detail" ? "default" : prev);
     }
   }, [pathname]);
+
 
   useEffect(() => {
     if (barState === "search") {
@@ -173,16 +175,22 @@ export function MobileFloatingBar() {
 
     if (result.error || payload?.error) {
       setIsOnWatchlist(wasOn);
-      setToast(result.error?.message || payload?.error || "Something went wrong");
+      setToast({ message: result.error?.message || payload?.error || "Something went wrong" });
       setTimeout(() => setToast(null), 3000);
     } else {
-      setToast(wasOn ? "Removed from watchlist" : "Added to watchlist");
+      setToast(wasOn
+        ? { message: "Removed from watchlist" }
+        : { message: "Added to watchlist", canChangeList: true }
+      );
       setTimeout(() => setToast(null), 3000);
     }
   }, [nowViewing?.showId, isOnWatchlist, executeWatchlistAdd, executeWatchlistRemove]);
 
   const lastTabConfig = TAB_CONFIG.find((t) => t.id === lastTab)!;
   const currentTab = getTabFromPathname(pathname);
+
+  // Hide floating bar on /lists/add — that page has its own in-flow search UI
+  if (isListAdd) return null;
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 pb-[env(safe-area-inset-bottom)]">
@@ -198,48 +206,23 @@ export function MobileFloatingBar() {
         }}
       >
         <div className="nav-bar inline-flex items-center gap-3 px-3 py-1.5 text-xs">
-          <span className="text-curtn-cream">{toast}</span>
-          <button
-            type="button"
-            onClick={() => { setToast(null); setShowListPicker(true); }}
-            className="text-curtn-coral hover:text-curtn-red transition-colors"
-          >
-            Change list
-          </button>
+          <span className="text-curtn-cream">{toast?.message}</span>
+          {toast?.canChangeList && (
+            <button
+              type="button"
+              onClick={() => {
+                setToast(null);
+                if (!user) { navigateTo("/login"); return; }
+                if (nowViewing?.showId) navigateTo(`/lists/add?itemId=${nowViewing.showId}&listType=shows`);
+              }}
+              className="text-curtn-coral hover:text-curtn-red transition-colors"
+            >
+              Change list
+            </button>
+          )}
         </div>
       </div>
 
-      {/* List picker */}
-      {showListPicker && (
-        <div className="px-5 pb-2">
-          <div className="nav-bar p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-curtn-muted uppercase tracking-wider">Save to list</span>
-              <button
-                type="button"
-                onClick={() => setShowListPicker(false)}
-                className="text-curtn-muted hover:text-curtn-cream"
-              >
-                <Icon name="plus" weight="regular" size={14} className="rotate-45" />
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => { setShowListPicker(false); setToast("Added to watchlist"); setTimeout(() => setToast(null), 3000); }}
-              className="w-full text-left px-2 py-1.5 text-sm text-curtn-cream hover:bg-curtn-cream/5 rounded-sm transition-colors"
-            >
-              Watchlist
-            </button>
-            <button
-              type="button"
-              onClick={() => { setShowListPicker(false); }}
-              className="w-full text-left px-2 py-1.5 text-sm text-curtn-muted hover:bg-curtn-cream/5 rounded-sm transition-colors"
-            >
-              + Create new list
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="px-5 pb-0.5">
 
@@ -247,7 +230,7 @@ export function MobileFloatingBar() {
         <div className="flex items-center justify-center gap-2">
           {/* Nav bar */}
           <div
-            className="nav-bar inline-flex"
+            className="nav-bar nav-bar-floating inline-flex"
             style={{ transition: `all ${DURATION} ${EASE}` }}
           >
             <div className="relative p-0.5 flex items-center justify-center" style={{ minHeight: 34 }}>
@@ -308,8 +291,8 @@ export function MobileFloatingBar() {
 
               {/* DETAIL */}
               <StateLayer active={barState === "detail"}>
-                <button type="button" onClick={handleTabTap} className={iconBtnMuted} aria-label={lastTabConfig.label}>
-                  <Icon name={lastTabConfig.icon} weight="regular" size={20} />
+                <button type="button" onClick={handleBack} className={iconBtnMuted} aria-label="Go back">
+                  <Icon name="arrow-left" weight="regular" size={20} />
                 </button>
                 <button type="button" onClick={handleSearch} className={iconBtnMuted} aria-label="Search">
                   <Icon name="magnifying-glass" size={20} />
@@ -322,7 +305,7 @@ export function MobileFloatingBar() {
           {/* Action button — morphs between + (log), × (close), and show info pill */}
           {barState === "detail" && nowViewing ? (
             <div
-              className="nav-bar flex items-center gap-0.5 h-9 pl-1 pr-0.5 shrink-0"
+              className="nav-bar nav-bar-floating flex items-center gap-0.5 h-9 pl-1 pr-0.5 shrink-0"
               style={{ transition: `all ${DURATION} ${EASE}` }}
             >
               {/* Poster + info */}

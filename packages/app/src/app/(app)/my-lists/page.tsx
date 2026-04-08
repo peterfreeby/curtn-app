@@ -1,10 +1,11 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useQuery } from "urql";
 import Link from "next/link";
 import { MY_LISTS_QUERY } from "@/lib/graphql/lists";
 import { ListGrid } from "@/components/lists/ListGrid";
+import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
+import { usePaginatedConnection } from "@/hooks/usePaginatedConnection";
 import { useAuth } from "@/lib/auth/useAuth";
 import { Icon } from "@/components/icons/Icons";
 
@@ -21,16 +22,16 @@ function ListsBrowser() {
   const { user } = useAuth();
   const [typeFilter, setTypeFilter] = useState("");
 
-  const [{ data, fetching }] = useQuery({
-    query: MY_LISTS_QUERY,
-    variables: {
-      first: 50,
-      listType: typeFilter || undefined,
-    },
-    pause: !user,
-  });
+  const { edges, loading, loadingMore, hasNextPage, sentinelRef } =
+    usePaginatedConnection({
+      query: MY_LISTS_QUERY,
+      variables: { listType: typeFilter || undefined },
+      pageSize: 20,
+      pause: !user,
+      getConnection: (data: any) => data?.myLists,
+    });
 
-  const lists = data?.myLists?.edges?.map((e: any) => e.node) ?? [];
+  const lists = edges.map((e: any) => e.node);
 
   return (
     <>
@@ -69,11 +70,18 @@ function ListsBrowser() {
           </p>
         </div>
       ) : (
-        <ListGrid
-          lists={lists}
-          loading={fetching}
-          emptyMessage="No lists yet. Create your first one!"
-        />
+        <>
+          <ListGrid
+            lists={lists}
+            loading={loading}
+            emptyMessage="No lists yet. Create your first one!"
+          />
+          <InfiniteScrollSentinel
+            sentinelRef={sentinelRef}
+            loadingMore={loadingMore}
+            hasNextPage={hasNextPage}
+          />
+        </>
       )}
     </>
   );

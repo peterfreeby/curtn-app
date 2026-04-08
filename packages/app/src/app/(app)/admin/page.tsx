@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/Card";
-import { getStoredAccessToken } from "@/lib/auth/token";
+import { auth } from "@/lib/firebase/config";
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -31,7 +31,7 @@ function StorageOdometer() {
     setLoading(true);
     setError(null);
     try {
-      const token = getStoredAccessToken();
+      const token = await auth.currentUser?.getIdToken();
       const url = `/api/admin/storage-stats${refresh ? "?refresh=true" : ""}`;
       const res = await fetch(url, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -222,6 +222,15 @@ export default function AdminPage() {
             <h2 className="text-sm font-medium text-curtn-cream">Incoming Events</h2>
             <p className="mt-1 text-xs text-curtn-muted/60">
               Review, edit, and approve events imported from feeds.
+            </p>
+          </Card>
+        </Link>
+
+        <Link href="/admin/claims">
+          <Card className="transition-colors hover:border-curtn-muted/30 cursor-pointer">
+            <h2 className="text-sm font-medium text-curtn-cream">Claim Requests</h2>
+            <p className="mt-1 text-xs text-curtn-muted/60">
+              Review and approve user claims to performer/creator profiles.
             </p>
           </Card>
         </Link>

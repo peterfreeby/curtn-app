@@ -5,6 +5,7 @@ import { createYoga } from "graphql-yoga";
 import { schema } from "../../../../../server/src/schemas/schema";
 import { connectToDatabase } from "../../../../../server/src/db/mongoose";
 import { getUser } from "../../../../../server/src/auth/getUser";
+import { createLoaders } from "../../../../../server/src/graphql/createLoaders";
 
 const yoga = createYoga({
   schema,
@@ -14,7 +15,7 @@ const yoga = createYoga({
     await connectToDatabase();
     const authorization = request.headers.get("authorization") || undefined;
     const user = await getUser({ authorization });
-    return { user, authorization };
+    return { user, authorization, loaders: createLoaders() };
   },
 });
 

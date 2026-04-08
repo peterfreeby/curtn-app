@@ -1,5 +1,6 @@
 import { GraphQLString, GraphQLInt } from 'graphql'
 import { connectionArgs, connectionFromArray } from 'graphql-relay'
+import { connectionFromArrayLean } from '../../../graphql/cursorPagination'
 import { PendingImportConnection } from '../pendingImportTypes'
 import { PendingImportModel } from '../pendingImportModel'
 import { UserModel } from '../../user/userModel'
@@ -21,8 +22,8 @@ export const pendingImportQueries = {
       if (args.status) query.status = args.status
       if (args.dataSourceId) query.dataSource = args.dataSourceId
 
-      const items = await PendingImportModel.find(query).sort({ importedAt: -1 }).limit(200)
-      return connectionFromArray(items, args)
+      const items = await PendingImportModel.find(query).sort({ importedAt: -1 }).limit(200).lean()
+      return connectionFromArrayLean(items, args)
     }
   }
 }

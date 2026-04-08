@@ -2,6 +2,7 @@ import { GraphQLFieldConfig, GraphQLFieldConfigArgumentMap, GraphQLID, GraphQLNo
 import { VenueConnection, venueType } from '../venueTypes'
 import { VenueModel } from '../venueModel'
 import { connectionArgs, connectionFromArray, fromGlobalId } from 'graphql-relay'
+import { applyCursorToQuery, buildConnection, connectionFromArrayLean } from '../../../graphql/cursorPagination'
 
 // Get a single venue by ID
 export const singleVenue: GraphQLFieldConfig<any, any, { id: string }> = {
@@ -86,16 +87,28 @@ export const venueList: GraphQLFieldConfig<any, any, VenueListArgs> = {
       filter.$text = { $search: search }
     }
 
+    const empty = { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null } }
     try {
-      const limit = connectionArgs.first ?? 100
-      const venues = await VenueModel.find(filter)
-        .sort(search ? { score: { $meta: 'textScore' } } : { name: 1 })
-        .limit(limit)
+      if (search) {
+        const limit = (connectionArgs as any).first ?? 100
+        const venues = await VenueModel.find(filter)
+          .sort({ score: { $meta: 'textScore' } })
+          .limit(limit)
+          .lean()
+        return connectionFromArrayLean(venues, connectionArgs)
+      }
 
-      return connectionFromArray(venues, connectionArgs)
+      const { filter: cursorFilter, sort, limit } = applyCursorToQuery(filter, {
+        after: (connectionArgs as any).after,
+        first: (connectionArgs as any).first,
+        sortField: 'name',
+        sortDirection: 1
+      })
+      const venues = await VenueModel.find(cursorFilter).sort(sort).limit(limit).lean()
+      return buildConnection(venues, { first: (connectionArgs as any).first, sortField: 'name' })
     } catch (error) {
       console.error('Error fetching venues:', error)
-      return connectionFromArray([], connectionArgs)
+      return empty
     }
   }
 }
@@ -138,9 +151,9 @@ export const venuesNear: GraphQLFieldConfig<any, any, VenuesNearArgs> = {
             $maxDistance: maxDistance
           }
         }
-      }).limit(50)
+      }).limit(50).lean()
 
-      return connectionFromArray(venues, connectionArgs)
+      return connectionFromArrayLean(venues, connectionArgs)
     } catch (error) {
       console.error('Error finding venues near location:', error)
       return connectionFromArray([], connectionArgs)
@@ -162,13 +175,18 @@ export const venuesByCity: GraphQLFieldConfig<any, any, { city: string }> = {
     const { city, ...connectionArgs } = args
 
     try {
-      const venues = await VenueModel.find({ city })
-        .sort({ name: 1 })
-
-      return connectionFromArray(venues, connectionArgs)
+      const { filter, sort, limit } = applyCursorToQuery({ city }, {
+        after: (connectionArgs as any).after,
+        first: (connectionArgs as any).first,
+        sortField: 'name',
+        sortDirection: 1,
+        maxLimit: 200
+      })
+      const venues = await VenueModel.find(filter).sort(sort).limit(limit).lean()
+      return buildConnection(venues, { first: (connectionArgs as any).first, sortField: 'name', maxLimit: 200 })
     } catch (error) {
       console.error('Error fetching venues by city:', error)
-      return connectionFromArray([], connectionArgs)
+      return { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null } }
     }
   }
 }

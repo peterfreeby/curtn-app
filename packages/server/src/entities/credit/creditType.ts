@@ -18,11 +18,17 @@ export const creditType = new GraphQLObjectType({
       id: globalIdField('Credit', credit => credit._id),
       person: {
         type: new GraphQLNonNull(personType),
-        resolve: async credit => await PersonModel.findById(credit.person)
+        resolve: async (credit: any, _args: any, ctx: any) => {
+          if (ctx.loaders) return ctx.loaders.personLoader.load(credit.person.toString())
+          return PersonModel.findById(credit.person)
+        }
       },
       run: {
         type: new GraphQLNonNull(runType),
-        resolve: async credit => await RunModel.findById(credit.run)
+        resolve: async (credit: any, _args: any, ctx: any) => {
+          if (ctx.loaders) return ctx.loaders.runLoader.load(credit.run.toString())
+          return RunModel.findById(credit.run)
+        }
       },
       creditType: {
         type: new GraphQLNonNull(GraphQLString),

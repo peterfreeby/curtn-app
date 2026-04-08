@@ -1,21 +1,19 @@
-import { userCreate } from './userCreate'
+import { authenticateWithPhone } from './authenticateWithPhone'
+import { createProfile } from './createProfile'
 import { userUpdate } from './userUpdate'
 import { userProfileUpdate } from './userProfileUpdate'
 import { userDelete } from './userDelete'
-import { loginUser } from './loginUser'
-import { userLogout } from './userLogout'
-import { userRefreshToken } from './userRefreshToken'
 import { userClaimPerson } from './userClaimPerson'
 import { userUnclaimPerson } from './userUnclaimPerson'
+import { adminUnclaimPerson } from './adminUnclaimPerson'
 
 export const userMutations = {
-  userCreate,
+  authenticateWithPhone,
+  createProfile,
   userUpdate,
   userProfileUpdate,
   userDelete,
-  loginUser,
-  userLogout,
-  userRefreshToken,
   userClaimPerson,
-  userUnclaimPerson
+  userUnclaimPerson,
+  adminUnclaimPerson
 }

@@ -1,37 +1,22 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { useQuery } from "urql";
 import { FEED_REVIEWS_QUERY } from "@/lib/graphql/follows";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
+import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
+import { usePaginatedConnection } from "@/hooks/usePaginatedConnection";
 import { useAuth } from "@/lib/auth/useAuth";
-
-const PAGE_SIZE = 12;
 
 export default function FeedPage() {
   const { user } = useAuth();
 
-  const [after, setAfter] = useState<string | null>(null);
-  const [allEdges, setAllEdges] = useState<any[]>([]);
-
-  const [{ data, fetching }] = useQuery({
-    query: FEED_REVIEWS_QUERY,
-    variables: { first: PAGE_SIZE, after },
-    pause: !user,
-  });
-
-  const connection = data?.feedReviews;
-  const edges = (connection?.edges ?? []).filter((e: any) => e.node != null);
-  const pageInfo = connection?.pageInfo;
-  const displayEdges = after === null ? edges : [...allEdges, ...edges];
-
-  function loadMore() {
-    if (pageInfo?.endCursor) {
-      setAllEdges(displayEdges);
-      setAfter(pageInfo.endCursor);
-    }
-  }
+  const { edges, loading, loadingMore, hasNextPage, sentinelRef } =
+    usePaginatedConnection({
+      query: FEED_REVIEWS_QUERY,
+      pageSize: 12,
+      pause: !user,
+      getConnection: (data: any) => data?.feedReviews,
+    });
 
   // Not authenticated
   if (!user) {
@@ -57,7 +42,7 @@ export default function FeedPage() {
   }
 
   // Loading
-  if (fetching && displayEdges.length === 0) {
+  if (loading) {
     return (
       <div className="px-6 py-8 max-w-2xl mx-auto space-y-6">
         <h2 className="text-xs uppercase tracking-widest text-curtn-muted mb-8">
@@ -78,7 +63,7 @@ export default function FeedPage() {
         Feed
       </h2>
 
-      {displayEdges.length === 0 ? (
+      {edges.length === 0 ? (
         <div className="empty-state">
           <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">Your Feed Is Empty</p>
           <p className="text-xs text-curtn-muted max-w-[260px] mx-auto mb-4">
@@ -93,7 +78,7 @@ export default function FeedPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {displayEdges.map((edge: any) => (
+          {edges.map((edge: any) => (
             <ReviewCard
               key={edge.node.id}
               review={edge.node}
@@ -103,21 +88,11 @@ export default function FeedPage() {
         </div>
       )}
 
-      {fetching && displayEdges.length > 0 && (
-        <div className="mt-3 flex justify-center">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-curtn-muted/30 border-t-curtn-coral" />
-        </div>
-      )}
-
-      {!fetching && pageInfo?.hasNextPage && (
-        <button
-          type="button"
-          onClick={loadMore}
-          className="mt-4 w-full rounded-lg border border-curtn-dark py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer"
-        >
-          Load more
-        </button>
-      )}
+      <InfiniteScrollSentinel
+        sentinelRef={sentinelRef}
+        loadingMore={loadingMore}
+        hasNextPage={hasNextPage}
+      />
     </div>
   );
 }

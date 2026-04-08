@@ -48,6 +48,7 @@ const personSchema = new Schema<IPerson>({
 personSchema.index({ name: 'text', bio: 'text' })
 personSchema.index({ slug: 1 }, { unique: true })
 personSchema.index({ name: 1 })
+personSchema.index({ name: 1, _id: 1 }) // cursor pagination
 personSchema.index({ userId: 1 }, { unique: true, sparse: true })
 
 personSchema.pre('save', function(next) {

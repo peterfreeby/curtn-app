@@ -7,7 +7,8 @@ import {
   GraphQLInt
 } from 'graphql'
 import { nodeInterface } from '../../graphql/nodeInterface'
-import { globalIdField, connectionDefinitions } from 'graphql-relay'
+import { globalIdField, connectionDefinitions, connectionArgs } from 'graphql-relay'
+import { applyCursorToQuery, buildConnection } from '../../graphql/cursorPagination'
 import { entityRegister } from '../../graphql/entityHelpers'
 import { RunModel } from './runModel'
 import { ShowModel } from '../show/showModel'
@@ -37,28 +38,41 @@ export const runType: GraphQLObjectType = new GraphQLObjectType({
       effectiveTitle: {
         type: new GraphQLNonNull(GraphQLString),
         description: 'Run title if set, otherwise falls back to show title',
-        resolve: async run => {
+        resolve: async (run: any, _args: any, ctx: any) => {
           if (run.title) return run.title
-          const show = await ShowModel.findById(run.show)
+          const show = ctx.loaders
+            ? await ctx.loaders.showLoader.load(run.show.toString())
+            : await ShowModel.findById(run.show)
           return show?.title || 'Untitled'
         }
       },
       show: {
         type: new GraphQLNonNull(showType),
-        resolve: async run => await ShowModel.findById(run.show)
+        resolve: async (run: any, _args: any, ctx: any) => {
+          if (ctx.loaders) return ctx.loaders.showLoader.load(run.show.toString())
+          return ShowModel.findById(run.show)
+        }
       },
       productionCompany: {
         type: productionCompanyType,
-        resolve: async run => run.productionCompany ? await ProductionCompanyModel.findById(run.productionCompany) : null
+        resolve: async (run: any, _args: any, ctx: any) => {
+          if (!run.productionCompany) return null
+          if (ctx.loaders) return ctx.loaders.productionCompanyLoader.load(run.productionCompany.toString())
+          return ProductionCompanyModel.findById(run.productionCompany)
+        }
       },
       venues: {
         type: new GraphQLNonNull(new GraphQLList(venueType)),
-        resolve: async run => await VenueModel.find({ _id: { $in: run.venues } })
+        resolve: async (run: any, _args: any, ctx: any) => {
+          if (ctx.loaders) return Promise.all(run.venues.map((id: any) => ctx.loaders.venueLoader.load(id.toString())))
+          return VenueModel.find({ _id: { $in: run.venues } })
+        }
       },
       stage: {
         type: require('../stage/stageTypes').stageType,
-        resolve: async (run: any) => {
+        resolve: async (run: any, _args: any, ctx: any) => {
           if (!run.stage) return null
+          if (ctx.loaders) return ctx.loaders.stageLoader.load(run.stage.toString())
           const { StageModel } = require('../stage/stageModel')
           return StageModel.findById(run.stage)
         }
@@ -102,43 +116,67 @@ export const runType: GraphQLObjectType = new GraphQLObjectType({
       performances: {
         type: PerformanceConnection,
         description: 'All showings in this run',
-        resolve: async run => {
-          const performances = await PerformanceModel.find({ run: run._id }).sort({ date: 1 })
-          return { edges: performances.map((p: any) => ({ node: p, cursor: p._id.toString() })), pageInfo: { hasNextPage: false, hasPreviousPage: false } }
+        args: { ...connectionArgs },
+        resolve: async (run: any, args: any) => {
+          const { filter, sort, limit } = applyCursorToQuery({ run: run._id }, {
+            after: args.after, first: args.first, sortField: 'date', sortDirection: 1, maxLimit: 500
+          })
+          const performances = await PerformanceModel.find(filter).sort(sort).limit(limit).lean()
+          return buildConnection(performances, { first: args.first, sortField: 'date', maxLimit: 500 })
         }
       },
       upcomingPerformances: {
         type: PerformanceConnection,
         description: 'Future showings only',
-        resolve: async run => {
-          const performances = await PerformanceModel.find({ run: run._id, date: { $gte: new Date() } }).sort({ date: 1 })
-          return { edges: performances.map((p: any) => ({ node: p, cursor: p._id.toString() })), pageInfo: { hasNextPage: false, hasPreviousPage: false } }
+        args: { ...connectionArgs },
+        resolve: async (run: any, args: any) => {
+          const { filter, sort, limit } = applyCursorToQuery({ run: run._id, date: { $gte: new Date() } }, {
+            after: args.after, first: args.first, sortField: 'date', sortDirection: 1, maxLimit: 200
+          })
+          const performances = await PerformanceModel.find(filter).sort(sort).limit(limit).lean()
+          return buildConnection(performances, { first: args.first, sortField: 'date', maxLimit: 200 })
         }
       },
       cast: {
         type: new GraphQLList(creditType),
-        resolve: async run => await CreditModel.find({ run: run._id, creditType: 'cast' }).sort({ order: 1 })
+        resolve: async (run: any, _args: any, ctx: any) => {
+          if (ctx.loaders) {
+            const credits = await ctx.loaders.creditsByRunLoader.load(run._id.toString())
+            return credits.filter((c: any) => c.creditType === 'cast')
+          }
+          return CreditModel.find({ run: run._id, creditType: 'cast' }).sort({ order: 1 })
+        }
       },
       crew: {
         type: new GraphQLList(creditType),
-        resolve: async run => await CreditModel.find({ run: run._id, creditType: 'crew' }).sort({ order: 1 })
+        resolve: async (run: any, _args: any, ctx: any) => {
+          if (ctx.loaders) {
+            const credits = await ctx.loaders.creditsByRunLoader.load(run._id.toString())
+            return credits.filter((c: any) => c.creditType === 'crew')
+          }
+          return CreditModel.find({ run: run._id, creditType: 'crew' }).sort({ order: 1 })
+        }
       },
       averageRating: {
         type: GraphQLFloat,
-        resolve: async run => {
-          const performances = await PerformanceModel.find({ run: run._id }, '_id')
+        resolve: async (run: any, _args: any, ctx: any) => {
+          const performances = ctx.loaders
+            ? await ctx.loaders.performancesByRunLoader.load(run._id.toString())
+            : await PerformanceModel.find({ run: run._id }, '_id')
           if (performances.length === 0) return null
           const perfIds = performances.map((p: any) => p._id)
           const reviews = await ReviewModel.find({ performance: { $in: perfIds } })
           if (reviews.length === 0) return null
-          const sum = reviews.reduce((acc, r) => acc + r.rating, 0)
+          const sum = reviews.reduce((acc: number, r: any) => acc + r.rating, 0)
           return Math.round((sum / reviews.length) * 10) / 10
         }
       },
       reviewCount: {
         type: GraphQLInt,
-        resolve: async run => {
-          const performances = await PerformanceModel.find({ run: run._id }, '_id')
+        resolve: async (run: any, _args: any, ctx: any) => {
+          const performances = ctx.loaders
+            ? await ctx.loaders.performancesByRunLoader.load(run._id.toString())
+            : await PerformanceModel.find({ run: run._id }, '_id')
           const perfIds = performances.map((p: any) => p._id)
           return await ReviewModel.countDocuments({ performance: { $in: perfIds } })
         }

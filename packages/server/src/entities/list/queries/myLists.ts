@@ -2,6 +2,7 @@ import { GraphQLFieldConfig, GraphQLString } from 'graphql'
 import { connectionArgs, connectionFromArray } from 'graphql-relay'
 import { ListConnection } from '../listTypes'
 import { ListModel } from '../listModel'
+import { applyCursorToQuery, buildConnection } from '../../../graphql/cursorPagination'
 
 export const myLists: GraphQLFieldConfig<any, any, any> = {
   type: ListConnection,
@@ -29,7 +30,13 @@ export const myLists: GraphQLFieldConfig<any, any, any> = {
       filter.listType = listType
     }
 
-    const lists = await ListModel.find(filter).sort({ createdAt: -1 }).limit(100)
-    return connectionFromArray(lists, connArgs)
+    const { filter: cursorFilter, sort, limit } = applyCursorToQuery(filter, {
+      after: (connArgs as any).after,
+      first: (connArgs as any).first,
+      sortField: 'createdAt',
+      sortDirection: -1
+    })
+    const lists = await ListModel.find(cursorFilter).sort(sort).limit(limit).lean()
+    return buildConnection(lists, { first: (connArgs as any).first, sortField: 'createdAt' })
   }
 }

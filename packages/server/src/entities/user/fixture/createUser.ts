@@ -1,5 +1,5 @@
 import { UserModel } from '../userModel'
-import { genSaltSync, hashSync } from 'bcrypt'
+import { randomUUID } from 'crypto'
 
 type Options = {
   username: string
@@ -10,21 +10,15 @@ export async function createUser(options: Options) {
 
   if (user) return user
 
-  const salt = genSaltSync()
-
   const document = new UserModel({
+    firebaseUid: `test-${randomUUID()}`,
+    phoneNumber: '+15555550100',
     fullName: 'chad admin',
-    email: `${options.username}@mail.com`,
     username: options.username,
     isAdmin: false,
-    password: '123456'
   })
 
   await document.save()
-
-  const hashedPassword = hashSync(document.password, salt)
-
-  document.update({ password: hashedPassword })
 
   return document
 }

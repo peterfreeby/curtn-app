@@ -2,6 +2,7 @@ import { GraphQLFieldConfig, GraphQLID, GraphQLList, GraphQLNonNull, GraphQLStri
 import { ShowConnection, showType } from '../showTypes'
 import { ShowModel } from '../showModel'
 import { connectionArgs, connectionFromArray, fromGlobalId } from 'graphql-relay'
+import { applyCursorToQuery, buildConnection, connectionFromArrayLean } from '../../../graphql/cursorPagination'
 
 export const singleShow: GraphQLFieldConfig<any, any, { id: string }> = {
   type: showType,
@@ -47,15 +48,28 @@ export const showList: GraphQLFieldConfig<any, any, any> = {
     }
 
     try {
-      const limit = connArgs.first ?? 100
-      const shows = await ShowModel.find(filter)
-        .sort(search ? { score: { $meta: 'textScore' } } : { createdAt: -1 })
-        .limit(limit)
+      // Text search scores aren't stable across requests, so use connectionFromArray for search
+      if (search) {
+        const limit = (connArgs as any).first ?? 100
+        const shows = await ShowModel.find(filter)
+          .sort({ score: { $meta: 'textScore' } })
+          .limit(limit)
+          .lean()
+        return connectionFromArrayLean(shows, connArgs)
+      }
 
-      return connectionFromArray(shows, connArgs)
+      // Non-search: proper cursor pagination
+      const { filter: cursorFilter, sort, limit } = applyCursorToQuery(filter, {
+        after: (connArgs as any).after,
+        first: (connArgs as any).first,
+        sortField: 'createdAt',
+        sortDirection: -1
+      })
+      const shows = await ShowModel.find(cursorFilter).sort(sort).limit(limit).lean()
+      return buildConnection(shows, { first: (connArgs as any).first, sortField: 'createdAt' })
     } catch (error) {
       console.error('Error fetching shows:', error)
-      return connectionFromArray([], connArgs)
+      return { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null } }
     }
   }
 }
@@ -76,7 +90,7 @@ export const searchShows: GraphQLFieldConfig<any, any, { query: string }> = {
       const shows = await ShowModel.find(
         { $text: { $search: query } },
         { score: { $meta: 'textScore' } }
-      ).sort({ score: { $meta: 'textScore' } }).limit(50)
+      ).sort({ score: { $meta: 'textScore' } }).limit(50).lean()
 
       return connectionFromArray(shows, connArgs)
     } catch (error) {

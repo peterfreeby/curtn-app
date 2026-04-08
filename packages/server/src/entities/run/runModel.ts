@@ -77,6 +77,8 @@ const runSchema = new Schema<IRun>({
 })
 
 runSchema.index({ show: 1 })
+runSchema.index({ createdAt: -1, _id: -1 }) // cursor pagination
+runSchema.index({ startDate: -1, _id: -1 }) // cursor pagination by start date
 runSchema.index({ productionCompany: 1 })
 runSchema.index({ venues: 1 })
 runSchema.index({ show: 1, productionCompany: 1, venues: 1 })

@@ -49,33 +49,54 @@ export const personType: GraphQLObjectType = new GraphQLObjectType({
       },
       castCredits: {
         type: new GraphQLList(creditType),
-        resolve: async person => await CreditModel.find({ person: person._id, creditType: 'cast' }).sort({ order: 1 })
+        resolve: async (person: any, _args: any, ctx: any) => {
+          if (ctx.loaders) {
+            const credits = await ctx.loaders.creditsByPersonLoader.load(person._id.toString())
+            return credits.filter((c: any) => c.creditType === 'cast')
+          }
+          return CreditModel.find({ person: person._id, creditType: 'cast' }).sort({ order: 1 }).limit(200).lean()
+        }
       },
       crewCredits: {
         type: new GraphQLList(creditType),
-        resolve: async person => await CreditModel.find({ person: person._id, creditType: 'crew' }).sort({ order: 1 })
+        resolve: async (person: any, _args: any, ctx: any) => {
+          if (ctx.loaders) {
+            const credits = await ctx.loaders.creditsByPersonLoader.load(person._id.toString())
+            return credits.filter((c: any) => c.creditType === 'crew')
+          }
+          return CreditModel.find({ person: person._id, creditType: 'crew' }).sort({ order: 1 }).limit(200).lean()
+        }
       },
       showCredits: {
         type: new GraphQLList(showCreditType),
         description: 'Show-level credits (e.g. playwright, composer, lyricist)',
-        resolve: async person => await ShowCreditModel.find({ person: person._id }).sort({ order: 1 })
+        resolve: async (person: any, _args: any, ctx: any) => {
+          if (ctx.loaders) return ctx.loaders.showCreditsByPersonLoader.load(person._id.toString())
+          return ShowCreditModel.find({ person: person._id }).sort({ order: 1 })
+        }
       },
       productionCompanies: {
         type: new GraphQLList(productionCompanyType),
         description: 'Unique companies this person has worked with',
-        resolve: async person => {
-          const credits = await CreditModel.find({ person: person._id })
-          const runIds = [...new Set(credits.map(c => c.run.toString()))]
-          const runs = await RunModel.find({ _id: { $in: runIds } })
-          const companyIds = [...new Set(runs.filter(r => r.productionCompany).map(r => r.productionCompany!.toString()))]
-          return await ProductionCompanyModel.find({ _id: { $in: companyIds } })
+        resolve: async (person: any, _args: any, ctx: any) => {
+          const credits = ctx.loaders
+            ? await ctx.loaders.creditsByPersonLoader.load(person._id.toString())
+            : await CreditModel.find({ person: person._id })
+          const runIds = [...new Set<string>(credits.map((c: any) => c.run.toString()))]
+          const runs = ctx.loaders
+            ? await Promise.all(runIds.map(id => ctx.loaders.runLoader.load(id)))
+            : await RunModel.find({ _id: { $in: runIds } })
+          const companyIds = [...new Set<string>(runs.filter((r: any) => r?.productionCompany).map((r: any) => r.productionCompany.toString()))]
+          if (ctx.loaders) return Promise.all(companyIds.map(id => ctx.loaders.productionCompanyLoader.load(id)))
+          return ProductionCompanyModel.find({ _id: { $in: companyIds } })
         }
       },
       user: {
         type: userType,
         description: 'Linked User account (if this person has claimed a profile)',
-        resolve: async (person: any) => {
+        resolve: async (person: any, _args: any, ctx: any) => {
           if (!person.userId) return null
+          if (ctx.loaders) return ctx.loaders.userLoader.load(person.userId.toString())
           const { UserModel } = require('../user/userModel')
           return UserModel.findById(person.userId)
         }

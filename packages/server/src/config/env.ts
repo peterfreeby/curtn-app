@@ -16,15 +16,14 @@ if (!process.env.VERCEL && !process.env.MONGODB_URL) {
 
 export function getEnvironmentVariables() {
   const PORT = Number(process.env.PORT)
-  const { MONGODB_URL, DB_NAME, ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET, TMDB_API_KEY } = process.env
+  const { MONGODB_URL, DB_NAME, TMDB_API_KEY, FIREBASE_SERVICE_ACCOUNT_PATH } = process.env
 
   const envArray = [
     PORT,
     MONGODB_URL,
     DB_NAME,
     TMDB_API_KEY,
-    ACCESS_TOKEN_SECRET,
-    REFRESH_TOKEN_SECRET
+    FIREBASE_SERVICE_ACCOUNT_PATH
   ]
 
   for (const key of envArray) {
@@ -33,5 +32,5 @@ export function getEnvironmentVariables() {
     }
   }
 
-  return { PORT, MONGODB_URL, DB_NAME, ACCESS_TOKEN_SECRET, TMDB_API_KEY, REFRESH_TOKEN_SECRET }
+  return { PORT, MONGODB_URL, DB_NAME, TMDB_API_KEY, FIREBASE_SERVICE_ACCOUNT_PATH }
 }

@@ -1,6 +1,7 @@
 import { MovieConnection } from '../movieTypes'
 import { GraphQLFieldConfig, GraphQLNonNull, GraphQLString } from 'graphql'
 import { connectionArgs, connectionFromArray } from 'graphql-relay'
+import { connectionFromArrayLean } from '../../../graphql/cursorPagination'
 import { MovieModel } from '../movieModel'
 
 export const searchMovieByTitle: GraphQLFieldConfig<any, any, any> = {
@@ -14,8 +15,8 @@ export const searchMovieByTitle: GraphQLFieldConfig<any, any, any> = {
 
     const movies = await MovieModel.find({
       $text: { $search: title }
-    }).sort({ score: { $meta: 'textScore' } })
+    }).sort({ score: { $meta: 'textScore' } }).limit(args.first ?? 50).lean()
 
-    return connectionFromArray(movies, args)
+    return connectionFromArrayLean(movies, args)
   }
 }

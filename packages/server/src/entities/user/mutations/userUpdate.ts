@@ -1,28 +1,27 @@
 import {
-  GraphQLID,
   GraphQLString,
   GraphQLNonNull
 } from 'graphql'
 import { UserModel } from '../userModel'
-import { fromGlobalId, mutationWithClientMutationId } from 'graphql-relay'
+import { mutationWithClientMutationId } from 'graphql-relay'
 import { userType } from '../userTypes'
-import { hashSync, genSaltSync } from 'bcrypt'
 import { errorField } from '../../../graphql/errorField'
 
 export const userUpdate = mutationWithClientMutationId({
   name: 'userUpdate',
-  description: 'Update a user using its id',
+  description: 'Update the authenticated user\'s profile',
   inputFields: {
-    id: {
-      type: new GraphQLNonNull(GraphQLID)
-    },
     fullName: {
-      type: new GraphQLNonNull(GraphQLString),
+      type: GraphQLString,
       description: `User's full name`
     },
-    password: {
-      type: new GraphQLNonNull(GraphQLString),
-      description: `User's password`
+    username: {
+      type: GraphQLString,
+      description: `User's username`
+    },
+    email: {
+      type: GraphQLString,
+      description: `User's email`
     }
   },
   outputFields: {
@@ -32,40 +31,33 @@ export const userUpdate = mutationWithClientMutationId({
     },
     ...errorField
   },
-  mutateAndGetPayload: async ({ id, ...user }, ctx) => {
+  mutateAndGetPayload: async (updates, ctx) => {
     if (!ctx.user) {
-      return {
-        error: 'Unauthorized',
-        result: null
-      }
+      return { error: 'Unauthorized' }
     }
 
-    if (ctx.user.id !== fromGlobalId(id).id) {
-      return {
-        error: 'Unauthorized'
+    if (updates.username) {
+      const existing = await UserModel.findOne({ username: updates.username })
+
+      if (existing && existing._id.toString() !== ctx.user._id.toString()) {
+        return { error: 'Username is already taken' }
       }
     }
-
-    const salt = genSaltSync()
-    const hashedPassword = hashSync(user.password, salt)
 
     try {
-      const result = await UserModel.findByIdAndUpdate(fromGlobalId(id).id, {
-        ...user,
-        password: hashedPassword
-      }, { new: true })
+      const user = await UserModel.findByIdAndUpdate(
+        ctx.user._id,
+        { $set: updates },
+        { new: true }
+      )
 
-      if (result === null) {
-        return {
-          error: 'User not found'
-        }
+      if (!user) {
+        return { error: 'User not found' }
       }
 
-      return { user: result }
+      return { user }
     } catch (error: unknown) {
-      return {
-        error: (error as Error).message
-      }
+      return { error: (error as Error).message }
     }
   }
 })

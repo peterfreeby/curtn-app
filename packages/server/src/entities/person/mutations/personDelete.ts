@@ -30,6 +30,11 @@ export const personDelete = mutationWithClientMutationId({
       const person = await PersonModel.findById(input.personId)
       if (!person) return { error: 'Person not found' }
 
+      // Clear claim link if person was claimed
+      if (person.userId) {
+        await UserModel.findByIdAndUpdate(person.userId, { personId: undefined })
+      }
+
       await CreditModel.deleteMany({ person: person._id })
       await PersonModel.findByIdAndDelete(person._id)
 

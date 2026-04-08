@@ -26,7 +26,11 @@ export const performanceType = new GraphQLObjectType({
       id: globalIdField('Performance', performance => performance.id),
       run: {
         type: runType,
-        resolve: async performance => performance.run ? await RunModel.findById(performance.run) : null
+        resolve: async (performance: any, _args: any, ctx: any) => {
+          if (!performance.run) return null
+          if (ctx.loaders) return ctx.loaders.runLoader.load(performance.run.toString())
+          return RunModel.findById(performance.run)
+        }
       },
       date: {
         type: GraphQLString,
@@ -38,13 +42,18 @@ export const performanceType = new GraphQLObjectType({
       },
       venue: {
         type: venueType,
-        resolve: async performance => await VenueModel.findById(performance.venueId)
+        resolve: async (performance: any, _args: any, ctx: any) => {
+          if (!performance.venueId) return null
+          if (ctx.loaders) return ctx.loaders.venueLoader.load(performance.venueId.toString())
+          return VenueModel.findById(performance.venueId)
+        }
       },
       stageOverride: {
         type: require('../stage/stageTypes').stageType,
         description: 'Stage override for this specific performance (if different from run)',
-        resolve: async (performance: any) => {
+        resolve: async (performance: any, _args: any, ctx: any) => {
           if (!performance.stageOverride) return null
+          if (ctx.loaders) return ctx.loaders.stageLoader.load(performance.stageOverride.toString())
           const { StageModel } = require('../stage/stageModel')
           return StageModel.findById(performance.stageOverride)
         }
@@ -52,11 +61,20 @@ export const performanceType = new GraphQLObjectType({
       effectiveStage: {
         type: require('../stage/stageTypes').stageType,
         description: 'Resolved stage: performance override > run default',
-        resolve: async (performance: any) => {
-          const { StageModel } = require('../stage/stageModel')
-          if (performance.stageOverride) return StageModel.findById(performance.stageOverride)
-          const run = await RunModel.findById(performance.run)
-          if (run?.stage) return StageModel.findById(run.stage)
+        resolve: async (performance: any, _args: any, ctx: any) => {
+          if (performance.stageOverride) {
+            if (ctx.loaders) return ctx.loaders.stageLoader.load(performance.stageOverride.toString())
+            const { StageModel } = require('../stage/stageModel')
+            return StageModel.findById(performance.stageOverride)
+          }
+          const run = ctx.loaders
+            ? await ctx.loaders.runLoader.load(performance.run.toString())
+            : await RunModel.findById(performance.run)
+          if (run?.stage) {
+            if (ctx.loaders) return ctx.loaders.stageLoader.load(run.stage.toString())
+            const { StageModel } = require('../stage/stageModel')
+            return StageModel.findById(run.stage)
+          }
           return null
         }
       },
@@ -75,41 +93,57 @@ export const performanceType = new GraphQLObjectType({
       effectivePosterUrl: {
         type: GraphQLString,
         description: 'Resolved poster: performance override > run poster > show poster',
-        resolve: async (performance: any) => {
+        resolve: async (performance: any, _args: any, ctx: any) => {
           if (performance.metadataOverrides?.imageUrl) return performance.metadataOverrides.imageUrl
-          const run = await RunModel.findById(performance.run)
+          const run = ctx.loaders
+            ? await ctx.loaders.runLoader.load(performance.run.toString())
+            : await RunModel.findById(performance.run)
           if (run?.posterUrl) return run.posterUrl
           if (run?.imageUrl) return run.imageUrl
-          const show = await ShowModel.findById(run?.show)
+          const show = run?.show
+            ? (ctx.loaders ? await ctx.loaders.showLoader.load(run.show.toString()) : await ShowModel.findById(run.show))
+            : null
           return show?.posterUrl || show?.imageUrl || null
         }
       },
       effectiveDescription: {
         type: GraphQLString,
         description: 'Resolved description: performance override > run > show',
-        resolve: async performance => {
+        resolve: async (performance: any, _args: any, ctx: any) => {
           if (performance.metadataOverrides?.description) {
             return performance.metadataOverrides.description
           }
-          const run = await RunModel.findById(performance.run)
+          const run = ctx.loaders
+            ? await ctx.loaders.runLoader.load(performance.run.toString())
+            : await RunModel.findById(performance.run)
           if (run?.description) return run.description
-          const show = await ShowModel.findById(run?.show)
+          const show = run?.show
+            ? (ctx.loaders ? await ctx.loaders.showLoader.load(run.show.toString()) : await ShowModel.findById(run.show))
+            : null
           return show?.description
         }
       },
       effectiveCast: {
         type: new GraphQLList(creditType),
         description: 'Cast with per-performance overrides applied',
-        resolve: async performance => {
-          const defaultCast = await CreditModel.find({ run: performance.run, creditType: 'cast' }).sort({ order: 1 })
+        resolve: async (performance: any, _args: any, ctx: any) => {
+          let defaultCast: any[]
+          if (ctx.loaders) {
+            const allCredits = await ctx.loaders.creditsByRunLoader.load(performance.run.toString())
+            defaultCast = allCredits.filter((c: any) => c.creditType === 'cast')
+          } else {
+            defaultCast = await CreditModel.find({ run: performance.run, creditType: 'cast' }).sort({ order: 1 })
+          }
           if (!performance.creditOverrides) return defaultCast
 
           const removedIds = new Set((performance.creditOverrides.removed || []).map((id: any) => id.toString()))
-          let result = defaultCast.filter(c => !removedIds.has(c._id.toString()))
+          let result = defaultCast.filter((c: any) => !removedIds.has(c._id.toString()))
 
           if (performance.creditOverrides.added?.length) {
-            const added = await CreditModel.find({ _id: { $in: performance.creditOverrides.added } })
-            result = [...result, ...added]
+            const added = ctx.loaders
+              ? await Promise.all(performance.creditOverrides.added.map((id: any) => ctx.loaders.creditLoader.load(id.toString())))
+              : await CreditModel.find({ _id: { $in: performance.creditOverrides.added } })
+            result = [...result, ...added.filter(Boolean)]
           }
 
           return result
@@ -118,16 +152,24 @@ export const performanceType = new GraphQLObjectType({
       effectiveCrew: {
         type: new GraphQLList(creditType),
         description: 'Crew with per-performance overrides applied',
-        resolve: async performance => {
-          const defaultCrew = await CreditModel.find({ run: performance.run, creditType: 'crew' }).sort({ order: 1 })
+        resolve: async (performance: any, _args: any, ctx: any) => {
+          let defaultCrew: any[]
+          if (ctx.loaders) {
+            const allCredits = await ctx.loaders.creditsByRunLoader.load(performance.run.toString())
+            defaultCrew = allCredits.filter((c: any) => c.creditType === 'crew')
+          } else {
+            defaultCrew = await CreditModel.find({ run: performance.run, creditType: 'crew' }).sort({ order: 1 })
+          }
           if (!performance.creditOverrides) return defaultCrew
 
           const removedIds = new Set((performance.creditOverrides.removed || []).map((id: any) => id.toString()))
-          let result = defaultCrew.filter(c => !removedIds.has(c._id.toString()))
+          let result = defaultCrew.filter((c: any) => !removedIds.has(c._id.toString()))
 
           if (performance.creditOverrides.added?.length) {
-            const added = await CreditModel.find({ _id: { $in: performance.creditOverrides.added } })
-            result = [...result, ...added]
+            const added = ctx.loaders
+              ? await Promise.all(performance.creditOverrides.added.map((id: any) => ctx.loaders.creditLoader.load(id.toString())))
+              : await CreditModel.find({ _id: { $in: performance.creditOverrides.added } })
+            result = [...result, ...added.filter(Boolean)]
           }
 
           return result

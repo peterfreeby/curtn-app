@@ -67,6 +67,7 @@ export function ShowGrid({ shows, loading }: ShowGridProps) {
   // Deduplicate by ID
   const seen = new Set<string>();
   const uniqueShows = shows.filter((show) => {
+    if (!show?.id) return false;
     if (seen.has(show.id)) return false;
     seen.add(show.id);
     return true;

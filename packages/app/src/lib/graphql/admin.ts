@@ -18,6 +18,9 @@ export const CSV_IMPORT_MUTATION = gql`
         personsCreated
         personsMatched
         creditsCreated
+        listsCreated
+        listsMatched
+        listItemsAdded
         errors
       }
       error
@@ -426,6 +429,11 @@ export const ADMIN_PERSON_LIST_QUERY = gql`
           bio
           headshotUrl
           wikidataId
+          isClaimed
+          user {
+            id
+            username
+          }
           createdAt
         }
       }

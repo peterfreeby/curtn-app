@@ -13,9 +13,9 @@ export const commentType = new GraphQLObjectType({
     id: globalIdField('Comment', comment => comment._id),
     user: {
       type: userType,
-      resolve: async comment => {
-        const user = await UserModel.findById(comment.user)
-        return user
+      resolve: async (comment: any, _args: any, ctx: any) => {
+        if (ctx.loaders) return ctx.loaders.userLoader.load(comment.user.toString())
+        return UserModel.findById(comment.user)
       }
     },
     content: {

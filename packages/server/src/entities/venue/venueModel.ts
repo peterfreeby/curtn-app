@@ -154,6 +154,7 @@ const venueSchema = new Schema<IVenue>({
 
 // Indexes for efficient querying
 venueSchema.index({ name: 'text', description: 'text' }) // Text search
+venueSchema.index({ name: 1, _id: 1 }) // cursor pagination
 venueSchema.index({ slug: 1 }, { unique: true }) // URL lookups
 venueSchema.index({ city: 1 }) // Filter by city
 venueSchema.index({ coordinates: '2dsphere' }) // Geospatial queries

@@ -83,5 +83,7 @@ const performanceSchema = new Schema<IPerformance>({
 performanceSchema.index({ run: 1, date: -1 })
 performanceSchema.index({ venueId: 1, date: -1 })
 performanceSchema.index({ date: 1 })
+performanceSchema.index({ date: -1, _id: -1 }) // cursor pagination descending
+performanceSchema.index({ date: 1, _id: 1 }) // cursor pagination ascending
 
 export const PerformanceModel = (mongoose.models.performance as mongoose.Model<IPerformance>) || mongoose.model<IPerformance>('performance', performanceSchema)

@@ -1,14 +1,113 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useRef, useEffect, useCallback, Children, type ReactNode } from "react";
 import { useQuery } from "urql";
 import Link from "next/link";
 import { EDITORIAL_LISTS_QUERY } from "@/lib/graphql/lists";
 import { SHOW_LIST_QUERY } from "@/lib/graphql/shows";
 import { ShowGrid } from "@/components/shows/ShowGrid";
+import { PosterCard } from "@/components/PosterCard";
+import { WiredPosterCard } from "@/components/WiredPosterCard";
 import { Icon } from "@/components/icons/Icons";
 
 const PAGE_SIZE = 12;
+const SCROLL_PADDING = 24; // matches px-6
+
+type PeekSide = "left" | "right";
+
+function BrowseCarousel({ children }: { children: ReactNode }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [peekMap, setPeekMap] = useState<Map<number, PeekSide>>(new Map());
+  const childArray = Children.toArray(children);
+
+  const updatePeek = useCallback(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const cRect = container.getBoundingClientRect();
+    const viewLeft = cRect.left + SCROLL_PADDING;
+    const viewRight = cRect.right;
+
+    const next = new Map<number, PeekSide>();
+    itemRefs.current.forEach((el, i) => {
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      // Off-screen entirely — skip
+      if (r.right <= viewLeft || r.left >= viewRight) return;
+      // Fully visible — skip
+      if (r.left >= viewLeft - 1 && r.right <= viewRight + 1) return;
+      // Partially visible
+      next.set(i, r.left < viewLeft ? "left" : "right");
+    });
+    setPeekMap(next);
+  }, []);
+
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    container.addEventListener("scroll", updatePeek, { passive: true });
+    const ro = new ResizeObserver(updatePeek);
+    ro.observe(container);
+    updatePeek();
+    return () => {
+      container.removeEventListener("scroll", updatePeek);
+      ro.disconnect();
+    };
+  }, [updatePeek, childArray.length]);
+
+  function scrollToItem(index: number) {
+    const container = scrollRef.current;
+    const el = itemRefs.current[index];
+    if (!container || !el) return;
+    const elRect = el.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const target = container.scrollLeft + (elRect.left - containerRect.left) - SCROLL_PADDING;
+    container.scrollTo({ left: target, behavior: "smooth" });
+  }
+
+  return (
+    <div
+      ref={scrollRef}
+      className="flex gap-[var(--spacing-2)] overflow-x-auto pb-2 -mx-6 px-6 scrollbar-hide"
+    >
+      {childArray.map((child, i) => {
+        const side = peekMap.get(i);
+        return (
+          <div
+            key={i}
+            ref={(el) => { itemRefs.current[i] = el; }}
+            className="relative shrink-0"
+          >
+            {child}
+            {side && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  scrollToItem(i);
+                }}
+                className={`group/peek absolute inset-0 z-10 flex items-center cursor-pointer ${
+                  side === "left" ? "justify-end" : "justify-start"
+                }`}
+                aria-label={side === "left" ? "Scroll left" : "Scroll right"}
+              >
+                <div className="absolute inset-0 bg-curtn-deep/40 opacity-0 group-hover/peek:opacity-100 transition-opacity duration-200" />
+                <Icon
+                  name={side === "left" ? "caret-left" : "caret-right"}
+                  size={24}
+                  weight="bold"
+                  className="text-curtn-cream opacity-0 group-hover/peek:opacity-100 transition-opacity duration-200 relative mx-2"
+                />
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function EditorialCarousel() {
   const [{ data, fetching }] = useQuery({
@@ -59,14 +158,15 @@ function EditorialCarousel() {
               <p className="text-xs text-curtn-muted mb-3 -mt-2">{list.description}</p>
             )}
 
-            <div className="flex gap-[var(--spacing-2)] overflow-x-auto pb-2 -mx-6 px-6 scrollbar-hide">
-              {items.map((item: any) => (
-                <BrowseItemCard key={item.id} item={item.item} listType={list.listType} />
-              ))}
-              {items.length === 0 && (
-                <p className="text-xs text-curtn-muted/50">No items in this list yet</p>
-              )}
-            </div>
+            {items.length > 0 ? (
+              <BrowseCarousel>
+                {items.map((item: any) => (
+                  <BrowseItemCard key={item.id} item={item.item} listType={list.listType} />
+                ))}
+              </BrowseCarousel>
+            ) : (
+              <p className="text-xs text-curtn-muted/50">No items in this list yet</p>
+            )}
           </section>
         );
       })}
@@ -79,74 +179,49 @@ function BrowseItemCard({ item, listType }: { item: any; listType: string }) {
 
   if (listType === "shows") {
     return (
-      <Link
+      <WiredPosterCard
+        showId={item.showId}
+        imageUrl={item.posterUrl || item.imageUrl}
+        title={item.showTitle}
         href={`/performances/${encodeURIComponent(item.showId)}`}
-        className="group shrink-0 w-36 dog-ear border border-curtn-dark/50 bg-curtn-surface overflow-hidden transition-colors hover:border-curtn-muted/50"
-      >
-        <div className="aspect-[2/3] overflow-hidden bg-curtn-dark/20">
-          {(item.posterUrl || item.imageUrl) ? (
-            <img src={item.posterUrl || item.imageUrl} alt={item.showTitle} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <Icon name="ticket" weight="thin" size={28} className="text-curtn-dark" />
-            </div>
-          )}
-        </div>
-        <div className="p-1.5">
-          <p className="text-xs font-semibold text-curtn-cream line-clamp-2 leading-snug">{item.showTitle}</p>
-        </div>
-      </Link>
+        size="md"
+        className="!w-36"
+      />
     );
   }
 
   if (listType === "venues") {
     return (
-      <Link
+      <PosterCard
+        imageUrl={item.venueImageUrl}
+        title={item.venueName}
+        subtitle={`${item.city}, ${item.state}`}
         href={`/venues/${item.venueSlug}`}
-        className="group shrink-0 w-48 dog-ear border border-curtn-dark/50 bg-curtn-surface overflow-hidden transition-colors hover:border-curtn-muted/50"
-      >
-        <div className="aspect-[16/9] overflow-hidden bg-curtn-dark/20">
-          {item.venueImageUrl ? (
-            <img src={item.venueImageUrl} alt={item.venueName} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <Icon name="buildings" weight="thin" size={28} className="text-curtn-dark" />
-            </div>
-          )}
-        </div>
-        <div className="p-1.5">
-          <p className="text-xs font-semibold text-curtn-cream line-clamp-1">{item.venueName}</p>
-          <p className="text-[10px] text-curtn-muted truncate">{item.city}, {item.state}</p>
-        </div>
-      </Link>
+        size="lg"
+        className="!w-48"
+      />
     );
   }
 
   if (listType === "people") {
     return (
-      <Link
+      <PosterCard
+        imageUrl={item.headshotUrl}
+        title={item.personName}
         href={`/people/${item.personSlug}`}
-        className="group shrink-0 w-32 text-center transition-colors"
-      >
-        <div className="mx-auto h-20 w-20 overflow-hidden rounded-full bg-curtn-dark/20">
-          {item.headshotUrl ? (
-            <img src={item.headshotUrl} alt={item.personName} className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <Icon name="user" weight="thin" size={28} className="text-curtn-dark" />
-            </div>
-          )}
-        </div>
-        <p className="mt-2 text-xs font-semibold text-curtn-cream line-clamp-2 group-hover:text-curtn-coral transition-colors">{item.personName}</p>
-      </Link>
+        size="md"
+        className="!w-32"
+      />
     );
   }
 
   // Fallback for runs/performances
   return (
-    <div className="shrink-0 w-48 dog-ear border border-curtn-dark/50 bg-curtn-surface p-2">
-      <p className="text-xs text-curtn-cream">{item.runTitle || item.date || "Item"}</p>
-    </div>
+    <PosterCard
+      title={item.runTitle || item.date || "Item"}
+      size="md"
+      className="!w-36"
+    />
   );
 }
 

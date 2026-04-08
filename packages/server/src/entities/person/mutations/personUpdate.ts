@@ -7,7 +7,7 @@ import { errorField } from '../../../graphql/errorField'
 
 export const personUpdate = mutationWithClientMutationId({
   name: 'personUpdate',
-  description: 'Update an existing person (admin only)',
+  description: 'Update an existing person (admin or claimed owner)',
   inputFields: {
     personId: {
       type: new GraphQLNonNull(GraphQLString),
@@ -40,12 +40,16 @@ export const personUpdate = mutationWithClientMutationId({
   mutateAndGetPayload: async (input, ctx) => {
     if (!ctx.user) return { error: 'Unauthorized' }
 
-    const adminUser = await UserModel.findById(ctx.user.id)
-    if (!adminUser?.isAdmin) return { error: 'Admin access required' }
-
     try {
+      const currentUser = await UserModel.findById(ctx.user.id)
+      if (!currentUser) return { error: 'User not found' }
+
       const person = await PersonModel.findById(input.personId)
       if (!person) return { error: 'Person not found' }
+
+      const isAdmin = !!currentUser.isAdmin
+      const isClaimOwner = person.userId && person.userId.toString() === ctx.user.id
+      if (!isAdmin && !isClaimOwner) return { error: 'Admin access or claimed ownership required' }
 
       const updates: Record<string, any> = {}
 

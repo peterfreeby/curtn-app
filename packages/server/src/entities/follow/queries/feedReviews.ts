@@ -1,8 +1,9 @@
 import { GraphQLFieldConfig } from 'graphql'
-import { connectionArgs, connectionFromArray } from 'graphql-relay'
+import { connectionArgs } from 'graphql-relay'
 import { ReviewConnection } from '../../review/reviewTypes'
 import { ReviewModel } from '../../review/reviewModel'
 import { FollowModel } from '../followModel'
+import { applyCursorToAggregate, buildConnection } from '../../../graphql/cursorPagination'
 
 export const feedReviews: GraphQLFieldConfig<any, any> = {
   type: ReviewConnection,
@@ -11,22 +12,21 @@ export const feedReviews: GraphQLFieldConfig<any, any> = {
     ...connectionArgs
   },
   resolve: async (_, args, ctx) => {
-    if (!ctx.user) {
-      return connectionFromArray([], args)
-    }
+    const empty = { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null } }
+
+    if (!ctx.user) return empty
 
     const follows = await FollowModel.find({ follower: ctx.user.id }).select('following')
     const followingIds = follows.map(f => f.following)
 
-    if (followingIds.length === 0) {
-      return connectionFromArray([], args)
-    }
+    if (followingIds.length === 0) return empty
 
-    const reviews = await ReviewModel.aggregate([
-      { $match: { user: { $in: followingIds } } },
-      { $sort: { createdAt: -1 } }
-    ])
+    const pipeline = applyCursorToAggregate(
+      [{ $match: { user: { $in: followingIds } } }],
+      { after: args.after, first: args.first, sortField: 'createdAt', sortDirection: -1 }
+    )
 
-    return connectionFromArray(reviews, args)
+    const reviews = await ReviewModel.aggregate(pipeline)
+    return buildConnection(reviews, { first: args.first, sortField: 'createdAt' })
   }
 }

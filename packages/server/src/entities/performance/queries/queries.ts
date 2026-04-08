@@ -4,6 +4,7 @@ import { PerformanceModel } from '../performanceModel'
 import { RunModel } from '../../run/runModel'
 import { VenueModel } from '../../venue/venueModel'
 import { connectionArgs, connectionFromArray, fromGlobalId } from 'graphql-relay'
+import { applyCursorToQuery, buildConnection } from '../../../graphql/cursorPagination'
 
 export const singlePerformance: GraphQLFieldConfig<any, any, { id: string }> = {
   type: performanceType,
@@ -34,12 +35,20 @@ export const performancesByRun: GraphQLFieldConfig<any, any, { runId: string }> 
   },
   resolve: async (_, args) => {
     const { runId, ...connArgs } = args
+    const empty = { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null } }
     try {
       const { id } = fromGlobalId(runId)
-      const performances = await PerformanceModel.find({ run: id }).sort({ date: 1 })
-      return connectionFromArray(performances, connArgs)
+      const { filter, sort, limit } = applyCursorToQuery({ run: id }, {
+        after: (connArgs as any).after,
+        first: (connArgs as any).first,
+        sortField: 'date',
+        sortDirection: 1,
+        maxLimit: 500
+      })
+      const performances = await PerformanceModel.find(filter).sort(sort).limit(limit).lean()
+      return buildConnection(performances, { first: (connArgs as any).first, sortField: 'date', maxLimit: 500 })
     } catch {
-      return connectionFromArray([], connArgs)
+      return empty
     }
   }
 }
@@ -55,22 +64,26 @@ export const upcomingPerformances: GraphQLFieldConfig<any, any, any> = {
   },
   resolve: async (_, args) => {
     const { city, ...connArgs } = args
+    const empty = { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null } }
     try {
-      let filter: any = { date: { $gte: new Date() } }
+      let baseFilter: any = { date: { $gte: new Date() } }
 
       if (city) {
         const venues = await VenueModel.find({ city })
         const venueIds = venues.map(v => v._id)
-        filter.venueId = { $in: venueIds }
+        baseFilter.venueId = { $in: venueIds }
       }
 
-      const performances = await PerformanceModel.find(filter)
-        .sort({ date: 1 })
-        .limit(100)
-
-      return connectionFromArray(performances, connArgs)
+      const { filter, sort, limit } = applyCursorToQuery(baseFilter, {
+        after: (connArgs as any).after,
+        first: (connArgs as any).first,
+        sortField: 'date',
+        sortDirection: 1
+      })
+      const performances = await PerformanceModel.find(filter).sort(sort).limit(limit).lean()
+      return buildConnection(performances, { first: (connArgs as any).first, sortField: 'date' })
     } catch {
-      return connectionFromArray([], connArgs)
+      return empty
     }
   }
 }
@@ -86,9 +99,9 @@ export const performanceList: GraphQLFieldConfig<any, any, any> = {
   },
   resolve: async (_, args) => {
     const { search, ...connArgs } = args
+    const empty = { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null } }
     try {
-      const limit = connArgs.first ?? 100
-      const filter: any = {}
+      const baseFilter: any = {}
 
       if (search) {
         const regex = new RegExp(search, 'i')
@@ -105,16 +118,22 @@ export const performanceList: GraphQLFieldConfig<any, any, any> = {
         const matchingVenues = await VenueModel.find({ name: regex }).select('_id')
         const venueIds = matchingVenues.map(v => v._id)
 
-        filter.$or = [
+        baseFilter.$or = [
           { run: { $in: runIds } },
           { venueId: { $in: venueIds } }
         ]
       }
 
-      const performances = await PerformanceModel.find(filter).sort({ date: -1 }).limit(limit)
-      return connectionFromArray(performances, connArgs)
+      const { filter, sort, limit } = applyCursorToQuery(baseFilter, {
+        after: (connArgs as any).after,
+        first: (connArgs as any).first,
+        sortField: 'date',
+        sortDirection: -1
+      })
+      const performances = await PerformanceModel.find(filter).sort(sort).limit(limit).lean()
+      return buildConnection(performances, { first: (connArgs as any).first, sortField: 'date' })
     } catch {
-      return connectionFromArray([], connArgs)
+      return empty
     }
   }
 }

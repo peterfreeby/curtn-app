@@ -143,9 +143,10 @@ import {
           require('../stage/stageTypes').stageType
         ))),
         description: 'Stages within this venue (excludes default if only one exists)',
-        resolve: async (venue: any) => {
-          const { StageModel } = require('../stage/stageModel')
-          const stages = await StageModel.find({ venue: venue._id }).sort({ isDefault: 1, name: 1 })
+        resolve: async (venue: any, _args: any, ctx: any) => {
+          const stages = ctx.loaders
+            ? await ctx.loaders.stagesByVenueLoader.load(venue._id.toString())
+            : await (require('../stage/stageModel').StageModel).find({ venue: venue._id }).sort({ isDefault: 1, name: 1 })
           // If only the default stage exists, return empty (single-stage venue)
           if (stages.length <= 1 && stages[0]?.isDefault) return []
           // If multiple stages, return all non-default ones

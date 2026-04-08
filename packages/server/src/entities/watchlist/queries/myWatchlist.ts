@@ -1,5 +1,6 @@
 import { GraphQLFieldConfig } from 'graphql'
 import { connectionArgs, connectionFromArray } from 'graphql-relay'
+import { restoreLeanIds } from '../../../graphql/cursorPagination'
 import { ShowConnection } from '../../show/showTypes'
 import { WatchlistItemModel } from '../watchlistModel'
 import { ShowModel } from '../../show/showModel'
@@ -17,14 +18,17 @@ export const myWatchlist: GraphQLFieldConfig<any, any> = {
 
     const watchlistItems = await WatchlistItemModel.find({ user: ctx.user.id })
       .sort({ createdAt: -1 })
+      .limit(200)
       .select('show')
+      .lean()
 
     if (watchlistItems.length === 0) {
       return connectionFromArray([], args)
     }
 
     const showIds = watchlistItems.map(item => item.show)
-    const shows = await ShowModel.find({ _id: { $in: showIds } })
+    const shows = await ShowModel.find({ _id: { $in: showIds } }).lean()
+    restoreLeanIds(shows)
 
     // Preserve the watchlist ordering (createdAt desc)
     const showMap = new Map(shows.map(s => [s._id.toString(), s]))

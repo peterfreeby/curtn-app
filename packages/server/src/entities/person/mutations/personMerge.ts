@@ -4,6 +4,7 @@ import { personType } from '../personTypes'
 import { PersonModel } from '../personModel'
 import { CreditModel } from '../../credit/creditModel'
 import { UserModel } from '../../user/userModel'
+import { ClaimRequestModel } from '../../claimRequest/claimRequestModel'
 import { errorField } from '../../../graphql/errorField'
 
 export const personMerge = mutationWithClientMutationId({
@@ -53,6 +54,23 @@ export const personMerge = mutationWithClientMutationId({
           await CreditModel.findByIdAndUpdate(credit._id, { person: target._id })
         }
       }
+
+      // Handle claim transfer
+      if (source.userId && target.userId) {
+        return { error: 'Both people are claimed by users. Unclaim one before merging.' }
+      }
+      if (source.userId) {
+        target.userId = source.userId
+        const claimingUser = await UserModel.findById(source.userId)
+        if (claimingUser) {
+          claimingUser.personId = target._id
+          await claimingUser.save()
+        }
+        await target.save()
+      }
+
+      // Update any ClaimRequests referencing the source person
+      await ClaimRequestModel.updateMany({ person: source._id }, { person: target._id })
 
       await PersonModel.findByIdAndDelete(source._id)
 

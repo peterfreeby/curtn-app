@@ -18,6 +18,8 @@ const ICONS = {
   user: "\uE4C2",
   "sign-out": "\uE42A",
   "caret-down": "\uE136",
+  "caret-left": "\uE138",
+  "caret-right": "\uE13A",
   star: "\uE46A",
   heart: "\uE2A8",
   ticket: "\uE490",

@@ -883,15 +883,59 @@ body {
   background: #111111 !important;
 }
 
+/* Marker cluster overrides */
+.curtn-cluster {
+  background: none !important;
+}
+.marker-cluster-small,
+.marker-cluster-medium,
+.marker-cluster-large {
+  background: rgba(248,67,49,0.15) !important;
+}
+.marker-cluster-small div,
+.marker-cluster-medium div,
+.marker-cluster-large div {
+  background: #f84331 !important;
+  color: #111 !important;
+  font-weight: 700;
+}
+.curtn-marker {
+  background: none !important;
+  border: none !important;
+}
+
 /* --- Nav Bar --- */
 .nav-bar {
+  position: relative;
   background: rgba(17,17,17,0.88);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: 999px;
   border: 1px solid rgba(245,241,227,0.08);
-  box-shadow: 0 4px 20px rgba(17,17,17,0.2);
+  box-shadow: none;
 }
+
+/* Dithered halftone shadow — only on floating bar instances */
+.nav-bar-floating::after {
+  content: '';
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: -8px;
+  height: 12px;
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: -1;
+  background: radial-gradient(
+    circle,
+    rgba(17,17,17,0.5) 0.5px,
+    transparent 0.5px
+  );
+  background-size: 3px 3px;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
+}
+
 
 /* --- Ticker tape continuous scroll with pause --- */
 @keyframes ticker {

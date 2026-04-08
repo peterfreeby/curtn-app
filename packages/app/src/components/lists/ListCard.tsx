@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/icons/Icons";
 
@@ -11,6 +12,8 @@ const LIST_TYPE_LABELS: Record<string, string> = {
   people: "People",
 };
 
+const MAX_POSTERS = 5;
+
 interface ListCardProps {
   name: string;
   slug: string;
@@ -20,6 +23,35 @@ interface ListCardProps {
   ownerAvatarUrl?: string | null;
   isPublic: boolean;
   description?: string | null;
+  posterUrls?: string[];
+}
+
+function PosterStrip({ urls }: { urls: string[] }) {
+  const [failed, setFailed] = useState<Set<number>>(() => new Set());
+  const visible = urls.slice(0, MAX_POSTERS).filter((_, i) => !failed.has(i));
+
+  if (visible.length === 0) return null;
+
+  return (
+    <div className="flex items-end -space-x-4">
+      {urls.slice(0, MAX_POSTERS).map((url, i) =>
+        failed.has(i) ? null : (
+          <div
+            key={i}
+            className="relative shrink-0 w-[80px] aspect-[2/3] overflow-hidden border border-curtn-dark/40 bg-curtn-dark/20 transition-transform duration-200 group-hover:translate-y-[-2px]"
+            style={{ zIndex: MAX_POSTERS - i }}
+          >
+            <img
+              src={url}
+              alt=""
+              className="h-full w-full object-cover"
+              onError={() => setFailed((prev) => new Set(prev).add(i))}
+            />
+          </div>
+        )
+      )}
+    </div>
+  );
 }
 
 export function ListCard({
@@ -31,13 +63,18 @@ export function ListCard({
   ownerAvatarUrl,
   isPublic,
   description,
+  posterUrls,
 }: ListCardProps) {
+  const hasPosters = posterUrls && posterUrls.length > 0;
+
   return (
     <Link
       href={`/u/${ownerUsername}/lists/${slug}`}
-      className="group block dog-ear border border-curtn-dark/50 bg-curtn-surface overflow-hidden transition-colors duration-200 hover:border-curtn-muted/50"
+      className="group block overflow-hidden"
     >
-      <div className="p-[var(--spacing-2)]">
+      {hasPosters && <PosterStrip urls={posterUrls} />}
+
+      <div className={hasPosters ? "pt-[var(--spacing-1_5)]" : ""}>
         <div className="flex items-center gap-1.5">
           <span className="inline-block bg-curtn-dark/60 px-2 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted">
             {LIST_TYPE_LABELS[listType] ?? listType}

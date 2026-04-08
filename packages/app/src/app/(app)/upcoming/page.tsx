@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "urql";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { BROWSE_PERFORMANCES_QUERY } from "@/lib/graphql/performances";
+import { BROWSE_PERFORMANCES_QUERY, MAP_PERFORMANCES_QUERY } from "@/lib/graphql/performances";
 import { VENUE_MAP_QUERY } from "@/lib/graphql/venues";
 import { Icon } from "@/components/icons/Icons";
 import { formatShowTime } from "@/lib/format";
@@ -74,21 +74,42 @@ export default function UpcomingPage() {
     variables: { first: 200 },
   });
 
-  // Phase 2: full performance data (slower, enriches popups)
+  // Phase 2: performance data for map (lightweight — no cast/descriptions)
+  const [{ data: mapPerfData }] = useQuery({
+    query: MAP_PERFORMANCES_QUERY,
+    variables: { first: 200 },
+  });
+
+  // Phase 3: full performance data for list view (heavier, fetched in parallel)
   const [{ data, fetching }] = useQuery({
     query: BROWSE_PERFORMANCES_QUERY,
     variables: { first: 200 },
+    pause: view === "map",
   });
 
   const venues = useMemo(() => {
     return (venueData?.venueList?.edges ?? []).map((e: any) => e.node).filter((v: any) => v.coordinates?.lat);
   }, [venueData]);
 
+  // Map uses the lightweight query; list uses the full query
+  const mapPerformances = useMemo(() => {
+    return (mapPerfData?.performanceList?.edges ?? []).map((e: any) => e.node);
+  }, [mapPerfData]);
+
   const allPerformances = useMemo(() => {
     return (data?.performanceList?.edges ?? []).map((e: any) => e.node);
   }, [data]);
 
-  const hasPerformanceData = allPerformances.length > 0;
+  const hasMapData = mapPerformances.length > 0;
+
+  const filteredMapPerformances = useMemo(() => {
+    const range = getDateRange(dateFilter);
+    if (!range) return mapPerformances;
+    return mapPerformances.filter((p: any) => {
+      const d = new Date(p.date);
+      return d >= range.start && d < range.end;
+    });
+  }, [mapPerformances, dateFilter]);
 
   const performances = useMemo(() => {
     const range = getDateRange(dateFilter);
@@ -117,8 +138,8 @@ export default function UpcomingPage() {
       {/* Full-canvas map — show venue pins immediately, enrich when performance data loads */}
       {view === "map" && (
         <div className="absolute inset-0">
-          {hasPerformanceData ? (
-            <PerformanceMap performances={performances} />
+          {hasMapData ? (
+            <PerformanceMap performances={filteredMapPerformances} />
           ) : (
             <VenueOnlyMap venues={venues} />
           )}
@@ -202,7 +223,7 @@ export default function UpcomingPage() {
             <h1 className="text-lg font-bold text-curtn-cream drop-shadow-md">
               Upcoming
               <span className="ml-2 text-xs font-normal text-curtn-muted">
-                {performances.length}
+                {view === "map" ? filteredMapPerformances.length : performances.length}
               </span>
             </h1>
             <div className="flex gap-1.5 flex-wrap">

@@ -4,6 +4,7 @@ import { RunModel } from '../runModel'
 import { ShowModel } from '../../show/showModel'
 import { VenueModel } from '../../venue/venueModel'
 import { connectionArgs, connectionFromArray, fromGlobalId } from 'graphql-relay'
+import { applyCursorToQuery, buildConnection } from '../../../graphql/cursorPagination'
 
 export const singleRun: GraphQLFieldConfig<any, any, { id: string }> = {
   type: runType,
@@ -34,12 +35,20 @@ export const runsByShow: GraphQLFieldConfig<any, any, { showId: string }> = {
   },
   resolve: async (_, args) => {
     const { showId, ...connArgs } = args
+    const empty = { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null } }
     try {
       const { id } = fromGlobalId(showId)
-      const runs = await RunModel.find({ show: id }).sort({ startDate: -1 })
-      return connectionFromArray(runs, connArgs)
+      const { filter, sort, limit } = applyCursorToQuery({ show: id }, {
+        after: (connArgs as any).after,
+        first: (connArgs as any).first,
+        sortField: 'startDate',
+        sortDirection: -1,
+        maxLimit: 200
+      })
+      const runs = await RunModel.find(filter).sort(sort).limit(limit).lean()
+      return buildConnection(runs, { first: (connArgs as any).first, sortField: 'startDate', maxLimit: 200 })
     } catch {
-      return connectionFromArray([], connArgs)
+      return empty
     }
   }
 }
@@ -55,13 +64,21 @@ export const runsByVenue: GraphQLFieldConfig<any, any, { venueName: string }> = 
   },
   resolve: async (_, args) => {
     const { venueName, ...connArgs } = args
+    const empty = { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null } }
     try {
       const venues = await VenueModel.find({ name: new RegExp(venueName, 'i') })
       const venueIds = venues.map(v => v._id)
-      const runs = await RunModel.find({ venues: { $in: venueIds } }).sort({ startDate: -1 })
-      return connectionFromArray(runs, connArgs)
+      const { filter, sort, limit } = applyCursorToQuery({ venues: { $in: venueIds } }, {
+        after: (connArgs as any).after,
+        first: (connArgs as any).first,
+        sortField: 'startDate',
+        sortDirection: -1,
+        maxLimit: 200
+      })
+      const runs = await RunModel.find(filter).sort(sort).limit(limit).lean()
+      return buildConnection(runs, { first: (connArgs as any).first, sortField: 'startDate', maxLimit: 200 })
     } catch {
-      return connectionFromArray([], connArgs)
+      return empty
     }
   }
 }
@@ -77,8 +94,8 @@ export const runList: GraphQLFieldConfig<any, any, any> = {
   },
   resolve: async (_, args) => {
     const { search, ...connArgs } = args
+    const empty = { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null } }
     try {
-      const limit = connArgs.first ?? 100
       const filter: any = {}
 
       if (search) {
@@ -91,10 +108,16 @@ export const runList: GraphQLFieldConfig<any, any, any> = {
         ]
       }
 
-      const runs = await RunModel.find(filter).sort({ createdAt: -1 }).limit(limit)
-      return connectionFromArray(runs, connArgs)
+      const { filter: cursorFilter, sort, limit } = applyCursorToQuery(filter, {
+        after: (connArgs as any).after,
+        first: (connArgs as any).first,
+        sortField: 'createdAt',
+        sortDirection: -1
+      })
+      const runs = await RunModel.find(cursorFilter).sort(sort).limit(limit).lean()
+      return buildConnection(runs, { first: (connArgs as any).first, sortField: 'createdAt' })
     } catch {
-      return connectionFromArray([], connArgs)
+      return empty
     }
   }
 }

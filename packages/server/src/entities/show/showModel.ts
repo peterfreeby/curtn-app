@@ -66,6 +66,7 @@ const showSchema = new Schema<IShow>({
 })
 
 showSchema.index({ title: 'text', description: 'text' })
+showSchema.index({ createdAt: -1, _id: -1 }) // cursor pagination
 showSchema.index({ performanceTypes: 1 })
 
 export const ShowModel = (mongoose.models.show as mongoose.Model<IShow>) || mongoose.model<IShow>('show', showSchema)

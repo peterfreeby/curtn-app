@@ -16,6 +16,7 @@ import { dataSourceQueries } from '../entities/dataSource/queries/queries'
 import { stageQueries } from '../entities/stage/queries/queries'
 import { pendingImportQueries } from '../entities/pendingImport/queries/queries'
 import { listQueries } from '../entities/list/queries/queries'
+import { claimRequestQueries } from '../entities/claimRequest/queries/queries'
 import { nodeField, nodesField } from '../graphql/nodeInterface'
 
 export const query = new GraphQLObjectType({
@@ -39,6 +40,7 @@ export const query = new GraphQLObjectType({
     ...stageQueries,
     ...pendingImportQueries,
     ...listQueries,
+    ...claimRequestQueries,
     node: nodeField,
     nodes: nodesField
   })

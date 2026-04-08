@@ -5,6 +5,7 @@ import { connectionArgs, connectionFromArray, fromGlobalId } from 'graphql-relay
 import { UserModel } from '../../user/userModel'
 import { FollowModel } from '../../follow/followModel'
 import { Types } from 'mongoose'
+import { applyCursorToAggregate, buildConnection, connectionFromArrayLean } from '../../../graphql/cursorPagination'
 
 const usernameToObjectID = async (username: string): Promise<Types.ObjectId | undefined> => {
   const user = await UserModel.findOne({ username })
@@ -62,6 +63,7 @@ export const reviewList: GraphQLFieldConfig<any, any, Args> = {
   },
   resolve: async (_, args, ctx) => {
     const { sort, rating, direction, performance, runId, showId, username, followedOnly, ...connnectionArgs } = args
+    const pageLimit: number = (connnectionArgs as any).first ?? 200
 
     const performanceId = performance && new Types.ObjectId(fromGlobalId(performance).id)
     const userId = username && await usernameToObjectID(username)
@@ -106,6 +108,8 @@ export const reviewList: GraphQLFieldConfig<any, any, Args> = {
 
     let reviews
     if (shouldPin) {
+      // Pinning uses a computed sort field (_isFollowed), so cursor-based seeking
+      // isn't practical here. Keep capped aggregate + connectionFromArray.
       reviews = await ReviewModel.aggregate([
         { $match: filter },
         {
@@ -114,15 +118,20 @@ export const reviewList: GraphQLFieldConfig<any, any, Args> = {
           }
         },
         { $sort: { _isFollowed: -1, createdAt: -1 } },
-        { $project: { _isFollowed: 0 } }
+        { $project: { _isFollowed: 0 } },
+        { $limit: pageLimit }
       ])
-    } else {
-      reviews = await ReviewModel.aggregate([
-        { $match: filter },
-        { $sort: { [sort || 'createdAt']: direction || -1 } }
-      ])
+      return connectionFromArrayLean(reviews, connnectionArgs)
     }
 
-    return connectionFromArray(reviews, connnectionArgs)
+    // Standard path: proper cursor-based pagination
+    const sortField = sort || 'createdAt'
+    const sortDir: 1 | -1 = (direction as 1 | -1) || -1
+    const pipeline = applyCursorToAggregate(
+      [{ $match: filter }],
+      { after: (connnectionArgs as any).after, first: (connnectionArgs as any).first, sortField, sortDirection: sortDir }
+    )
+    reviews = await ReviewModel.aggregate(pipeline)
+    return buildConnection(reviews, { first: (connnectionArgs as any).first, sortField })
   }
 }

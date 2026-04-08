@@ -33,17 +33,27 @@ export const reviewType = new GraphQLObjectType({
       user: {
         type: new GraphQLNonNull(userType),
         description: `The user who wrote the review`,
-        resolve: async review => await UserModel.findOne({ _id: review.user })
+        resolve: async (review: any, _args: any, ctx: any) => {
+          if (ctx.loaders) return ctx.loaders.userLoader.load(review.user.toString())
+          return UserModel.findOne({ _id: review.user })
+        }
       },
       performance: {
         type: new GraphQLNonNull(performanceType),
         description: `The specific showing reviewed`,
-        resolve: async review => await PerformanceModel.findById(review.performance)
+        resolve: async (review: any, _args: any, ctx: any) => {
+          if (ctx.loaders) return ctx.loaders.performanceLoader.load(review.performance.toString())
+          return PerformanceModel.findById(review.performance)
+        }
       },
       run: {
         type: runType,
         description: `The run this review belongs to`,
-        resolve: async review => review.run ? await RunModel.findById(review.run) : null
+        resolve: async (review: any, _args: any, ctx: any) => {
+          if (!review.run) return null
+          if (ctx.loaders) return ctx.loaders.runLoader.load(review.run.toString())
+          return RunModel.findById(review.run)
+        }
       },
       venue: {
         type: new GraphQLNonNull(GraphQLString),

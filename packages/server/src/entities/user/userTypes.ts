@@ -7,7 +7,8 @@ import {
   GraphQLInputFieldConfig,
   ThunkObjMap
 } from 'graphql'
-import { connectionDefinitions, globalIdField } from 'graphql-relay'
+import { connectionDefinitions, globalIdField, connectionArgs } from 'graphql-relay'
+import { applyCursorToQuery, buildConnection } from '../../graphql/cursorPagination'
 import { nodeInterface } from '../../graphql/nodeInterface'
 import { entityRegister } from '../../graphql/entityHelpers'
 import { UserModel } from './userModel'
@@ -22,19 +23,29 @@ export const userType = new GraphQLObjectType({
   fields: () => ({
     id: globalIdField('User', user => user._id),
     fullName: {
-      type: new GraphQLNonNull(GraphQLString),
+      type: GraphQLString,
       description: `User's full name`,
       resolve: user => user.fullName
     },
     username: {
-      type: new GraphQLNonNull(GraphQLString),
+      type: GraphQLString,
       description: `User's username`,
       resolve: user => user.username
     },
     email: {
-      type: new GraphQLNonNull(GraphQLString),
+      type: GraphQLString,
       description: `User's email`,
       resolve: user => user.email
+    },
+    phoneNumber: {
+      type: GraphQLString,
+      description: `User's phone number`,
+      resolve: user => user.phoneNumber
+    },
+    hasProfile: {
+      type: new GraphQLNonNull(GraphQLBoolean),
+      description: 'Whether the user has completed onboarding',
+      resolve: user => !!user.username && !!user.fullName
     },
     bio: {
       type: GraphQLString,
@@ -49,12 +60,18 @@ export const userType = new GraphQLObjectType({
     followerCount: {
       type: GraphQLInt,
       description: 'Number of followers',
-      resolve: async user => FollowModel.countDocuments({ following: user._id })
+      resolve: async (user: any, _args: any, ctx: any) => {
+        if (ctx.loaders) return ctx.loaders.followerCountLoader.load(user._id.toString())
+        return FollowModel.countDocuments({ following: user._id })
+      }
     },
     followingCount: {
       type: GraphQLInt,
       description: 'Number of users this user follows',
-      resolve: async user => FollowModel.countDocuments({ follower: user._id })
+      resolve: async (user: any, _args: any, ctx: any) => {
+        if (ctx.loaders) return ctx.loaders.followingCountLoader.load(user._id.toString())
+        return FollowModel.countDocuments({ follower: user._id })
+      }
     },
     isFollowing: {
       type: GraphQLBoolean,
@@ -72,13 +89,17 @@ export const userType = new GraphQLObjectType({
     reviewCount: {
       type: GraphQLInt,
       description: 'Number of reviews this user has written',
-      resolve: async user => ReviewModel.countDocuments({ user: user._id })
+      resolve: async (user: any, _args: any, ctx: any) => {
+        if (ctx.loaders) return ctx.loaders.reviewCountByUserLoader.load(user._id.toString())
+        return ReviewModel.countDocuments({ user: user._id })
+      }
     },
     person: {
       type: require('../person/personTypes').personType,
       description: 'Linked Person entity (for cast/crew credits)',
-      resolve: async (user: any) => {
+      resolve: async (user: any, _args: any, ctx: any) => {
         if (!user.personId) return null
+        if (ctx.loaders) return ctx.loaders.personLoader.load(user.personId.toString())
         const { PersonModel } = require('../person/personModel')
         return PersonModel.findById(user.personId)
       }
@@ -86,7 +107,8 @@ export const userType = new GraphQLObjectType({
     listCount: {
       type: GraphQLInt,
       description: 'Number of public lists this user has created',
-      resolve: async user => {
+      resolve: async (user: any, _args: any, ctx: any) => {
+        if (ctx.loaders) return ctx.loaders.listCountByUserLoader.load(user._id.toString())
         const { ListModel } = require('../list/listModel')
         return ListModel.countDocuments({ owner: user._id, isPublic: true })
       }
@@ -94,17 +116,18 @@ export const userType = new GraphQLObjectType({
     lists: {
       type: require('../list/listTypes').ListConnection,
       description: "User's public lists",
-      resolve: async (user: any, _args: any, ctx: any) => {
+      args: { ...connectionArgs },
+      resolve: async (user: any, args: any, ctx: any) => {
         const { ListModel } = require('../list/listModel')
-        const filter: any = { owner: user._id }
+        const baseFilter: any = { owner: user._id }
         if (!ctx.user || ctx.user.id !== String(user._id)) {
-          filter.isPublic = true
+          baseFilter.isPublic = true
         }
-        const lists = await ListModel.find(filter).sort({ createdAt: -1 })
-        return {
-          edges: lists.map((l: any) => ({ node: l, cursor: l._id.toString() })),
-          pageInfo: { hasNextPage: false, hasPreviousPage: false }
-        }
+        const { filter, sort, limit } = applyCursorToQuery(baseFilter, {
+          after: args.after, first: args.first, sortField: 'createdAt', sortDirection: -1, maxLimit: 100
+        })
+        const lists = await ListModel.find(filter).sort(sort).limit(limit).lean()
+        return buildConnection(lists, { first: args.first, sortField: 'createdAt', maxLimit: 100 })
       }
     }
   })

@@ -1,37 +1,39 @@
-import { compareSync } from 'bcrypt'
 import mongoose, { Schema } from 'mongoose'
 
 export type IUser = {
   _id: mongoose.Types.ObjectId
-  fullName: string
-  email: string
-  username: string
-  password: string
+  firebaseUid: string
+  phoneNumber: string
+  fullName?: string
+  email?: string
+  username?: string
   bio: string
   avatarUrl: string
-  isAdmin: boolean,
-  personId?: mongoose.Types.ObjectId,
-  validatePassword: (plainPassword: string) => boolean,
+  isAdmin: boolean
+  personId?: mongoose.Types.ObjectId
 }
 
 const schema = new Schema<IUser>({
-  fullName: {
+  firebaseUid: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  phoneNumber: {
     type: String,
     required: true
+  },
+  fullName: {
+    type: String
   },
   email: {
     type: String,
-    required: true,
-    unique: true
+    sparse: true
   },
   username: {
     type: String,
-    required: true,
+    sparse: true,
     unique: true
-  },
-  password: {
-    type: String,
-    required: true
   },
   bio: {
     type: String,
@@ -56,11 +58,7 @@ schema.index({ personId: 1 }, { unique: true, sparse: true })
 
 schema.index({
   fullName: 'text',
-  email: 'text'
+  phoneNumber: 'text'
 })
-
-schema.methods.validatePassword = function (plainPassword: string): boolean {
-  return compareSync(plainPassword, this.password)
-}
 
 export const UserModel = (mongoose.models.user as mongoose.Model<IUser>) || mongoose.model<IUser>('user', schema)
