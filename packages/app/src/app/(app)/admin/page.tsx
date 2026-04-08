@@ -31,7 +31,7 @@ function StorageOdometer() {
     setLoading(true);
     setError(null);
     try {
-      const token = await auth.currentUser?.getIdToken();
+      const token = await auth?.currentUser?.getIdToken();
       const url = `/api/admin/storage-stats${refresh ? "?refresh=true" : ""}`;
       const res = await fetch(url, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
