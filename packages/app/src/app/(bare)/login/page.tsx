@@ -29,6 +29,7 @@ export default function LoginPage() {
   }, [firebaseUser, router]);
 
   const setupRecaptcha = () => {
+    if (!auth) return;
     if (!(window as any).recaptchaVerifier) {
       (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaRef.current!, {
         size: "invisible",
@@ -39,6 +40,11 @@ export default function LoginPage() {
   async function handleSendCode(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    if (!auth) {
+      setError("Authentication not initialized.");
+      return;
+    }
 
     const cleaned = phoneNumber.replace(/\D/g, "");
     if (cleaned.length < 10) {
