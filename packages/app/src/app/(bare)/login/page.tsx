@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
+import { signInWithPhoneNumber, ConfirmationResult, RecaptchaVerifier } from "firebase/auth";
 import { auth } from "@/lib/firebase/config";
 import { useAuth } from "@/lib/auth/useAuth";
 import { Card } from "@/components/Card";
@@ -14,13 +14,13 @@ type Step = "phone" | "otp";
 export default function LoginPage() {
   const router = useRouter();
   const { firebaseUser } = useAuth();
-  const recaptchaRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState<Step>("phone");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
+  const [recaptchaReady, setRecaptchaReady] = useState(false);
 
   useEffect(() => {
     if (firebaseUser) {
@@ -28,14 +28,25 @@ export default function LoginPage() {
     }
   }, [firebaseUser, router]);
 
-  const setupRecaptcha = () => {
-    if (!auth) return;
-    if (!(window as any).recaptchaVerifier) {
-      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaRef.current!, {
+  // Initialize reCAPTCHA once on mount
+  useEffect(() => {
+    if (!auth || recaptchaReady) return;
+
+    try {
+      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
         size: "invisible",
+        callback: () => {
+          // reCAPTCHA solved
+        },
       });
+      // Pre-render the reCAPTCHA widget
+      (window as any).recaptchaVerifier.render().then(() => {
+        setRecaptchaReady(true);
+      });
+    } catch (err) {
+      console.error("reCAPTCHA setup error:", err);
     }
-  };
+  }, [recaptchaReady]);
 
   async function handleSendCode(e: React.FormEvent) {
     e.preventDefault();
@@ -54,12 +65,21 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      setupRecaptcha();
       const formatted = phoneNumber.startsWith("+") ? phoneNumber : `+1${cleaned}`;
-      const result = await signInWithPhoneNumber(auth, formatted, (window as any).recaptchaVerifier);
+      const verifier = (window as any).recaptchaVerifier;
+      const result = await signInWithPhoneNumber(auth, formatted, verifier);
       setConfirmation(result);
       setStep("otp");
     } catch (err: any) {
+      console.error("Phone auth error:", err);
+      // Reset reCAPTCHA on failure so it can be retried
+      if ((window as any).recaptchaVerifier) {
+        try {
+          (window as any).recaptchaVerifier.clear();
+        } catch { /* ignore */ }
+        (window as any).recaptchaVerifier = null;
+        setRecaptchaReady(false);
+      }
       setError(err.message || "Failed to send code. Try again.");
     } finally {
       setLoading(false);
@@ -152,7 +172,7 @@ export default function LoginPage() {
           </>
         )}
 
-        <div ref={recaptchaRef} />
+        <div id="recaptcha-container" />
       </Card>
     </main>
   );
