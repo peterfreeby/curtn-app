@@ -45,6 +45,16 @@ export const AuthContext = createContext<AuthContextValue>({
 
 const ME_QUERY = `query { me { id fullName username hasProfile isAdmin reviewCount avatarUrl } }`;
 
+const AUTHENTICATE_MUTATION = `
+  mutation AuthenticateWithPhone($idToken: String!) {
+    authenticateWithPhone(input: { idToken: $idToken }) {
+      user { id fullName username hasProfile isAdmin reviewCount avatarUrl }
+      isNewUser
+      error
+    }
+  }
+`;
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -60,16 +70,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const token = await fbUser.getIdToken();
+      const headers = {
+        "Content-Type": "application/json",
+        authorization: `Bearer ${token}`,
+      };
+
+      // Try to get existing user
       const res = await fetch("/api/graphql", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          authorization: `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify({ query: ME_QUERY }),
       });
       const json = await res.json();
-      const me = json.data?.me;
+      let me = json.data?.me;
+
+      // If no MongoDB user exists, create one via authenticateWithPhone
+      if (!me) {
+        const authRes = await fetch("/api/graphql", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            query: AUTHENTICATE_MUTATION,
+            variables: { idToken: token },
+          }),
+        });
+        const authJson = await authRes.json();
+        const result = authJson.data?.authenticateWithPhone;
+
+        if (result?.user) {
+          me = result.user;
+
+          // New users need onboarding
+          if (result.isNewUser) {
+            router.push("/onboarding");
+          }
+        }
+      }
+
       setUser(
         me
           ? {
@@ -80,12 +117,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           : null
       );
+
+      // Existing users without a profile also need onboarding
+      if (me && !me.hasProfile && !me.username) {
+        router.push("/onboarding");
+      }
     } catch {
       setUser(null);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (!auth) {
