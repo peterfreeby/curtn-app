@@ -90,7 +90,7 @@ export const searchShows: GraphQLFieldConfig<any, any, { query: string }> = {
       const shows = await ShowModel.find(
         { $text: { $search: query } },
         { score: { $meta: 'textScore' } }
-      ).sort({ score: { $meta: 'textScore' } }).limit(50).lean()
+      ).sort({ score: { $meta: 'textScore' } }).limit(50)
 
       return connectionFromArray(shows, connArgs)
     } catch (error) {
