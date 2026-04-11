@@ -62,21 +62,23 @@ export function StarRating({
             key={i}
             type="button"
             onClick={(e) => handleClick(i, e)}
-            className="relative cursor-pointer p-0 border-0 bg-transparent"
-            style={{ width: Math.max(size, 48), height: Math.max(size, 48), display: "flex", alignItems: "center", justifyContent: "center" }}
+            className="cursor-pointer p-0 border-0 bg-transparent flex items-center justify-center"
+            style={{ width: Math.max(size, 44), height: Math.max(size, 44) }}
             aria-label={`${i + 1} star${i === 0 ? "" : "s"}`}
           >
-            {/* Empty star base */}
-            <Icon name="star" weight="regular" size={size} className="text-curtn-dark" />
-            {/* Filled overlay */}
-            {(filled || halfFilled) && (
-              <span
-                className="absolute inset-0 overflow-hidden flex items-center justify-center"
-                style={{ width: filled ? "100%" : "50%" }}
-              >
-                <Icon name="star" weight="fill" size={size} className="text-curtn-coral" />
-              </span>
-            )}
+            <span className="relative inline-block" style={{ width: size, height: size }}>
+              {/* Empty star base */}
+              <Icon name="star" weight="regular" size={size} className="text-curtn-dark" />
+              {/* Filled overlay */}
+              {(filled || halfFilled) && (
+                <span
+                  className="absolute inset-0 overflow-hidden"
+                  style={{ width: filled ? "100%" : "50%" }}
+                >
+                  <Icon name="star" weight="fill" size={size} className="text-curtn-coral" />
+                </span>
+              )}
+            </span>
           </button>
         );
       })}

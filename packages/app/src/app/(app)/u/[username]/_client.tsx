@@ -96,7 +96,7 @@ export default function ProfilePage() {
   // Loading state
   if (userFetching) {
     return (
-      <div className="px-6 py-8 max-w-2xl mx-auto space-y-6">
+      <div className="px-4 sm:px-6 py-8 max-w-2xl mx-auto space-y-6">
         <div className="h-28 bg-curtn-dark/30 animate-pulse" />
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -110,7 +110,7 @@ export default function ProfilePage() {
   // User not found
   if (!profileUser) {
     return (
-      <div className="px-6 py-8 max-w-2xl mx-auto">
+      <div className="px-4 sm:px-6 py-8 max-w-2xl mx-auto">
         <div className="empty-state">
           <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">User Not Found</p>
           <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">
@@ -122,7 +122,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="px-6 py-8 max-w-2xl mx-auto space-y-8">
+    <div className="px-4 sm:px-6 py-8 max-w-2xl mx-auto space-y-8">
       <ProfileHeader
         fullName={profileUser.fullName}
         username={profileUser.username}

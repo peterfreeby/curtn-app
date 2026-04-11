@@ -226,7 +226,7 @@ function SearchContent() {
   const totalResults = groups.reduce((sum, g) => sum + g.items.length, 0);
 
   return (
-    <div className="px-6 py-8 max-w-2xl mx-auto">
+    <div className="px-4 sm:px-6 py-8 max-w-2xl mx-auto">
       {/* Search input */}
       <div className="relative hidden md:block">
         <Icon
@@ -299,7 +299,7 @@ function SearchContent() {
 export default function SearchPage() {
   return (
     <Suspense fallback={
-      <div className="px-6 py-8 max-w-2xl mx-auto flex justify-center">
+      <div className="px-4 sm:px-6 py-8 max-w-2xl mx-auto flex justify-center">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-curtn-muted/30 border-t-curtn-coral" />
       </div>
     }>

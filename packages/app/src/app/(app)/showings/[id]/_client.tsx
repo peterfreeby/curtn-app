@@ -172,7 +172,7 @@ export default function PerformanceDetailPage() {
     return (
       <div className="animate-pulse">
         <div className="h-10 bg-curtn-surface" />
-        <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-4">
+        <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-4">
           <div className="h-8 w-3/4 bg-curtn-dark/60" />
           <div className="h-4 w-1/2 bg-curtn-dark/60" />
           <div className="h-4 w-1/3 bg-curtn-dark/60" />
@@ -183,7 +183,7 @@ export default function PerformanceDetailPage() {
 
   if (!perf || !run || !show) {
     return (
-      <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto">
+      <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto">
         <div className="empty-state">
           <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">Performance Not Found</p>
           <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">This showing may have been removed.</p>
@@ -233,7 +233,7 @@ export default function PerformanceDetailPage() {
     <div className="relative">
       <DetailBreadcrumb levels={breadcrumbLevels} />
 
-      <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
+      <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
         {/* Poster + Performance record card */}
         <div className="flex gap-5 items-start">
           {perf.effectivePosterUrl && (

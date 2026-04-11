@@ -148,7 +148,7 @@ export default function RunDetailPage() {
 
   if (fetching) {
     return (
-      <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto animate-pulse space-y-4">
+      <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto animate-pulse space-y-4">
         <div className="flex gap-1.5">
           <div className="h-4 w-14 bg-curtn-dark/60" />
           <div className="h-4 w-18 bg-curtn-dark/60" />
@@ -163,7 +163,7 @@ export default function RunDetailPage() {
 
   if (!run) {
     return (
-      <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto">
+      <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto">
         <div className="empty-state">
           <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">Run Not Found</p>
           <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">This production may have been removed.</p>
@@ -229,7 +229,7 @@ export default function RunDetailPage() {
           { label: show.title, href: `/performances/${encodeURIComponent(show.id)}` },
           { label: run.title || company?.name || run.venues?.[0]?.name || "Production" },
         ]} />
-        <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
+        <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
         <RunHero
           showTitle={show.title}
           showId={show.id}
@@ -393,7 +393,7 @@ export default function RunDetailPage() {
         { label: show.title, href: `/performances/${encodeURIComponent(show.id)}` },
         { label: run.title || company?.name || run.venues?.[0]?.name || "Production" },
       ]} />
-      <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
+      <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
       <RunHero
         showTitle={show.title}
         showId={show.id}

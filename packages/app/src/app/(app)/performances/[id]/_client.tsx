@@ -96,7 +96,7 @@ export default function ShowDetailPage() {
 
   if (fetching) {
     return (
-      <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto animate-pulse space-y-4">
+      <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto animate-pulse space-y-4">
         <div className="flex gap-1.5">
           <div className="h-4 w-14 bg-curtn-dark/60" />
           <div className="h-4 w-18 bg-curtn-dark/60" />
@@ -111,7 +111,7 @@ export default function ShowDetailPage() {
 
   if (!show) {
     return (
-      <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto">
+      <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto">
         <p className="text-curtn-muted text-sm">Show not found.</p>
       </div>
     );
@@ -147,7 +147,7 @@ export default function ShowDetailPage() {
 
     return (
       <div className="relative">
-        <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
+        <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
         <RunHero
           showTitle={show.title}
           showId={show.id}
@@ -284,7 +284,7 @@ export default function ShowDetailPage() {
 
     return (
       <div className="relative">
-        <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
+        <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
         <RunHero
           showTitle={show.title}
           showId={show.id}
@@ -400,7 +400,7 @@ export default function ShowDetailPage() {
   // --- SCENARIO C: multiple runs — show info + run list ---
   return (
     <div className="relative">
-      <div className="px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
+      <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
         <ShowHero
           title={show.title}
           description={show.description}

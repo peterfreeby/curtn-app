@@ -46,7 +46,7 @@ export default function UserListsPage() {
   const { username } = useParams<{ username: string }>();
 
   return (
-    <div className="px-6 py-8 max-w-6xl mx-auto">
+    <div className="px-4 sm:px-6 py-8 max-w-6xl mx-auto">
       <h2 className="text-xs uppercase tracking-widest text-curtn-muted mb-6">
         @{username}&apos;s Lists
       </h2>

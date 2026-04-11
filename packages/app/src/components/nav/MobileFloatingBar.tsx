@@ -212,7 +212,7 @@ export function MobileFloatingBar() {
   if (isListAdd) return null;
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 pb-[env(safe-area-inset-bottom)]">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 pb-[max(env(safe-area-inset-bottom),8px)]">
 
       {/* Toast */}
       <div

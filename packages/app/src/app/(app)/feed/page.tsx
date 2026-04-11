@@ -21,7 +21,7 @@ export default function FeedPage() {
   // Not authenticated
   if (!user) {
     return (
-      <div className="px-6 py-8 max-w-2xl mx-auto">
+      <div className="px-4 sm:px-6 py-8 max-w-2xl mx-auto">
         <h2 className="text-xs uppercase tracking-widest text-curtn-muted mb-8">
           Feed
         </h2>
@@ -44,7 +44,7 @@ export default function FeedPage() {
   // Loading
   if (loading) {
     return (
-      <div className="px-6 py-8 max-w-2xl mx-auto space-y-6">
+      <div className="px-4 sm:px-6 py-8 max-w-2xl mx-auto space-y-6">
         <h2 className="text-xs uppercase tracking-widest text-curtn-muted mb-8">
           Feed
         </h2>
@@ -58,7 +58,7 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="px-6 py-8 max-w-2xl mx-auto">
+    <div className="px-4 sm:px-6 py-8 max-w-2xl mx-auto">
       <h2 className="text-xs uppercase tracking-widest text-curtn-muted mb-8">
         Feed
       </h2>

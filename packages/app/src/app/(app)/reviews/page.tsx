@@ -46,7 +46,7 @@ export default function ReviewsPage() {
 
   if (fetching && displayEdges.length === 0) {
     return (
-      <div className="px-6 py-8 max-w-2xl mx-auto">
+      <div className="px-4 sm:px-6 py-8 max-w-2xl mx-auto">
         <h2 className="text-xs uppercase tracking-widest text-curtn-muted mb-8">
           Recent Reviews
         </h2>
@@ -63,7 +63,7 @@ export default function ReviewsPage() {
   }
 
   return (
-    <div className="px-6 py-8 max-w-2xl mx-auto">
+    <div className="px-4 sm:px-6 py-8 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <h2 className="text-xs uppercase tracking-widest text-curtn-muted">
           Recent Reviews
