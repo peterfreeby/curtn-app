@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth/useAuth";
 import { LogForm } from "@/components/log/LogForm";
+import { SmartLogForm } from "@/components/log/SmartLogForm";
 import { Card } from "@/components/Card";
 import Link from "next/link";
 
@@ -40,12 +41,22 @@ function LogPageContent() {
     );
   }
 
+  // If arriving from a show page with a run ID, use the existing detailed form
+  if (runId) {
+    return (
+      <div className="px-6 py-8 max-w-lg mx-auto">
+        <h2 className="text-xs uppercase tracking-widest text-curtn-muted mb-8">
+          Log a Performance
+        </h2>
+        <LogForm runId={runId} />
+      </div>
+    );
+  }
+
+  // Otherwise, use the new smart log form
   return (
-    <div className="px-6 py-8 max-w-lg mx-auto">
-      <h2 className="text-xs uppercase tracking-widest text-curtn-muted mb-8">
-        Log a Performance
-      </h2>
-      <LogForm runId={runId} />
+    <div className="px-6 py-8">
+      <SmartLogForm />
     </div>
   );
 }
