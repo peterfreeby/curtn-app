@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth/useAuth";
 import { LogForm } from "@/components/log/LogForm";
 import { SmartLogForm } from "@/components/log/SmartLogForm";
+import { RecentlyLogged } from "@/components/log/RecentlyLogged";
 import { Card } from "@/components/Card";
 import Link from "next/link";
 
@@ -56,6 +57,7 @@ function LogPageContent() {
   // Otherwise, use the new smart log form
   return (
     <div className="px-6 py-8">
+      <RecentlyLogged />
       <SmartLogForm />
     </div>
   );
