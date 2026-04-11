@@ -44,7 +44,7 @@ export function ShowSearch({ onSelect, canCreate = false, onCreateNew }: ShowSea
   });
 
   const results: ShowResult[] =
-    data?.searchShows?.edges?.map((e: any) => e.node) ?? [];
+    (data?.searchShows?.edges?.map((e: any) => e.node) ?? []).filter(Boolean);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
