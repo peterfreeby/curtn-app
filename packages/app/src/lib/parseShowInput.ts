@@ -40,7 +40,9 @@ export function parseShowInput(input: string): ParsedShowInput {
   }
 
   // Step 1: Extract date/time with chrono-node
-  const chronoResults = chrono.parse(trimmed, new Date(), { forwardDate: true });
+  // forwardDate defaults to false — "Thursday" means last Thursday (past),
+  // which is correct for a logging app where you're recording what you saw.
+  const chronoResults = chrono.parse(trimmed);
   let date: Date | null = null;
   let time: string | null = null;
   let datetimeChunk: { text: string; start: number; end: number } | null = null;
@@ -48,9 +50,19 @@ export function parseShowInput(input: string): ParsedShowInput {
   if (chronoResults.length > 0) {
     const result = chronoResults[0];
     date = result.start.date();
+
+    // Expand the chunk to include leading prepositions like "on", "this", "last", "next"
+    // e.g. "on April 9th" → capture "on " as part of the datetime chunk
+    let chunkStart = result.index;
+    const beforeChunk = trimmed.slice(0, chunkStart);
+    const prepMatch = beforeChunk.match(/\b(on|this|last|next|from|until)\s+$/i);
+    if (prepMatch) {
+      chunkStart -= prepMatch[0].length;
+    }
+
     datetimeChunk = {
-      text: result.text,
-      start: result.index,
+      text: trimmed.slice(chunkStart, result.index + result.text.length),
+      start: chunkStart,
       end: result.index + result.text.length,
     };
 
@@ -95,9 +107,13 @@ export function parseShowInput(input: string): ParsedShowInput {
     }
   }
 
-  // Clean up venue name — remove trailing separators
+  // Clean up venue name — remove trailing prepositions and separators
+  // Catches cases like "Life World on" where "on" was a preposition before a date
   if (venueName) {
-    venueName = venueName.replace(/[,\s]+$/, "").trim();
+    venueName = venueName
+      .replace(/\s+\b(on|in|at|for|from|this|last|next|the)\s*$/i, "")
+      .replace(/[,\s]+$/, "")
+      .trim();
     if (!venueName) venueName = null;
   }
 
