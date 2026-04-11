@@ -4,16 +4,19 @@ import { useState } from "react";
 import { useQuery } from "urql";
 import { REVIEW_LIST_QUERY } from "@/lib/graphql/reviews";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
+import { useAuth } from "@/lib/auth/useAuth";
 
 const PAGE_SIZE = 12;
 
 export default function ReviewsPage() {
+  const { user } = useAuth();
   const [after, setAfter] = useState<string | null>(null);
   const [allEdges, setAllEdges] = useState<any[]>([]);
+  const [followedOnly, setFollowedOnly] = useState(false);
 
   const [{ data, fetching }, reexecute] = useQuery({
     query: REVIEW_LIST_QUERY,
-    variables: { first: PAGE_SIZE, after },
+    variables: { first: PAGE_SIZE, after, followedOnly: followedOnly || undefined },
   });
 
   const connection = data?.reviewList;
@@ -30,10 +33,15 @@ export default function ReviewsPage() {
   }
 
   function handleDeleted() {
-    // Re-fetch current page
     setAfter(null);
     setAllEdges([]);
     reexecute({ requestPolicy: "network-only" });
+  }
+
+  function handleFollowedChange(v: boolean) {
+    setFollowedOnly(v);
+    setAfter(null);
+    setAllEdges([]);
   }
 
   if (fetching && displayEdges.length === 0) {
@@ -56,15 +64,47 @@ export default function ReviewsPage() {
 
   return (
     <div className="px-6 py-8 max-w-2xl mx-auto">
-      <h2 className="text-xs uppercase tracking-widest text-curtn-muted mb-8">
-        Recent Reviews
-      </h2>
+      <div className="flex items-center justify-between mb-8">
+        <h2 className="text-xs uppercase tracking-widest text-curtn-muted">
+          Recent Reviews
+        </h2>
+        {!!user && (
+          <div className="flex rounded-lg border border-curtn-dark overflow-hidden text-xs">
+            <button
+              type="button"
+              onClick={() => handleFollowedChange(false)}
+              className={`px-2.5 py-1 transition-colors cursor-pointer ${
+                !followedOnly
+                  ? "bg-curtn-dark text-curtn-cream"
+                  : "text-curtn-muted hover:text-curtn-cream"
+              }`}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => handleFollowedChange(true)}
+              className={`px-2.5 py-1 transition-colors cursor-pointer ${
+                followedOnly
+                  ? "bg-curtn-dark text-curtn-cream"
+                  : "text-curtn-muted hover:text-curtn-cream"
+              }`}
+            >
+              Friends
+            </button>
+          </div>
+        )}
+      </div>
 
       {displayEdges.length === 0 ? (
         <div className="empty-state">
-          <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">No Reviews Yet</p>
+          <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">
+            {followedOnly ? "No Friend Reviews Yet" : "No Reviews Yet"}
+          </p>
           <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">
-            Be the first to share what moved you.
+            {followedOnly
+              ? "None of the people you follow have reviewed anything yet."
+              : "Be the first to share what moved you."}
           </p>
         </div>
       ) : (

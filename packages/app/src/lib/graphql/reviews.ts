@@ -39,8 +39,8 @@ export const REVIEW_DELETE_MUTATION = gql`
 `;
 
 export const REVIEW_LIST_QUERY = gql`
-  query ReviewList($first: Int, $after: String, $sort: String, $direction: String, $rating: Int, $performance: ID, $runId: ID, $username: String) {
-    reviewList(first: $first, after: $after, sort: $sort, direction: $direction, rating: $rating, performance: $performance, runId: $runId, username: $username) {
+  query ReviewList($first: Int, $after: String, $sort: String, $direction: String, $rating: Int, $performance: ID, $runId: ID, $username: String, $followedOnly: Boolean) {
+    reviewList(first: $first, after: $after, sort: $sort, direction: $direction, rating: $rating, performance: $performance, runId: $runId, username: $username, followedOnly: $followedOnly) {
       edges {
         cursor
         node {
@@ -50,6 +50,7 @@ export const REVIEW_LIST_QUERY = gql`
           attendedAt
           createdAt
           venue
+          isFollowedByViewer
           user {
             id
             username

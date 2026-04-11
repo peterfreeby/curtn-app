@@ -475,9 +475,18 @@ export default function RunDetailPage() {
 
       {/* Reviews */}
       <div className="relative">
-        <h2 className="mb-3 text-xs uppercase tracking-widest text-curtn-muted">
-          Reviews{displayReviewEdges.length > 0 && ` (${displayReviewEdges.length}${reviewPageInfo?.hasNextPage ? "+" : ""})`}
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xs uppercase tracking-widest text-curtn-muted">
+            Reviews{displayReviewEdges.length > 0 && ` (${displayReviewEdges.length}${reviewPageInfo?.hasNextPage ? "+" : ""})`}
+          </h2>
+          <ReviewFilters
+            followedOnly={followedOnly}
+            onFollowedChange={handleFilterChange}
+            reviewScope={reviewScope}
+            onScopeChange={handleScopeChange}
+            isAuthenticated={isAuthenticated}
+          />
+        </div>
         {!reviewsFetching && displayReviewEdges.length === 0 && (
           <div className="empty-state">
             <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">No Reviews Yet</p>

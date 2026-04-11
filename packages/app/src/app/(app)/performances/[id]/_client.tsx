@@ -76,6 +76,12 @@ export default function ShowDetailPage() {
   const [allReviewEdges, setAllReviewEdges] = useState<any[]>([]);
   const [followedOnly, setFollowedOnly] = useState(false);
 
+  function handleFollowedChange(v: boolean) {
+    setFollowedOnly(v);
+    setReviewAfter(null);
+    setAllReviewEdges([]);
+  }
+
   const [{ data: reviewData, fetching: reviewsFetching }, reexecuteReviews] =
     useQuery({
       query: RUN_REVIEWS_QUERY,
@@ -256,6 +262,9 @@ export default function ShowDetailPage() {
           pageInfo={reviewPageInfo}
           onLoadMore={loadMoreReviews}
           onDeleted={handleReviewDeleted}
+          followedOnly={followedOnly}
+          onFollowedChange={handleFollowedChange}
+          isAuthenticated={!!user}
         />
       </div>
       </div>
@@ -375,6 +384,9 @@ export default function ShowDetailPage() {
           pageInfo={reviewPageInfo}
           onLoadMore={loadMoreReviews}
           onDeleted={handleReviewDeleted}
+          followedOnly={followedOnly}
+          onFollowedChange={handleFollowedChange}
+          isAuthenticated={!!user}
         />
 
         {pastShowings.length > 0 && (
@@ -520,20 +532,54 @@ function ReviewsSection({
   pageInfo,
   onLoadMore,
   onDeleted,
+  followedOnly,
+  onFollowedChange,
+  isAuthenticated,
 }: {
   edges: any[];
   fetching: boolean;
   pageInfo: any;
   onLoadMore: () => void;
   onDeleted: () => void;
+  followedOnly?: boolean;
+  onFollowedChange?: (v: boolean) => void;
+  isAuthenticated?: boolean;
 }) {
   return (
     <div className="relative">
-      <h2 className="mb-3 text-xs uppercase tracking-widest text-curtn-muted">
-        Reviews
-        {edges.length > 0 &&
-          ` (${edges.length}${pageInfo?.hasNextPage ? "+" : ""})`}
-      </h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xs uppercase tracking-widest text-curtn-muted">
+          Reviews
+          {edges.length > 0 &&
+            ` (${edges.length}${pageInfo?.hasNextPage ? "+" : ""})`}
+        </h2>
+        {isAuthenticated && onFollowedChange && (
+          <div className="flex rounded-lg border border-curtn-dark overflow-hidden text-xs">
+            <button
+              type="button"
+              onClick={() => onFollowedChange(false)}
+              className={`px-2.5 py-1 transition-colors cursor-pointer ${
+                !followedOnly
+                  ? "bg-curtn-dark text-curtn-cream"
+                  : "text-curtn-muted hover:text-curtn-cream"
+              }`}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => onFollowedChange(true)}
+              className={`px-2.5 py-1 transition-colors cursor-pointer ${
+                followedOnly
+                  ? "bg-curtn-dark text-curtn-cream"
+                  : "text-curtn-muted hover:text-curtn-cream"
+              }`}
+            >
+              Friends
+            </button>
+          </div>
+        )}
+      </div>
 
       {!fetching && edges.length === 0 && (
         <div className="empty-state">
