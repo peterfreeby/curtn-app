@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import { getRecentLog } from "@/lib/recentLog";
 import { Icon, type IconName } from "@/components/icons/Icons";
 import { useAuth } from "@/lib/auth/useAuth";
 import { useNowViewing } from "@/lib/NowViewingContext";
@@ -68,10 +69,28 @@ export function MobileFloatingBar() {
   const [lastTab, setLastTab] = useState<TabId>("browse");
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [toast, setToast] = useState<{ message: string; canChangeList?: boolean } | null>(null);
+  const [toast, setToast] = useState<{ message: string; canChangeList?: boolean; actionLabel?: string; actionHref?: string } | null>(null);
   const [, executeWatchlistAdd] = useMutation(WATCHLIST_ADD_MUTATION);
   const [, executeWatchlistRemove] = useMutation(WATCHLIST_REMOVE_MUTATION);
   const [isOnWatchlist, setIsOnWatchlist] = useState(false);
+
+  // Show toast after logging a show (triggered by ?logged=1 URL param)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("logged") === "1") {
+      const recent = getRecentLog();
+      if (recent) {
+        setToast({
+          message: `Logged ${recent.showTitle}`,
+          actionLabel: "Edit details",
+          actionHref: `/runs/${encodeURIComponent(recent.runId)}`,
+        });
+        setTimeout(() => setToast(null), 5000);
+      }
+      // Clean up the URL param without a navigation
+      window.history.replaceState({}, "", pathname);
+    }
+  }, [pathname]);
 
 
   useEffect(() => {
@@ -219,6 +238,15 @@ export function MobileFloatingBar() {
             >
               Change list
             </button>
+          )}
+          {toast?.actionLabel && toast?.actionHref && (
+            <Link
+              href={toast.actionHref}
+              onClick={() => setToast(null)}
+              className="text-curtn-coral hover:text-curtn-red transition-colors"
+            >
+              {toast.actionLabel}
+            </Link>
           )}
         </div>
       </div>

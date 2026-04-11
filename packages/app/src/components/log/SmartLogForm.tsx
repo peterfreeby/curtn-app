@@ -19,7 +19,6 @@ import { PERFORMANCE_CREATE_MUTATION } from "@/lib/graphql/performances";
 import { VENUE_FIND_OR_CREATE_MUTATION } from "@/lib/graphql/venues";
 import { REVIEW_CREATE_MUTATION } from "@/lib/graphql/reviews";
 import { saveRecentLog } from "@/lib/recentLog";
-import { Toast } from "@/components/Toast";
 import { StarRating } from "@/components/StarRating";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -133,10 +132,6 @@ export function SmartLogForm() {
   // Submission state
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toastInfo, setToastInfo] = useState<{
-    showTitle: string;
-    runId: string;
-  } | null>(null);
 
   // Nearby venues (Model C)
   const { venues: nearbyVenues } = useNearbyVenues();
@@ -400,7 +395,7 @@ export function SmartLogForm() {
         return;
       }
 
-      // Save to localStorage for recently-logged card
+      // Save to localStorage for recently-logged card on /log
       saveRecentLog({
         runId,
         showTitle,
@@ -408,11 +403,8 @@ export function SmartLogForm() {
         rating,
       });
 
-      // Show toast, then redirect after a short delay
-      setToastInfo({ showTitle, runId });
-      setTimeout(() => {
-        router.push(`/runs/${encodeURIComponent(runId)}`);
-      }, 1500);
+      // Redirect immediately to the run page
+      router.push(`/runs/${encodeURIComponent(runId)}?logged=1`);
     } catch {
       setError("Something went wrong. Try again.");
     } finally {
@@ -746,16 +738,6 @@ export function SmartLogForm() {
         </button>
       )}
 
-      {/* ── Toast ─────────────────────────────────────────────────────── */}
-      {toastInfo && (
-        <Toast
-          message={`Logged ${toastInfo.showTitle}`}
-          actionLabel="Edit details"
-          actionHref={`/runs/${encodeURIComponent(toastInfo.runId)}`}
-          duration={8000}
-          onDismiss={() => setToastInfo(null)}
-        />
-      )}
     </div>
   );
 }
