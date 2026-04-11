@@ -447,7 +447,7 @@ export function SmartLogForm() {
   // ── Render ──────────────────────────────────────────────────────────────
 
   return (
-    <div className="max-w-lg mx-auto space-y-6">
+    <div className="max-w-lg mx-auto space-y-5 pb-24">
       {/* ── Model C: Nearby venue suggestions ─────────────────────────── */}
       {!hasInput && nearbyVenues.length > 0 && (
         <div>
@@ -486,9 +486,9 @@ export function SmartLogForm() {
           placeholder={
             resolvedVenue
               ? `Show name at ${resolvedVenue.name}...`
-              : "e.g. Big Beef at Life World Thursday 7pm"
+              : "Show, venue, date..."
           }
-          className="w-full bg-transparent border-b-2 border-curtn-dark text-curtn-cream placeholder:text-curtn-dark/60 py-3 text-lg outline-none focus:border-curtn-coral transition-colors duration-200"
+          className="w-full bg-transparent border-b-2 border-curtn-dark text-curtn-cream placeholder:text-curtn-dark/60 py-3 text-base sm:text-lg outline-none focus:border-curtn-coral transition-colors duration-200"
           autoComplete="off"
           autoFocus
         />
@@ -521,7 +521,7 @@ export function SmartLogForm() {
 
       {/* ── Model A: Preview card with tappable chunks ────────────────── */}
       {hasParsedAnything && (
-        <div className="border border-curtn-dark/50 bg-curtn-surface/50 p-4 space-y-3">
+        <div className="border border-curtn-dark/50 bg-curtn-surface/50 px-4 py-3 space-y-2">
           {/* Show */}
           <div
             className="cursor-pointer group"
@@ -621,62 +621,65 @@ export function SmartLogForm() {
             )}
           </div>
 
-          {/* Date */}
-          <div
-            className="cursor-pointer group"
-            onClick={() => setEditingField(editingField === "date" ? null : "date")}
-          >
-            <span className="text-xs uppercase tracking-widest text-curtn-muted">
-              Date
-            </span>
-            {editingField === "date" ? (
-              <input
-                type="date"
-                value={manualDate || (effectiveDate ? formatDateForInput(effectiveDate) : "")}
-                onChange={(e) => {
-                  setManualDate(e.target.value);
-                  setEditingField(null);
-                }}
-                className="mt-1 w-full bg-transparent border-b border-curtn-coral text-curtn-cream py-1 text-sm outline-none [color-scheme:dark]"
-                autoFocus
-              />
-            ) : (
-              <p className="text-sm text-curtn-cream mt-0.5 group-hover:text-curtn-coral transition-colors">
-                {effectiveDate
-                  ? formatDateHuman(effectiveDate)
-                  : formatDateHuman(new Date())}{" "}
-                {!parsed.date && !manualDate && (
-                  <span className="text-curtn-muted text-xs">today</span>
-                )}
-              </p>
-            )}
-          </div>
+          {/* Date + Time row */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Date */}
+            <div
+              className="cursor-pointer group"
+              onClick={() => setEditingField(editingField === "date" ? null : "date")}
+            >
+              <span className="text-xs uppercase tracking-widest text-curtn-muted">
+                Date
+              </span>
+              {editingField === "date" ? (
+                <input
+                  type="date"
+                  value={manualDate || (effectiveDate ? formatDateForInput(effectiveDate) : "")}
+                  onChange={(e) => {
+                    setManualDate(e.target.value);
+                    setEditingField(null);
+                  }}
+                  className="mt-0.5 w-full bg-transparent border-b border-curtn-coral text-curtn-cream py-1 text-sm outline-none [color-scheme:dark]"
+                  autoFocus
+                />
+              ) : (
+                <p className="text-sm text-curtn-cream mt-0.5 group-hover:text-curtn-coral transition-colors">
+                  {effectiveDate
+                    ? formatDateHuman(effectiveDate)
+                    : formatDateHuman(new Date())}{" "}
+                  {!parsed.date && !manualDate && (
+                    <span className="text-curtn-muted text-xs">today</span>
+                  )}
+                </p>
+              )}
+            </div>
 
-          {/* Time */}
-          <div
-            className="cursor-pointer group"
-            onClick={() => setEditingField(editingField === "time" ? null : "time")}
-          >
-            <span className="text-xs uppercase tracking-widest text-curtn-muted">
-              Time
-            </span>
-            {editingField === "time" ? (
-              <input
-                type="text"
-                defaultValue={effectiveTime || ""}
-                placeholder="e.g. 7:30 PM"
-                onChange={(e) => setManualTime(e.target.value)}
-                onBlur={() => setEditingField(null)}
-                className="mt-1 w-full bg-transparent border-b border-curtn-coral text-curtn-cream py-1 text-sm outline-none"
-                autoFocus
-              />
-            ) : (
-              <p className="text-sm text-curtn-cream mt-0.5 group-hover:text-curtn-coral transition-colors">
-                {effectiveTime || (
-                  <span className="text-curtn-dark">Tap to add time</span>
-                )}
-              </p>
-            )}
+            {/* Time */}
+            <div
+              className="cursor-pointer group"
+              onClick={() => setEditingField(editingField === "time" ? null : "time")}
+            >
+              <span className="text-xs uppercase tracking-widest text-curtn-muted">
+                Time
+              </span>
+              {editingField === "time" ? (
+                <input
+                  type="text"
+                  defaultValue={effectiveTime || ""}
+                  placeholder="e.g. 7:30 PM"
+                  onChange={(e) => setManualTime(e.target.value)}
+                  onBlur={() => setEditingField(null)}
+                  className="mt-0.5 w-full bg-transparent border-b border-curtn-coral text-curtn-cream py-1 text-sm outline-none"
+                  autoFocus
+                />
+              ) : (
+                <p className="text-sm text-curtn-cream mt-0.5 group-hover:text-curtn-coral transition-colors">
+                  {effectiveTime || (
+                    <span className="text-curtn-dark">Tap to add</span>
+                  )}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}
