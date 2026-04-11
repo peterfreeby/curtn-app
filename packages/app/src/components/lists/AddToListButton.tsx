@@ -54,7 +54,7 @@ export function AddToListButton({ itemId, listType }: AddToListButtonProps) {
     }, 1200);
   }
 
-  const lists = data?.myLists?.edges?.map((e: any) => e.node) ?? [];
+  const lists = (data?.myLists?.edges?.map((e: any) => e.node) ?? []).filter(Boolean);
 
   return (
     <div className="relative" ref={ref}>

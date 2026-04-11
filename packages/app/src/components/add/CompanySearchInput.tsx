@@ -40,7 +40,7 @@ export function CompanySearchInput({ onSelect }: CompanySearchInputProps) {
   });
 
   const results: CompanyResult[] =
-    data?.productionCompanyList?.edges?.map((e: any) => e.node) ?? [];
+    (data?.productionCompanyList?.edges?.map((e: any) => e.node) ?? []).filter(Boolean);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {

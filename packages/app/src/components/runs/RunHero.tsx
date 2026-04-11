@@ -120,7 +120,7 @@ export function RunHero({
 
           {/* Poster overlay — falls back to imageUrl */}
           <div className="relative -mt-28 sm:-mt-36 px-6 flex gap-5 items-end">
-            <div className="w-[110px] sm:w-[140px] shrink-0">
+            <div className="w-[90px] sm:w-[140px] shrink-0">
               <div className="relative aspect-[2/3] rounded-sm border-2 border-curtn-dark/50 bg-curtn-surface shadow-2xl overflow-hidden">
                 <img src={(effectivePoster || effectiveImage)!} alt={showTitle} className="h-full w-full object-cover" onError={() => setPosterFailed(true)} />
               </div>
@@ -138,7 +138,7 @@ export function RunHero({
                   ))}
                 </div>
               )}
-              <h1 className="text-2xl sm:text-3xl font-bold text-curtn-cream leading-tight normal-case">{showTitle}</h1>
+              <h1 className="text-xl sm:text-3xl font-bold text-curtn-cream leading-tight normal-case break-words">{showTitle}</h1>
               {heroSub}
             </div>
           </div>

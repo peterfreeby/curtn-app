@@ -76,7 +76,7 @@ function useNearbyVenues() {
   });
 
   const venues = useMemo(
-    () => data?.venuesNear?.edges?.map((e: any) => e.node) ?? [],
+    () => (data?.venuesNear?.edges?.map((e: any) => e.node) ?? []).filter(Boolean),
     [data]
   );
 
@@ -207,7 +207,7 @@ export function SmartLogForm() {
 
   const venueMatches = useMemo(
     () =>
-      venueSearchData?.venueList?.edges?.map((e: any) => e.node) ?? [],
+      (venueSearchData?.venueList?.edges?.map((e: any) => e.node) ?? []).filter(Boolean),
     [venueSearchData]
   );
 

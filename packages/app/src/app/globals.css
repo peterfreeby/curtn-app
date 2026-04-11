@@ -747,8 +747,11 @@ body {
   background: #0a0a0a;
   border: 1px solid rgba(245,241,227,0.08);
   box-shadow: 0 4px 20px rgba(17,17,17,0.2);
-  padding: 32px;
+  padding: 16px;
   position: relative;
+}
+@media (min-width: 640px) {
+  .dinn-panel { padding: 32px; }
 }
 .dinn-panel::before {
   content: '';
@@ -783,9 +786,12 @@ body {
 }
 .dinn-grid {
   display: grid;
-  grid-template-columns: 120px 1fr;
+  grid-template-columns: 80px 1fr;
   gap: 0;
   font-size: 11px;
+}
+@media (min-width: 640px) {
+  .dinn-grid { grid-template-columns: 120px 1fr; }
 }
 .dinn-label {
   color: var(--color-curtn-muted);

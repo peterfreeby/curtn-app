@@ -32,7 +32,7 @@ export function ClaimPrompt({ onSubmitted }: ClaimPromptProps) {
   const [{ fetching: submitting }, submitClaim] = useMutation(SUBMIT_CLAIM_REQUEST_MUTATION);
   const [{ fetching: creatingNew }, submitNewPerson] = useMutation(SUBMIT_CLAIM_REQUEST_NEW_PERSON_MUTATION);
 
-  const results = data?.personList?.edges?.map((e: any) => e.node) ?? [];
+  const results = (data?.personList?.edges?.map((e: any) => e.node) ?? []).filter(Boolean);
   const pendingClaim = claimData?.myClaimRequest;
 
   async function handleClaim(personId: string) {

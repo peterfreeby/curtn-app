@@ -47,7 +47,7 @@ export function VenueSearchInput({ onSelect }: VenueSearchInputProps) {
   });
 
   const results: VenueResult[] =
-    data?.venueList?.edges?.map((e: any) => e.node) ?? [];
+    (data?.venueList?.edges?.map((e: any) => e.node) ?? []).filter(Boolean);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {

@@ -51,7 +51,7 @@ export function VenueSearch({ onSelect, canCreate }: VenueSearchProps) {
   });
 
   const results: VenueResult[] =
-    data?.venueList?.edges?.map((e: any) => e.node) ?? [];
+    (data?.venueList?.edges?.map((e: any) => e.node) ?? []).filter(Boolean);
 
   const [{ fetching: creating }, createVenue] = useMutation(VENUE_FIND_OR_CREATE_MUTATION);
 
