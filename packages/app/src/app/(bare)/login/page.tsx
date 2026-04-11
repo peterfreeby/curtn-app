@@ -173,6 +173,12 @@ export default function LoginPage() {
         )}
 
         <div id="recaptcha-container" />
+
+        <p className="text-[10px] text-curtn-dark text-center leading-relaxed">
+          Protected by reCAPTCHA. Google{" "}
+          <a href="https://policies.google.com/privacy" className="underline" target="_blank" rel="noopener noreferrer">Privacy Policy</a>{" & "}
+          <a href="https://policies.google.com/terms" className="underline" target="_blank" rel="noopener noreferrer">Terms</a>.
+        </p>
       </Card>
     </main>
   );

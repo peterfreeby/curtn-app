@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Hide reCAPTCHA badge — required legal text is in the login page */
+.grecaptcha-badge {
+  visibility: hidden !important;
+}
+
 /* Layout tokens */
 :root {
   --content-width: 896px;   /* ~golden ratio of 1440px viewport — same as max-w-4xl */
