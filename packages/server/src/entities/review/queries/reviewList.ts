@@ -96,11 +96,16 @@ export const reviewList: GraphQLFieldConfig<any, any, Args> = {
       followedUserIds = follows.map((f: any) => f.following)
     }
 
+    // If followedOnly but user follows nobody, return empty immediately
+    if (followedOnly && followedUserIds.length === 0) {
+      return connectionFromArrayLean([], connnectionArgs)
+    }
+
     const filter = {
       ...(userId && { user: userId }),
       ...performanceFilter,
       ...(rating && { rating }),
-      ...(followedOnly && followedUserIds.length > 0 && { user: { $in: followedUserIds } })
+      ...(followedOnly && { user: { $in: followedUserIds } })
     }
 
     // If authenticated and no explicit sort, pin followed users' reviews to top
