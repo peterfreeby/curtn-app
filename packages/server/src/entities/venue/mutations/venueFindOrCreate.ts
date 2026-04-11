@@ -72,12 +72,6 @@ export const venueFindOrCreate = mutationWithClientMutationId({
         return { venue: existing, created: false }
       }
 
-      // Autoconfirmed gate: require 3+ reviews to create new venues
-      const reviewCount = await ReviewModel.countDocuments({ user: ctx.user.id })
-      if (reviewCount < 3) {
-        return { error: 'Log at least 3 shows before adding new venues', venue: null, created: false }
-      }
-
       const name = input.name.trim()
       const slug = name
         .toLowerCase()
