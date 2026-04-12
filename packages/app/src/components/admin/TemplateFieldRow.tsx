@@ -16,6 +16,7 @@ export interface ElementInfo {
   tagName: string
   childCount: number
   isCurrent?: boolean
+  siblings?: ElementInfo[]
 }
 
 interface TemplateFieldRowProps {
@@ -27,7 +28,6 @@ interface TemplateFieldRowProps {
   previewText: string | null
   ancestors?: ElementInfo[]
   children?: ElementInfo[]
-  siblings?: ElementInfo[]
   onActivate: () => void
   onClear: () => void
   onUpdateRule: (rule: SelectorRule) => void
@@ -43,7 +43,6 @@ export function TemplateFieldRow({
   previewText,
   ancestors,
   children,
-  siblings,
   onActivate,
   onClear,
   onUpdateRule,
@@ -51,6 +50,7 @@ export function TemplateFieldRow({
 }: TemplateFieldRowProps) {
   const [expanded, setExpanded] = useState(false)
   const [showDepth, setShowDepth] = useState(false)
+  const [expandedAncestor, setExpandedAncestor] = useState<number | null>(null)
 
   const isMapped = rule && rule.selector
 
@@ -69,7 +69,7 @@ export function TemplateFieldRow({
         <div className="flex items-center gap-1.5 shrink-0">
           {isMapped && (
             <>
-              {((ancestors && ancestors.length > 1) || (children && children.length > 0) || (siblings && siblings.length > 1)) && (
+              {((ancestors && ancestors.length > 1) || (children && children.length > 0)) && (
                 <button
                   onClick={() => { setShowDepth(!showDepth); setExpanded(false) }}
                   className="text-xs text-curtn-muted hover:text-curtn-cream"
@@ -114,53 +114,66 @@ export function TemplateFieldRow({
 
       {/* Depth navigation */}
       {showDepth && isMapped && onNavigate && (
-        <div className="mt-3 border-t border-curtn-dark/20 pt-2 space-y-1.5">
-          <p className="text-xs text-curtn-muted mb-1">Adjust depth:</p>
+        <div className="mt-3 border-t border-curtn-dark/20 pt-2 space-y-2 max-h-[300px] overflow-y-auto">
+          <p className="text-xs text-curtn-muted">Navigate the DOM tree:</p>
 
-          {/* Ancestors (↑ broader) */}
+          {/* Ancestors — each level shows siblings when expanded */}
           {ancestors && ancestors.length > 1 && (
             <div className="space-y-1">
               <p className="text-xs text-curtn-muted/60">↑ Broader (parent elements)</p>
-              {ancestors.slice(1).map((a, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    onNavigate(a.selector, a.textContent)
-                    setShowDepth(false)
-                  }}
-                  className="w-full text-left text-xs px-2 py-1.5 rounded bg-curtn-deep hover:bg-curtn-dark/40 transition-colors"
-                >
-                  <span className="text-curtn-coral">&lt;{a.tagName}&gt;</span>
-                  <span className="text-curtn-muted ml-1 truncate inline-block max-w-[180px] align-bottom">
-                    {a.textContent.substring(0, 60)}{a.textContent.length > 60 ? '…' : ''}
-                  </span>
-                  {a.childCount > 0 && (
-                    <span className="text-curtn-muted/40 ml-1">({a.childCount} children)</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Siblings (← → lateral) */}
-          {siblings && siblings.length > 1 && (
-            <div className="space-y-1">
-              <p className="text-xs text-curtn-muted/60">← → Siblings (same level)</p>
-              {siblings.filter(s => !s.isCurrent).map((s, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    onNavigate(s.selector, s.textContent)
-                    setShowDepth(false)
-                  }}
-                  className="w-full text-left text-xs px-2 py-1.5 rounded bg-curtn-deep hover:bg-curtn-dark/40 transition-colors"
-                >
-                  <span className="text-curtn-coral">&lt;{s.tagName}&gt;</span>
-                  <span className="text-curtn-muted ml-1 truncate inline-block max-w-[180px] align-bottom">
-                    {s.textContent.substring(0, 60)}{s.textContent.length > 60 ? '…' : ''}
-                  </span>
-                </button>
-              ))}
+              {ancestors.slice(1).map((a, levelIndex) => {
+                const sibCount = a.siblings?.filter(s => !s.isCurrent).length || 0
+                const isExpanded = expandedAncestor === levelIndex
+                return (
+                  <div key={levelIndex}>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          onNavigate(a.selector, a.textContent)
+                          setShowDepth(false)
+                          setExpandedAncestor(null)
+                        }}
+                        className="flex-1 text-left text-xs px-2 py-1.5 rounded bg-curtn-deep hover:bg-curtn-dark/40 transition-colors"
+                      >
+                        <span className="text-curtn-coral">&lt;{a.tagName}&gt;</span>
+                        <span className="text-curtn-muted ml-1">
+                          {a.textContent.substring(0, 40)}{a.textContent.length > 40 ? '…' : ''}
+                        </span>
+                      </button>
+                      {sibCount > 0 && (
+                        <button
+                          onClick={() => setExpandedAncestor(isExpanded ? null : levelIndex)}
+                          className="shrink-0 text-xs px-1.5 py-1.5 rounded bg-curtn-deep hover:bg-curtn-dark/40 text-curtn-muted"
+                          title={`${sibCount} sibling${sibCount > 1 ? 's' : ''} at this level`}
+                        >
+                          ←→ {sibCount}
+                        </button>
+                      )}
+                    </div>
+                    {isExpanded && a.siblings && (
+                      <div className="ml-3 mt-1 space-y-1 border-l-2 border-curtn-dark/20 pl-2">
+                        <p className="text-xs text-curtn-muted/40">Siblings at this level:</p>
+                        {a.siblings.filter(s => !s.isCurrent).map((s, si) => (
+                          <button
+                            key={si}
+                            onClick={() => {
+                              onNavigate(s.selector, s.textContent)
+                              setShowDepth(false)
+                              setExpandedAncestor(null)
+                            }}
+                            className="w-full text-left text-xs px-2 py-1 rounded bg-curtn-deep/50 hover:bg-curtn-dark/40 transition-colors"
+                          >
+                            <span className="text-curtn-coral">&lt;{s.tagName}&gt;</span>
+                            <span className="text-curtn-muted ml-1">
+                              {s.textContent.substring(0, 50)}{s.textContent.length > 50 ? '…' : ''}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
 
@@ -174,12 +187,13 @@ export function TemplateFieldRow({
                   onClick={() => {
                     onNavigate(c.selector, c.textContent)
                     setShowDepth(false)
+                    setExpandedAncestor(null)
                   }}
                   className="w-full text-left text-xs px-2 py-1.5 rounded bg-curtn-deep hover:bg-curtn-dark/40 transition-colors"
                 >
                   <span className="text-curtn-coral">&lt;{c.tagName}&gt;</span>
-                  <span className="text-curtn-muted ml-1 truncate inline-block max-w-[180px] align-bottom">
-                    {c.textContent.substring(0, 60)}{c.textContent.length > 60 ? '…' : ''}
+                  <span className="text-curtn-muted ml-1">
+                    {c.textContent.substring(0, 50)}{c.textContent.length > 50 ? '…' : ''}
                   </span>
                   {c.childCount > 0 && (
                     <span className="text-curtn-muted/40 ml-1">({c.childCount} children)</span>

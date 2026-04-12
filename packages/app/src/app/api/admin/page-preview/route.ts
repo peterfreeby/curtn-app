@@ -117,8 +117,34 @@ function getSelectorBridgeScript(): string {
       attrs[target.attributes[i].name] = target.attributes[i].value;
     }
 
-    // Get ancestor chain for ↑ navigation
-    var ancestors = getAncestorChain(target, 5);
+    // Get ancestor chain with siblings at each level
+    var ancestors = [];
+    var current = target;
+    for (var d = 0; d < 5; d++) {
+      if (!current || current === document.body || current === document.documentElement) break;
+      var parentEl = current.parentElement;
+      var levelSiblings = [];
+      if (parentEl) {
+        var sibs = parentEl.children;
+        for (var s = 0; s < Math.min(sibs.length, 15); s++) {
+          levelSiblings.push({
+            selector: generateSelector(sibs[s]),
+            textContent: (sibs[s].textContent || '').trim().substring(0, 200),
+            tagName: sibs[s].tagName.toLowerCase(),
+            childCount: sibs[s].children.length,
+            isCurrent: sibs[s] === current
+          });
+        }
+      }
+      ancestors.push({
+        selector: generateSelector(current),
+        textContent: (current.textContent || '').trim().substring(0, 200),
+        tagName: current.tagName.toLowerCase(),
+        childCount: current.children.length,
+        siblings: levelSiblings
+      });
+      current = parentEl;
+    }
 
     // Get first few children for ↓ navigation
     var children = [];
@@ -132,23 +158,6 @@ function getSelectorBridgeScript(): string {
       });
     }
 
-    // Get siblings for ← → navigation
-    var siblings = [];
-    var parent = target.parentElement;
-    if (parent) {
-      var sibs = parent.children;
-      for (var s = 0; s < Math.min(sibs.length, 10); s++) {
-        var sib = sibs[s];
-        siblings.push({
-          selector: generateSelector(sib),
-          textContent: (sib.textContent || '').trim().substring(0, 200),
-          tagName: sib.tagName.toLowerCase(),
-          childCount: sib.children.length,
-          isCurrent: sib === target
-        });
-      }
-    }
-
     window.parent.postMessage({
       type: 'CURTN_ELEMENT_SELECTED',
       selector: selector,
@@ -156,8 +165,7 @@ function getSelectorBridgeScript(): string {
       attributes: attrs,
       tagName: target.tagName.toLowerCase(),
       ancestors: ancestors,
-      children: children,
-      siblings: siblings
+      children: children
     }, '*');
   }, true);
 
