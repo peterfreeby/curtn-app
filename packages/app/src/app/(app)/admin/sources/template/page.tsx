@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { useQuery, useMutation } from "urql"
 import {
+  DATA_SOURCE_GET_QUERY,
   TEST_PARSING_TEMPLATE_MUTATION,
   DATA_SOURCE_UPDATE_MUTATION,
   SCRAPE_URL_MUTATION,
@@ -113,8 +114,39 @@ export default function TemplateBuilderPage() {
   const [testResults, setTestResults] = useState<ParsedEvent[] | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [presets, setPresets] = useState<Presets>({})
+  const [configLoaded, setConfigLoaded] = useState(false)
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
+
+  // Load existing data source config on mount
+  const [{ data: dsData }] = useQuery({
+    query: DATA_SOURCE_GET_QUERY,
+    variables: { id: dataSourceId || '' },
+    pause: !dataSourceId
+  })
+
+  useEffect(() => {
+    if (configLoaded || !dsData?.node?.config) return
+    try {
+      const config = JSON.parse(dsData.node.config)
+      if (config.parsingTemplate) {
+        const t = config.parsingTemplate
+        setTemplate({
+          selectors: t.selectors || {},
+          cast: t.cast || undefined,
+          crew: t.crew || undefined,
+          listSelector: t.listSelector || undefined,
+          useJsonLd: t.useJsonLd || false,
+          cleanup: t.cleanup || undefined,
+        })
+        if (t.listSelector) setListMode(true)
+      }
+      if (config.presets) {
+        setPresets(config.presets)
+      }
+    } catch { /* invalid JSON, start fresh */ }
+    setConfigLoaded(true)
+  }, [dsData, configLoaded])
 
   // Send a message to the iframe to inspect an element (triggers a simulated click → full context back)
   const inspectElement = useCallback((selector: string, fieldKey?: string) => {
@@ -161,6 +193,36 @@ export default function TemplateBuilderPage() {
   const [selectedVenueName, setSelectedVenueName] = useState<string | null>(null)
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null)
   const [selectedCompanyName, setSelectedCompanyName] = useState<string | null>(null)
+
+  // Restore preset selections when config loads — seed search with preset name to find the entity
+  const [presetsRestored, setPresetsRestored] = useState(false)
+  useEffect(() => {
+    if (presetsRestored || !configLoaded) return
+    if (presets.venueName && !selectedVenueId) {
+      setVenueSearch(presets.venueName)
+      setSelectedVenueName(presets.venueName)
+    }
+    if (presets.companyName && !selectedCompanyId) {
+      setCompanySearch(presets.companyName)
+      setSelectedCompanyName(presets.companyName)
+    }
+    setPresetsRestored(true)
+  }, [configLoaded, presets, presetsRestored, selectedVenueId, selectedCompanyId])
+
+  // Once picker results load with the seeded search, auto-select the matching entity
+  useEffect(() => {
+    if (selectedVenueName && !selectedVenueId && venueOptions.length > 0) {
+      const match = venueOptions.find(o => o._name === selectedVenueName)
+      if (match) setSelectedVenueId(match.id)
+    }
+  }, [venueOptions, selectedVenueName, selectedVenueId])
+
+  useEffect(() => {
+    if (selectedCompanyName && !selectedCompanyId && companyOptions.length > 0) {
+      const match = companyOptions.find(o => o._name === selectedCompanyName)
+      if (match) setSelectedCompanyId(match.id)
+    }
+  }, [companyOptions, selectedCompanyName, selectedCompanyId])
 
   function handleVenueSelect(id: string | null) {
     setSelectedVenueId(id)

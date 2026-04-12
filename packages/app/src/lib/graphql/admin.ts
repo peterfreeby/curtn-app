@@ -28,6 +28,21 @@ export const CSV_IMPORT_MUTATION = gql`
   }
 `;
 
+export const DATA_SOURCE_GET_QUERY = gql`
+  query DataSourceGet($id: ID!) {
+    node(id: $id) {
+      ... on DataSource {
+        id
+        name
+        type
+        url
+        config
+        isActive
+      }
+    }
+  }
+`;
+
 export const DATA_SOURCE_LIST_QUERY = gql`
   query DataSourceList($first: Int, $after: String) {
     dataSourceList(first: $first, after: $after) {
