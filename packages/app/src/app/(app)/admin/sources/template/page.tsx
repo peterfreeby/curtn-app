@@ -75,19 +75,41 @@ export default function TemplateBuilderPage() {
     )
   }, [])
 
+  // Find the parent container selector for a given node ID
+  function findParentContainerSelector(tree: TemplateNodeUI[], targetId: string, parentSelector?: string): string | undefined {
+    for (const node of tree) {
+      if (node.id === targetId) return parentSelector
+      if (node.type === 'container') {
+        const found = findParentContainerSelector(node.children, targetId, node.selector || undefined)
+        if (found !== undefined) return found
+      }
+    }
+    return undefined
+  }
+
+  // When active node changes, tell the iframe about the container scope
+  useEffect(() => {
+    if (!activeNodeId || !iframeRef.current?.contentWindow) return
+    const containerSelector = findParentContainerSelector(nodes, activeNodeId)
+    iframeRef.current.contentWindow.postMessage(
+      { type: 'CURTN_SET_CONTAINER_SCOPE', containerSelector: containerSelector || null },
+      '*'
+    )
+  }, [activeNodeId, nodes])
+
   // Listen for postMessage from iframe bridge
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
       if (event.data?.type !== 'CURTN_ELEMENT_SELECTED') return
       if (!activeNodeId) return
 
-      const { selector, textContent } = event.data
+      // Use relativeSelector if the bridge generated one (scoped to container)
+      const selector = event.data.relativeSelector || event.data.selector
+      const textContent = event.data.textContent
 
       // Find the active node and update it
       setNodes(prev => updateNodeInTree(prev, activeNodeId, { selector }))
       setPreviewTexts(prev => ({ ...prev, [activeNodeId]: textContent }))
-
-      // Don't auto-advance — let the user pick the next field
     }
 
     window.addEventListener('message', handleMessage)

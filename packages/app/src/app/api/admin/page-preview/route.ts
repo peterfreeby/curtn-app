@@ -18,6 +18,7 @@ function getSelectorBridgeScript(): string {
   return `
 (function() {
   let highlightedEl = null;
+  let containerScope = null; // CSS selector of the active container (set by parent)
   const HIGHLIGHT_STYLE = '2px solid #FF6B5A';
   const HIGHLIGHT_BG = 'rgba(255, 107, 90, 0.1)';
 
@@ -158,9 +159,30 @@ function getSelectorBridgeScript(): string {
       });
     }
 
+    // If inside a container scope, generate a relative selector
+    var relativeSelector = null;
+    if (containerScope) {
+      // Find the nearest container element that matches the scope
+      var containerEl = null;
+      var walk = target;
+      while (walk && walk !== document.body) {
+        if (walk.matches && walk.matches(containerScope)) {
+          containerEl = walk;
+          break;
+        }
+        // Also check if an ancestor of the clicked element matches
+        walk = walk.parentElement;
+      }
+      // If clicked element is inside a container match, generate relative selector
+      if (containerEl) {
+        relativeSelector = generateRelativeSelector(target, containerEl);
+      }
+    }
+
     window.parent.postMessage({
       type: 'CURTN_ELEMENT_SELECTED',
       selector: selector,
+      relativeSelector: relativeSelector,
       textContent: (target.textContent || '').trim().substring(0, 500),
       attributes: attrs,
       tagName: target.tagName.toLowerCase(),
@@ -168,6 +190,49 @@ function getSelectorBridgeScript(): string {
       children: children
     }, '*');
   }, true);
+
+  // Generate a selector relative to a container element
+  function generateRelativeSelector(el, container) {
+    if (!container || !container.contains(el)) return null;
+    if (el === container) return null;
+
+    var parts = [];
+    var current = el;
+
+    while (current && current !== container) {
+      var selector = current.tagName.toLowerCase();
+
+      var classes = Array.from(current.classList).filter(function(c) {
+        return !c.startsWith('js-') && !c.startsWith('_') && c.length < 40;
+      });
+      if (classes.length > 0) {
+        selector += '.' + classes.map(function(c) { return CSS.escape(c); }).join('.');
+      }
+
+      parts.unshift(selector);
+
+      // Check if this relative path is already unique within the container
+      var fullSelector = parts.join(' > ');
+      try {
+        var matches = container.querySelectorAll(fullSelector);
+        if (matches.length === 1) {
+          return fullSelector;
+        }
+      } catch(e) {}
+
+      current = current.parentElement;
+    }
+
+    return parts.join(' > ');
+  }
+
+  // Listen for container scope updates from parent
+  window.addEventListener('message', function(msg) {
+    if (!msg.data) return;
+    if (msg.data.type === 'CURTN_SET_CONTAINER_SCOPE') {
+      containerScope = msg.data.containerSelector || null;
+    }
+  });
 
   // Listen for inspect requests from parent (for depth panel navigation)
   window.addEventListener('message', function(msg) {
