@@ -117,6 +117,41 @@ function getSelectorBridgeScript(): string {
 `
 }
 
+function getBaseUrl(sourceUrl: string): string {
+  try {
+    const u = new URL(sourceUrl)
+    // Use origin + path up to last slash for relative URL resolution
+    const pathParts = u.pathname.split('/')
+    pathParts.pop() // remove the last segment (filename or empty)
+    return u.origin + pathParts.join('/') + '/'
+  } catch {
+    return sourceUrl
+  }
+}
+
+function rewriteUrls($: any, sourceUrl: string) {
+  const origin = new URL(sourceUrl).origin
+
+  // Rewrite relative URLs on key attributes
+  const urlAttrs = ['href', 'src', 'srcset', 'action']
+  $('*').each((_i: number, el: any) => {
+    const elem = $(el)
+    for (const attr of urlAttrs) {
+      const val = elem.attr(attr)
+      if (!val || val.startsWith('data:') || val.startsWith('javascript:') || val.startsWith('#')) continue
+      if (val.startsWith('//')) {
+        elem.attr(attr, 'https:' + val)
+      } else if (val.startsWith('/')) {
+        elem.attr(attr, origin + val)
+      } else if (!val.startsWith('http')) {
+        try {
+          elem.attr(attr, new URL(val, sourceUrl).toString())
+        } catch { /* leave as-is */ }
+      }
+    }
+  })
+}
+
 function sanitizeHtml(html: string, sourceUrl: string): string {
   const $ = cheerio.load(html)
 
@@ -142,11 +177,32 @@ function sanitizeHtml(html: string, sourceUrl: string): string {
     }
   })
 
-  // Add base tag for relative URL resolution
-  $('head').prepend(`<base href="${sourceUrl}">`)
+  // Rewrite relative URLs to absolute before adding base tag
+  rewriteUrls($, sourceUrl)
+
+  // Add base tag for any remaining relative references
+  const baseUrl = getBaseUrl(sourceUrl)
+  // Remove any existing base tags first
+  $('base').remove()
+  $('head').prepend(`<base href="${baseUrl}">`)
 
   // Inject crosshair cursor style
-  $('head').append(`<style>* { cursor: crosshair !important; } a { pointer-events: auto !important; }</style>`)
+  $('head').append(`<style>
+    * { cursor: crosshair !important; }
+    a { pointer-events: auto !important; }
+    body { overflow: auto !important; }
+  </style>`)
+
+  // If the body looks empty (SPA / JS-rendered), inject a helpful notice
+  const bodyText = $('body').text().trim()
+  if (bodyText.length < 50) {
+    $('body').prepend(`
+      <div style="background: #1a1a2e; color: #e0d4c8; padding: 16px; font-family: system-ui; border-bottom: 2px solid #ff6b5a; font-size: 14px;">
+        <strong>Note:</strong> This page appears to render its content with JavaScript, which is stripped for security.
+        The page structure is still available for selector mapping — try clicking elements below, or use JSON-LD extraction if available.
+      </div>
+    `)
+  }
 
   // Inject bridge script at end of body
   $('body').append(`<script>${getSelectorBridgeScript()}</script>`)

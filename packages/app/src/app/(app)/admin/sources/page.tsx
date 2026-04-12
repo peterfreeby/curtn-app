@@ -7,6 +7,7 @@ import {
   DATA_SOURCE_LIST_QUERY,
   DATA_SOURCE_CREATE_MUTATION,
   POLL_DATA_SOURCE_MUTATION,
+  DATA_SOURCE_DELETE_MUTATION,
 } from "@/lib/graphql/admin";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
@@ -93,6 +94,10 @@ export default function DataSourcesPage() {
   const [{ fetching: polling }, executePoll] = useMutation(
     POLL_DATA_SOURCE_MUTATION
   );
+  const [{ fetching: deleting }, executeDelete] = useMutation(
+    DATA_SOURCE_DELETE_MUTATION
+  );
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const sources: DataSourceNode[] =
     data?.dataSourceList?.edges?.map((e: any) => e.node) || [];
@@ -156,6 +161,24 @@ export default function DataSourcesPage() {
       );
       reexecuteQuery({ requestPolicy: "network-only" });
     }
+  }
+
+  async function handleDelete(sourceId: string, sourceName: string) {
+    const decoded = atob(sourceId);
+    const mongoId = decoded.split(":")[1];
+
+    const result = await executeDelete({
+      input: { dataSourceId: mongoId },
+    });
+
+    const data = result.data?.dataSourceDelete;
+    if (data?.error) {
+      setPollResult(`Delete failed: ${data.error}`);
+    } else {
+      setPollResult(`Deleted "${sourceName}" and ${data?.pendingImportsRemoved || 0} pending imports`);
+      reexecuteQuery({ requestPolicy: "network-only" });
+    }
+    setConfirmDeleteId(null);
   }
 
   return (
@@ -341,6 +364,33 @@ export default function DataSourcesPage() {
                 >
                   {polling ? "Polling..." : isRecentlyPolled(source.lastPolledAt) ? "Cooldown" : "Poll Now"}
                 </Button>
+                {confirmDeleteId === source.id ? (
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleDelete(source.id, source.name)}
+                      disabled={deleting}
+                    >
+                      {deleting ? "..." : "Confirm"}
+                    </Button>
+                    <Button
+                      variant="tertiary"
+                      size="sm"
+                      onClick={() => setConfirmDeleteId(null)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="tertiary"
+                    size="sm"
+                    onClick={() => setConfirmDeleteId(source.id)}
+                  >
+                    Delete
+                  </Button>
+                )}
               </div>
             </Card>
           ))}

@@ -94,6 +94,16 @@ export const DATA_SOURCE_UPDATE_MUTATION = gql`
   }
 `;
 
+export const DATA_SOURCE_DELETE_MUTATION = gql`
+  mutation DataSourceDelete($input: dataSourceDeleteInput!) {
+    dataSourceDelete(input: $input) {
+      deletedId
+      pendingImportsRemoved
+      error
+    }
+  }
+`;
+
 export const TEST_PARSING_TEMPLATE_MUTATION = gql`
   mutation TestParsingTemplate($input: testParsingTemplateInput!) {
     testParsingTemplate(input: $input) {
