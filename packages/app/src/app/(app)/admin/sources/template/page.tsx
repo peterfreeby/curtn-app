@@ -26,7 +26,8 @@ interface CreditSelectors {
 
 interface ParsingTemplate {
   selectors: Record<string, SelectorRule | undefined>
-  credits?: CreditSelectors
+  cast?: CreditSelectors
+  crew?: CreditSelectors
   listSelector?: string
   useJsonLd?: boolean
   cleanup?: Record<string, any>
@@ -54,7 +55,8 @@ interface ParsedEvent {
   duration?: number | null
   startDate?: string | null
   endDate?: string | null
-  credits?: { name: string; role?: string }[] | null
+  cast?: { name: string; role?: string; headshotUrl?: string }[] | null
+  crew?: { name: string; role?: string; headshotUrl?: string }[] | null
 }
 
 const FIELD_DEFS = [
@@ -74,13 +76,18 @@ const FIELD_DEFS = [
   { key: 'endDate', label: 'Run End Date' },
 ] as const
 
-// Credit selectors are stored separately from regular selectors
-// but use the same field row UI for consistency
-const CREDIT_FIELD_DEFS = [
-  { key: 'creditContainer', label: 'Credit Container', description: 'The element wrapping each cast/crew entry' },
-  { key: 'creditName', label: 'Credit Name', description: 'Person name within a credit entry' },
-  { key: 'creditRole', label: 'Credit Role', description: 'Role label within a credit entry (optional)' },
-  { key: 'creditHeadshot', label: 'Credit Headshot', description: 'Headshot image within a credit entry (extracts src)' },
+const CAST_FIELD_DEFS = [
+  { key: 'castContainer', label: 'Container' },
+  { key: 'castName', label: 'Name' },
+  { key: 'castRole', label: 'Role' },
+  { key: 'castHeadshot', label: 'Headshot' },
+] as const
+
+const CREW_FIELD_DEFS = [
+  { key: 'crewContainer', label: 'Container' },
+  { key: 'crewName', label: 'Name' },
+  { key: 'crewRole', label: 'Role' },
+  { key: 'crewHeadshot', label: 'Headshot' },
 ] as const
 
 const EMPTY_TEMPLATE: ParsingTemplate = {
@@ -169,26 +176,17 @@ export default function TemplateBuilderPage() {
     setFieldDepthInfo(prev => ({ ...prev, [fieldKey]: { ancestors, children } }))
     setPreviewTexts(prev => ({ ...prev, [fieldKey]: textContent }))
 
-    // Credit fields map to template.credits
-    if (fieldKey === 'creditContainer') {
+    // Cast/crew fields map to template.cast / template.crew
+    const castCrewMatch = fieldKey.match(/^(cast|crew)(Container|Name|Role|Headshot)$/)
+    if (castCrewMatch) {
+      const group = castCrewMatch[1] as 'cast' | 'crew'
+      const prop = castCrewMatch[2] === 'Container' ? 'containerSelector'
+        : castCrewMatch[2] === 'Name' ? 'nameSelector'
+        : castCrewMatch[2] === 'Role' ? 'roleSelector'
+        : 'headshotSelector'
       setTemplate(prev => ({
         ...prev,
-        credits: { ...prev.credits || { containerSelector: '', nameSelector: '' }, containerSelector: selector }
-      }))
-    } else if (fieldKey === 'creditName') {
-      setTemplate(prev => ({
-        ...prev,
-        credits: { ...prev.credits || { containerSelector: '', nameSelector: '' }, nameSelector: selector }
-      }))
-    } else if (fieldKey === 'creditRole') {
-      setTemplate(prev => ({
-        ...prev,
-        credits: { ...prev.credits || { containerSelector: '', nameSelector: '' }, roleSelector: selector }
-      }))
-    } else if (fieldKey === 'creditHeadshot') {
-      setTemplate(prev => ({
-        ...prev,
-        credits: { ...prev.credits || { containerSelector: '', nameSelector: '' }, headshotSelector: selector }
+        [group]: { ...prev[group] || { containerSelector: '', nameSelector: '' }, [prop]: selector }
       }))
     } else {
       // Regular field
@@ -411,7 +409,8 @@ export default function TemplateBuilderPage() {
 
   const activeFieldLabel = activeField
     ? (FIELD_DEFS.find(f => f.key === activeField)?.label
-      || CREDIT_FIELD_DEFS.find(f => f.key === activeField)?.label
+      || CAST_FIELD_DEFS.find(f => f.key === activeField)?.label
+      || CREW_FIELD_DEFS.find(f => f.key === activeField)?.label
       || activeField)
     : null
 
@@ -587,68 +586,72 @@ export default function TemplateBuilderPage() {
                 />
               ))}
 
-              {/* Credits — independent selector rows */}
-              <div className="border-t border-curtn-dark/20 pt-3 mt-3">
-                <h3 className="text-xs font-medium text-curtn-muted uppercase tracking-wide mb-2">
-                  Credits (Cast / Crew)
-                </h3>
-                <div className="space-y-2">
-                  {CREDIT_FIELD_DEFS.map(field => {
-                    // Map credit field keys to their current selector values
-                    const selectorValue = field.key === 'creditContainer'
-                      ? template.credits?.containerSelector
-                      : field.key === 'creditName'
-                        ? template.credits?.nameSelector
-                        : field.key === 'creditRole'
-                          ? template.credits?.roleSelector
-                          : template.credits?.headshotSelector
-                    const rule = selectorValue ? { selector: selectorValue } : undefined
+              {/* Cast and Crew — separate selector groups */}
+              {[
+                { group: 'cast' as const, label: 'Cast', fields: CAST_FIELD_DEFS },
+                { group: 'crew' as const, label: 'Crew', fields: CREW_FIELD_DEFS },
+              ].map(({ group, label, fields }) => (
+                <div key={group} className="border-t border-curtn-dark/20 pt-3 mt-3">
+                  <h3 className="text-xs font-medium text-curtn-muted uppercase tracking-wide mb-2">
+                    {label}
+                  </h3>
+                  <div className="space-y-2">
+                    {fields.map(field => {
+                      const propMap: Record<string, keyof CreditSelectors> = {
+                        [`${group}Container`]: 'containerSelector',
+                        [`${group}Name`]: 'nameSelector',
+                        [`${group}Role`]: 'roleSelector',
+                        [`${group}Headshot`]: 'headshotSelector',
+                      }
+                      const prop = propMap[field.key]
+                      const selectorValue = prop ? template[group]?.[prop] : undefined
+                      const rule = selectorValue ? { selector: selectorValue } : undefined
 
-                    return (
-                      <TemplateFieldRow
-                        key={field.key}
-                        fieldName={field.key}
-                        label={field.label}
-                        rule={rule}
-                        isActive={activeField === field.key}
-                        previewText={previewTexts[field.key] || null}
-                        ancestors={fieldDepthInfo[field.key]?.ancestors}
-                        children={fieldDepthInfo[field.key]?.children}
-                        onActivate={() => {
-                          setActiveField(activeField === field.key ? null : field.key)
-                          setSelectingListContainer(false)
-                        }}
-                        onClear={() => {
-                          setTemplate(prev => {
-                            if (!prev.credits) return prev
-                            const credits = { ...prev.credits }
-                            if (field.key === 'creditContainer') credits.containerSelector = ''
-                            else if (field.key === 'creditName') credits.nameSelector = ''
-                            else if (field.key === 'creditRole') credits.roleSelector = undefined
-                            else credits.headshotSelector = undefined
-                            // Clear credits entirely if container and name are both empty
-                            if (!credits.containerSelector && !credits.nameSelector) {
-                              return { ...prev, credits: undefined }
-                            }
-                            return { ...prev, credits }
-                          })
-                          setPreviewTexts(prev => {
-                            const next = { ...prev }
-                            delete next[field.key]
-                            return next
-                          })
-                        }}
-                        onUpdateRule={rule => {
-                          applyFieldSelection(field.key, rule.selector, previewTexts[field.key] || '', [], [])
-                        }}
-                        onNavigate={(selector, textContent) => {
-                          applyFieldSelection(field.key, selector, textContent, [], [])
-                        }}
-                      />
-                    )
-                  })}
+                      return (
+                        <TemplateFieldRow
+                          key={field.key}
+                          fieldName={field.key}
+                          label={field.label}
+                          rule={rule}
+                          isActive={activeField === field.key}
+                          previewText={previewTexts[field.key] || null}
+                          ancestors={fieldDepthInfo[field.key]?.ancestors}
+                          children={fieldDepthInfo[field.key]?.children}
+                          onActivate={() => {
+                            setActiveField(activeField === field.key ? null : field.key)
+                            setSelectingListContainer(false)
+                          }}
+                          onClear={() => {
+                            setTemplate(prev => {
+                              if (!prev[group]) return prev
+                              const updated = { ...prev[group]! }
+                              if (prop === 'containerSelector') updated.containerSelector = ''
+                              else if (prop === 'nameSelector') updated.nameSelector = ''
+                              else (updated as any)[prop] = undefined
+                              if (!updated.containerSelector && !updated.nameSelector) {
+                                return { ...prev, [group]: undefined }
+                              }
+                              return { ...prev, [group]: updated }
+                            })
+                            setPreviewTexts(prev => {
+                              const next = { ...prev }
+                              delete next[field.key]
+                              return next
+                            })
+                          }}
+                          onUpdateRule={rule => {
+                            applyFieldSelection(field.key, rule.selector, previewTexts[field.key] || '', [], [])
+                          }}
+                          onNavigate={(selector, textContent) => {
+                            applyFieldSelection(field.key, selector, textContent, [], [])
+                          }}
+                          onInspect={inspectElement}
+                        />
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
+              ))}
 
               {/* Presets — override fields with database entities */}
               <div className="border-t border-curtn-dark/20 pt-3 mt-3">

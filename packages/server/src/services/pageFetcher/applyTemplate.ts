@@ -230,37 +230,37 @@ export function applyTemplate(html: string, template: ParsingTemplate, sourceUrl
       }
     }
 
-    // Credits extraction
-    let credits: { name: string; role?: string; headshotUrl?: string }[] | undefined
-    if (template.credits?.containerSelector) {
-      credits = []
-      context.find(template.credits.containerSelector).each((_i: number, el: any) => {
+    // Cast and crew extraction
+    function extractCredits(creditRule: typeof template.cast): { name: string; role?: string; headshotUrl?: string }[] | undefined {
+      if (!creditRule?.containerSelector) return undefined
+      const results: { name: string; role?: string; headshotUrl?: string }[] = []
+      context.find(creditRule.containerSelector).each((_i: number, el: any) => {
         const creditEl = $(el)
-        const name = creditEl.find(template.credits!.nameSelector).text().trim()
+        const name = creditEl.find(creditRule.nameSelector).text().trim()
         if (!name) return
-        const role = template.credits!.roleSelector
-          ? creditEl.find(template.credits!.roleSelector).text().trim() || undefined
+        const role = creditRule.roleSelector
+          ? creditEl.find(creditRule.roleSelector).text().trim() || undefined
           : undefined
         let headshotUrl: string | undefined
-        if (template.credits!.headshotSelector) {
-          const img = creditEl.find(template.credits!.headshotSelector).first()
-          // Try multiple image source attributes (handles lazy-loaded images)
+        if (creditRule.headshotSelector) {
+          const img = creditEl.find(creditRule.headshotSelector).first()
           let src = img.attr('src')
-          // Skip tiny placeholder src (common with lazy loading)
           if (src && src.includes('fit=10')) src = undefined
           if (!src) src = img.attr('data-src') || undefined
           if (!src) {
-            // Extract first URL from srcset/data-srcset
             const srcset = img.attr('srcset') || img.attr('data-srcset') || ''
             const firstEntry = srcset.split(',')[0]?.trim().split(/\s+/)[0]
             if (firstEntry) src = firstEntry
           }
           headshotUrl = resolveUrl(src, sourceUrl)
         }
-        credits!.push({ name, role, headshotUrl })
+        results.push({ name, role, headshotUrl })
       })
-      if (credits.length === 0) credits = undefined
+      return results.length > 0 ? results : undefined
     }
+
+    const cast = extractCredits(template.cast)
+    const crew = extractCredits(template.crew)
 
     events.push({
       title,
@@ -275,7 +275,8 @@ export function applyTemplate(html: string, template: ParsingTemplate, sourceUrl
       duration,
       startDate,
       endDate,
-      credits,
+      cast,
+      crew,
       rawData: {
         extractionMethod: 'css-selector',
         price,

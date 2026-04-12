@@ -30,7 +30,8 @@ const parsedEventType = new GraphQLObjectType({
     duration: { type: GraphQLInt },
     startDate: { type: GraphQLString, resolve: e => e.startDate?.toISOString?.() ?? e.startDate },
     endDate: { type: GraphQLString, resolve: e => e.endDate?.toISOString?.() ?? e.endDate },
-    credits: { type: new GraphQLList(parsedCreditType) }
+    cast: { type: new GraphQLList(parsedCreditType) },
+    crew: { type: new GraphQLList(parsedCreditType) }
   })
 })
 

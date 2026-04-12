@@ -152,14 +152,14 @@ async function promoteToRecords(pi: any, userId: string) {
     await run.save()
   }
 
-  // 6. Create credits (Person + Credit records) if provided
-  if (pi.credits?.length > 0 && run) {
-    for (let i = 0; i < pi.credits.length; i++) {
-      const { name, role } = pi.credits[i]
+  // 6. Create cast and crew (Person + Credit records) if provided
+  async function createCredits(entries: any[], creditType: 'cast' | 'crew', defaultRole: string) {
+    if (!entries?.length || !run) return
+    for (let i = 0; i < entries.length; i++) {
+      const { name, role, headshotUrl } = entries[i]
       if (!name?.trim()) continue
 
       const personSlug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
-      const { headshotUrl } = pi.credits[i]
       let person = await PersonModel.findOne({ slug: personSlug })
       if (!person) {
         person = await new PersonModel({
@@ -173,20 +173,22 @@ async function promoteToRecords(pi: any, userId: string) {
         await person.save()
       }
 
-      // Check if credit already exists for this person + run
       const existingCredit = await CreditModel.findOne({ person: person._id, run: run._id })
       if (!existingCredit) {
         await new CreditModel({
           person: person._id,
           run: run._id,
-          creditType: 'cast',
-          role: role?.trim() || 'Performer',
+          creditType,
+          role: role?.trim() || defaultRole,
           order: i,
           submittedBy: userId
         }).save()
       }
     }
   }
+
+  await createCredits(pi.cast, 'cast', 'Performer')
+  await createCredits(pi.crew, 'crew', 'Crew')
 }
 
 export const approvePendingImport = mutationWithClientMutationId({

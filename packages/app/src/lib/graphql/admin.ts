@@ -122,7 +122,12 @@ export const TEST_PARSING_TEMPLATE_MUTATION = gql`
         duration
         startDate
         endDate
-        credits {
+        cast {
+          name
+          role
+          headshotUrl
+        }
+        crew {
           name
           role
           headshotUrl

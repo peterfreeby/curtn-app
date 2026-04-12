@@ -32,7 +32,8 @@ export interface ParsingTemplate {
     startDate?: SelectorRule
     endDate?: SelectorRule
   }
-  credits?: CreditSelectorRule
+  cast?: CreditSelectorRule
+  crew?: CreditSelectorRule
   listSelector?: string        // CSS selector for the repeating container (list pages)
   useJsonLd?: boolean          // extract from JSON-LD <script> tags first
   jsonLdFieldMap?: Record<string, string>  // map schema.org fields to Curtn fields

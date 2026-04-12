@@ -21,7 +21,8 @@ interface ParsedEvent {
   duration?: number | null
   startDate?: string | null
   endDate?: string | null
-  credits?: ParsedCredit[] | null
+  cast?: ParsedCredit[] | null
+  crew?: ParsedCredit[] | null
 }
 
 interface TemplatePreviewTableProps {
@@ -59,7 +60,8 @@ export function TemplatePreviewTable({ events }: TemplatePreviewTableProps) {
     { key: 'runDescription', label: 'Run Desc' },
     { key: 'ticketUrl', label: 'Tickets' },
     { key: 'price', label: 'Price' },
-    { key: 'credits', label: 'Credits' },
+    { key: 'cast', label: 'Cast' },
+    { key: 'crew', label: 'Crew' },
   ]
 
   const activeColumns = columns.filter(col =>
@@ -133,7 +135,7 @@ function renderCell(event: ParsedEvent, key: keyof ParsedEvent) {
     return <span className="whitespace-nowrap">{String(val)} min</span>
   }
 
-  if (key === 'credits' && Array.isArray(val) && val.length > 0) {
+  if ((key === 'cast' || key === 'crew') && Array.isArray(val) && val.length > 0) {
     return (
       <div className="space-y-0.5 max-w-[200px]">
         {(val as ParsedCredit[]).slice(0, 5).map((c, i) => (

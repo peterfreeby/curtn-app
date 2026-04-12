@@ -12,7 +12,8 @@ export interface ParsedEvent {
   duration?: number
   startDate?: Date
   endDate?: Date
-  credits?: { name: string; role?: string; headshotUrl?: string }[]
+  cast?: { name: string; role?: string; headshotUrl?: string }[]
+  crew?: { name: string; role?: string; headshotUrl?: string }[]
   rawData: Record<string, any>
 }
 

@@ -65,7 +65,8 @@ async function createPendingImports(
       imageUrl: event.imageUrl,
       startDate: event.startDate,
       endDate: event.endDate,
-      credits: event.credits,
+      cast: event.cast,
+      crew: event.crew,
       // Presets take priority, then extracted values, then cleanup rule defaults
       venueName: presets?.venueName || event.rawData?.venue || rules.defaultVenue || undefined,
       stageName: presets?.stageName || rules.defaultStage || undefined,
