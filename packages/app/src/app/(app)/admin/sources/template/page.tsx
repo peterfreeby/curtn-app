@@ -21,6 +21,7 @@ interface CreditSelectors {
   containerSelector: string
   nameSelector: string
   roleSelector?: string
+  headshotSelector?: string
 }
 
 interface ParsingTemplate {
@@ -79,6 +80,7 @@ const CREDIT_FIELD_DEFS = [
   { key: 'creditContainer', label: 'Credit Container', description: 'The element wrapping each cast/crew entry' },
   { key: 'creditName', label: 'Credit Name', description: 'Person name within a credit entry' },
   { key: 'creditRole', label: 'Credit Role', description: 'Role label within a credit entry (optional)' },
+  { key: 'creditHeadshot', label: 'Credit Headshot', description: 'Headshot image within a credit entry (extracts src)' },
 ] as const
 
 const EMPTY_TEMPLATE: ParsingTemplate = {
@@ -99,8 +101,8 @@ export default function TemplateBuilderPage() {
   const [listMode, setListMode] = useState(false)
   const [selectingListContainer, setSelectingListContainer] = useState(false)
   const [jsonLdDetected, setJsonLdDetected] = useState(false)
-  // Track ancestors/children from last click per field for depth navigation
-  const [fieldDepthInfo, setFieldDepthInfo] = useState<Record<string, { ancestors: ElementInfo[]; children: ElementInfo[] }>>({})
+  // Track ancestors/children/siblings from last click per field for depth navigation
+  const [fieldDepthInfo, setFieldDepthInfo] = useState<Record<string, { ancestors: ElementInfo[]; children: ElementInfo[]; siblings: ElementInfo[] }>>({})
   const [testResults, setTestResults] = useState<ParsedEvent[] | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [presets, setPresets] = useState<Presets>({})
@@ -154,9 +156,9 @@ export default function TemplateBuilderPage() {
 
   // Listen for postMessage from iframe bridge script
   // Map credit field keys to template.credits properties
-  function applyFieldSelection(fieldKey: string, selector: string, textContent: string, ancestors: ElementInfo[], children: ElementInfo[]) {
+  function applyFieldSelection(fieldKey: string, selector: string, textContent: string, ancestors: ElementInfo[], children: ElementInfo[], siblings: ElementInfo[] = []) {
     // Store depth info for this field
-    setFieldDepthInfo(prev => ({ ...prev, [fieldKey]: { ancestors, children } }))
+    setFieldDepthInfo(prev => ({ ...prev, [fieldKey]: { ancestors, children, siblings } }))
     setPreviewTexts(prev => ({ ...prev, [fieldKey]: textContent }))
 
     // Credit fields map to template.credits
@@ -175,6 +177,11 @@ export default function TemplateBuilderPage() {
         ...prev,
         credits: { ...prev.credits || { containerSelector: '', nameSelector: '' }, roleSelector: selector }
       }))
+    } else if (fieldKey === 'creditHeadshot') {
+      setTemplate(prev => ({
+        ...prev,
+        credits: { ...prev.credits || { containerSelector: '', nameSelector: '' }, headshotSelector: selector }
+      }))
     } else {
       // Regular field
       setTemplate(prev => ({
@@ -188,7 +195,7 @@ export default function TemplateBuilderPage() {
     function handleMessage(event: MessageEvent) {
       if (event.data?.type !== 'CURTN_ELEMENT_SELECTED') return
 
-      const { selector, textContent, ancestors, children } = event.data
+      const { selector, textContent, ancestors, children, siblings } = event.data
 
       if (selectingListContainer) {
         setTemplate(prev => ({ ...prev, listSelector: selector }))
@@ -199,7 +206,7 @@ export default function TemplateBuilderPage() {
 
       if (!activeField) return
 
-      applyFieldSelection(activeField, selector, textContent, ancestors || [], children || [])
+      applyFieldSelection(activeField, selector, textContent, ancestors || [], children || [], siblings || [])
 
       // Auto-advance to next unmapped field (only for regular fields)
       const currentIndex = FIELD_DEFS.findIndex(f => f.key === activeField)
@@ -544,6 +551,7 @@ export default function TemplateBuilderPage() {
                   previewText={previewTexts[field.key] || null}
                   ancestors={fieldDepthInfo[field.key]?.ancestors}
                   children={fieldDepthInfo[field.key]?.children}
+                  siblings={fieldDepthInfo[field.key]?.siblings}
                   onActivate={() => {
                     setActiveField(activeField === field.key ? null : field.key)
                     setSelectingListContainer(false)
@@ -583,7 +591,9 @@ export default function TemplateBuilderPage() {
                       ? template.credits?.containerSelector
                       : field.key === 'creditName'
                         ? template.credits?.nameSelector
-                        : template.credits?.roleSelector
+                        : field.key === 'creditRole'
+                          ? template.credits?.roleSelector
+                          : template.credits?.headshotSelector
                     const rule = selectorValue ? { selector: selectorValue } : undefined
 
                     return (
@@ -606,7 +616,8 @@ export default function TemplateBuilderPage() {
                             const credits = { ...prev.credits }
                             if (field.key === 'creditContainer') credits.containerSelector = ''
                             else if (field.key === 'creditName') credits.nameSelector = ''
-                            else credits.roleSelector = undefined
+                            else if (field.key === 'creditRole') credits.roleSelector = undefined
+                            else credits.headshotSelector = undefined
                             // Clear credits entirely if container and name are both empty
                             if (!credits.containerSelector && !credits.nameSelector) {
                               return { ...prev, credits: undefined }

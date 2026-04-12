@@ -21,7 +21,7 @@ export interface IPendingImport {
   imageUrl?: string
   startDate?: Date
   endDate?: Date
-  credits?: { name: string; role?: string }[]
+  credits?: { name: string; role?: string; headshotUrl?: string }[]
 
   // Raw source data for debugging
   rawData?: Record<string, any>
@@ -68,7 +68,8 @@ const pendingImportSchema = new Schema<IPendingImport>({
   endDate: Date,
   credits: [{
     name: { type: String, trim: true },
-    role: { type: String, trim: true }
+    role: { type: String, trim: true },
+    headshotUrl: { type: String, trim: true }
   }],
   rawData: Schema.Types.Mixed,
   importedAt: {

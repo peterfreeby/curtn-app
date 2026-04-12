@@ -8,7 +8,8 @@ const parsedCreditType = new GraphQLObjectType({
   name: 'TestParsedCredit',
   fields: () => ({
     name: { type: GraphQLString },
-    role: { type: GraphQLString }
+    role: { type: GraphQLString },
+    headshotUrl: { type: GraphQLString }
   })
 })
 

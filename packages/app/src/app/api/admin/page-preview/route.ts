@@ -132,6 +132,23 @@ function getSelectorBridgeScript(): string {
       });
     }
 
+    // Get siblings for ← → navigation
+    var siblings = [];
+    var parent = target.parentElement;
+    if (parent) {
+      var sibs = parent.children;
+      for (var s = 0; s < Math.min(sibs.length, 10); s++) {
+        var sib = sibs[s];
+        siblings.push({
+          selector: generateSelector(sib),
+          textContent: (sib.textContent || '').trim().substring(0, 200),
+          tagName: sib.tagName.toLowerCase(),
+          childCount: sib.children.length,
+          isCurrent: sib === target
+        });
+      }
+    }
+
     window.parent.postMessage({
       type: 'CURTN_ELEMENT_SELECTED',
       selector: selector,
@@ -139,7 +156,8 @@ function getSelectorBridgeScript(): string {
       attributes: attrs,
       tagName: target.tagName.toLowerCase(),
       ancestors: ancestors,
-      children: children
+      children: children,
+      siblings: siblings
     }, '*');
   }, true);
 

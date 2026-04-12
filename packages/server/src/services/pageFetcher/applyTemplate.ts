@@ -231,7 +231,7 @@ export function applyTemplate(html: string, template: ParsingTemplate, sourceUrl
     }
 
     // Credits extraction
-    let credits: { name: string; role?: string }[] | undefined
+    let credits: { name: string; role?: string; headshotUrl?: string }[] | undefined
     if (template.credits?.containerSelector) {
       credits = []
       context.find(template.credits.containerSelector).each((_i: number, el: any) => {
@@ -241,7 +241,13 @@ export function applyTemplate(html: string, template: ParsingTemplate, sourceUrl
         const role = template.credits!.roleSelector
           ? creditEl.find(template.credits!.roleSelector).text().trim() || undefined
           : undefined
-        credits!.push({ name, role })
+        let headshotUrl: string | undefined
+        if (template.credits!.headshotSelector) {
+          const img = creditEl.find(template.credits!.headshotSelector).first()
+          const src = img.attr('src') || img.attr('data-src') || undefined
+          headshotUrl = resolveUrl(src, sourceUrl)
+        }
+        credits!.push({ name, role, headshotUrl })
       })
       if (credits.length === 0) credits = undefined
     }

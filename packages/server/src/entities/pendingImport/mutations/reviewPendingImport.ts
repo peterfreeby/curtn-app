@@ -159,13 +159,18 @@ async function promoteToRecords(pi: any, userId: string) {
       if (!name?.trim()) continue
 
       const personSlug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+      const { headshotUrl } = pi.credits[i]
       let person = await PersonModel.findOne({ slug: personSlug })
       if (!person) {
         person = await new PersonModel({
           name: name.trim(),
           slug: personSlug,
+          ...(headshotUrl && { headshotUrl }),
           submittedBy: userId
         }).save()
+      } else if (headshotUrl && !person.headshotUrl) {
+        person.headshotUrl = headshotUrl
+        await person.save()
       }
 
       // Check if credit already exists for this person + run

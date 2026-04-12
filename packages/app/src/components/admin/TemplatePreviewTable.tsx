@@ -3,6 +3,7 @@
 interface ParsedCredit {
   name: string
   role?: string
+  headshotUrl?: string
 }
 
 interface ParsedEvent {
@@ -136,9 +137,19 @@ function renderCell(event: ParsedEvent, key: keyof ParsedEvent) {
     return (
       <div className="space-y-0.5 max-w-[200px]">
         {(val as ParsedCredit[]).slice(0, 5).map((c, i) => (
-          <div key={i} className="truncate">
-            <span className="text-curtn-cream">{c.name}</span>
-            {c.role && <span className="text-curtn-muted ml-1">({c.role})</span>}
+          <div key={i} className="flex items-center gap-1.5">
+            {c.headshotUrl && (
+              <img
+                src={c.headshotUrl}
+                alt=""
+                className="w-6 h-6 rounded-full object-cover shrink-0"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+              />
+            )}
+            <div className="truncate">
+              <span className="text-curtn-cream">{c.name}</span>
+              {c.role && <span className="text-curtn-muted ml-1">({c.role})</span>}
+            </div>
           </div>
         ))}
         {val.length > 5 && (

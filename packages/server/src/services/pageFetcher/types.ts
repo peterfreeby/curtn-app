@@ -11,6 +11,7 @@ export interface CreditSelectorRule {
   containerSelector: string  // CSS selector for each credit entry (repeating)
   nameSelector: string       // CSS selector for the person's name within the container
   roleSelector?: string      // CSS selector for the role within the container
+  headshotSelector?: string  // CSS selector for the headshot image (extracts src attribute)
 }
 
 export interface ParsingTemplate {

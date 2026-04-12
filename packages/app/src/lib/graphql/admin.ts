@@ -125,6 +125,7 @@ export const TEST_PARSING_TEMPLATE_MUTATION = gql`
         credits {
           name
           role
+          headshotUrl
         }
       }
       jsonLdDetected

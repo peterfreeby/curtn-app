@@ -15,6 +15,7 @@ export interface ElementInfo {
   textContent: string
   tagName: string
   childCount: number
+  isCurrent?: boolean
 }
 
 interface TemplateFieldRowProps {
@@ -26,6 +27,7 @@ interface TemplateFieldRowProps {
   previewText: string | null
   ancestors?: ElementInfo[]
   children?: ElementInfo[]
+  siblings?: ElementInfo[]
   onActivate: () => void
   onClear: () => void
   onUpdateRule: (rule: SelectorRule) => void
@@ -41,6 +43,7 @@ export function TemplateFieldRow({
   previewText,
   ancestors,
   children,
+  siblings,
   onActivate,
   onClear,
   onUpdateRule,
@@ -66,7 +69,7 @@ export function TemplateFieldRow({
         <div className="flex items-center gap-1.5 shrink-0">
           {isMapped && (
             <>
-              {((ancestors && ancestors.length > 1) || (children && children.length > 0)) && (
+              {((ancestors && ancestors.length > 1) || (children && children.length > 0) || (siblings && siblings.length > 1)) && (
                 <button
                   onClick={() => { setShowDepth(!showDepth); setExpanded(false) }}
                   className="text-xs text-curtn-muted hover:text-curtn-cream"
@@ -134,6 +137,28 @@ export function TemplateFieldRow({
                   {a.childCount > 0 && (
                     <span className="text-curtn-muted/40 ml-1">({a.childCount} children)</span>
                   )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Siblings (← → lateral) */}
+          {siblings && siblings.length > 1 && (
+            <div className="space-y-1">
+              <p className="text-xs text-curtn-muted/60">← → Siblings (same level)</p>
+              {siblings.filter(s => !s.isCurrent).map((s, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    onNavigate(s.selector, s.textContent)
+                    setShowDepth(false)
+                  }}
+                  className="w-full text-left text-xs px-2 py-1.5 rounded bg-curtn-deep hover:bg-curtn-dark/40 transition-colors"
+                >
+                  <span className="text-curtn-coral">&lt;{s.tagName}&gt;</span>
+                  <span className="text-curtn-muted ml-1 truncate inline-block max-w-[180px] align-bottom">
+                    {s.textContent.substring(0, 60)}{s.textContent.length > 60 ? '…' : ''}
+                  </span>
                 </button>
               ))}
             </div>
