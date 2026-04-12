@@ -1,11 +1,13 @@
-import { GraphQLString, GraphQLNonNull, GraphQLInt } from 'graphql'
+import { GraphQLString, GraphQLNonNull, GraphQLInt, GraphQLList } from 'graphql'
 import { mutationWithClientMutationId } from 'graphql-relay'
 import { errorField } from '../../../graphql/errorField'
 import { UserModel } from '../../user/userModel'
 import { DataSourceModel } from '../../dataSource/dataSourceModel'
 import { PendingImportModel } from '../../pendingImport/pendingImportModel'
-import { fetchPage, applyTemplate, ParsingTemplate } from '../../../services/pageFetcher'
+import { fetchPage, applyTemplate, applyTemplateV2, isV2Template, ParsingTemplate } from '../../../services/pageFetcher'
+import type { V2ParsingTemplate } from '../../../services/pageFetcher'
 import { CleanupRules } from '../../../services/feedParser/shared'
+import { processImportRows, type ImportResult } from '../../../services/importEngine'
 
 interface Presets {
   venueName?: string
@@ -16,7 +18,7 @@ interface Presets {
 
 export const scrapeUrl = mutationWithClientMutationId({
   name: 'scrapeUrl',
-  description: 'Scrape a single URL using a data source template and create pending imports',
+  description: 'Scrape a single URL using a data source template and create records',
   inputFields: {
     url: {
       type: new GraphQLNonNull(GraphQLString),
@@ -24,22 +26,25 @@ export const scrapeUrl = mutationWithClientMutationId({
     },
     dataSourceId: {
       type: GraphQLString,
-      description: 'DataSource MongoDB ID (uses its template and presets). Optional if template is provided directly.'
+      description: 'DataSource MongoDB ID (uses its template and presets)'
     },
     template: {
       type: GraphQLString,
-      description: 'Parsing template as JSON string (used if no dataSourceId, or to override)'
+      description: 'Parsing template as JSON string (V1 or V2)'
     }
   },
   outputFields: {
-    eventsFound: {
-      type: GraphQLInt,
-      resolve: r => r.eventsFound
-    },
-    eventsCreated: {
-      type: GraphQLInt,
-      resolve: r => r.eventsCreated
-    },
+    eventsFound: { type: GraphQLInt, resolve: r => r.eventsFound },
+    eventsCreated: { type: GraphQLInt, resolve: r => r.eventsCreated },
+    // V2 import result stats
+    showsCreated: { type: GraphQLInt, resolve: r => r.importResult?.showsCreated },
+    showsMatched: { type: GraphQLInt, resolve: r => r.importResult?.showsMatched },
+    runsCreated: { type: GraphQLInt, resolve: r => r.importResult?.runsCreated },
+    performancesCreated: { type: GraphQLInt, resolve: r => r.importResult?.performancesCreated },
+    venuesCreated: { type: GraphQLInt, resolve: r => r.importResult?.venuesCreated },
+    personsCreated: { type: GraphQLInt, resolve: r => r.importResult?.personsCreated },
+    creditsCreated: { type: GraphQLInt, resolve: r => r.importResult?.creditsCreated },
+    importErrors: { type: new GraphQLList(GraphQLString), resolve: r => r.importResult?.errors },
     ...errorField
   },
   mutateAndGetPayload: async ({ url, dataSourceId, template: templateJson }, ctx) => {
@@ -47,12 +52,11 @@ export const scrapeUrl = mutationWithClientMutationId({
     const adminUser = await UserModel.findById(ctx.user.id)
     if (!adminUser?.isAdmin) return { error: 'Admin access required' }
 
-    let template: ParsingTemplate | undefined
+    let template: any
     let presets: Presets | undefined
     let rules: CleanupRules = {}
     let dsId: any = undefined
 
-    // Load from data source if provided
     if (dataSourceId) {
       const ds = await DataSourceModel.findById(dataSourceId)
       if (!ds) return { error: 'Data source not found' }
@@ -62,7 +66,6 @@ export const scrapeUrl = mutationWithClientMutationId({
       rules = (ds.config as any) || {}
     }
 
-    // Override with direct template if provided
     if (templateJson) {
       try {
         template = JSON.parse(templateJson)
@@ -72,18 +75,39 @@ export const scrapeUrl = mutationWithClientMutationId({
     }
 
     if (!template) {
-      return { error: 'No parsing template available. Provide a dataSourceId with a configured template, or a template directly.' }
+      return { error: 'No parsing template available' }
     }
 
     try {
       const html = await fetchPage(url)
-      const events = applyTemplate(html, template, url)
+
+      // V2 path: extract flat rows → feed directly to promotion engine
+      if (isV2Template(template)) {
+        const rows = applyTemplateV2(html, template as V2ParsingTemplate, url)
+        const validRows = rows.filter(r => r.title?.trim())
+
+        if (validRows.length === 0) {
+          return { eventsFound: 0, eventsCreated: 0, error: 'No events with a title found on this page' }
+        }
+
+        const importResult = await processImportRows(
+          validRows as any[],
+          { userId: ctx.user.id, dataSourceId: dsId?.toString() }
+        )
+
+        return {
+          eventsFound: rows.length,
+          eventsCreated: importResult.showsCreated + importResult.showsMatched,
+          importResult
+        }
+      }
+
+      // V1 path: extract ParsedEvents → create PendingImports
+      const events = applyTemplate(html, template as ParsingTemplate, url)
 
       let created = 0
       for (const event of events) {
         if (!event.title?.trim()) continue
-
-        // No dedup for one-off scrapes — the user explicitly asked to import this page
 
         await new PendingImportModel({
           ...(dsId && { dataSource: dsId }),

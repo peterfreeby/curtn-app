@@ -1,5 +1,8 @@
 export { fetchPage } from './fetchPage'
 export { extractJsonLd } from './extractJsonLd'
 export { applyTemplate } from './applyTemplate'
+export { applyTemplateV2 } from './applyTemplateV2'
+export { isV2Template } from './v2Types'
 export type { ParsingTemplate, SelectorRule } from './types'
 export type { JsonLdEvent } from './extractJsonLd'
+export type { V2ParsingTemplate, TemplateNode, FieldNode, ContainerNode } from './v2Types'

@@ -2,7 +2,8 @@ import { GraphQLString, GraphQLNonNull, GraphQLBoolean, GraphQLInt, GraphQLObjec
 import { mutationWithClientMutationId } from 'graphql-relay'
 import { errorField } from '../../../graphql/errorField'
 import { UserModel } from '../../user/userModel'
-import { fetchPage, applyTemplate, extractJsonLd, ParsingTemplate } from '../../../services/pageFetcher'
+import { fetchPage, applyTemplate, applyTemplateV2, extractJsonLd, isV2Template, ParsingTemplate } from '../../../services/pageFetcher'
+import type { V2ParsingTemplate } from '../../../services/pageFetcher'
 
 const parsedCreditType = new GraphQLObjectType({
   name: 'TestParsedCredit',
@@ -45,13 +46,19 @@ export const testParsingTemplate = mutationWithClientMutationId({
     },
     template: {
       type: new GraphQLNonNull(GraphQLString),
-      description: 'Parsing template as JSON string'
+      description: 'Parsing template as JSON string (V1 or V2 format)'
     }
   },
   outputFields: {
+    // V1 output
     events: {
       type: new GraphQLList(parsedEventType),
       resolve: r => r.events
+    },
+    // V2 output — flat rows as JSON string
+    flatRows: {
+      type: GraphQLString,
+      resolve: r => r.flatRows ? JSON.stringify(r.flatRows) : null
     },
     jsonLdDetected: {
       type: GraphQLBoolean,
@@ -64,30 +71,29 @@ export const testParsingTemplate = mutationWithClientMutationId({
     const adminUser = await UserModel.findById(ctx.user.id)
     if (!adminUser?.isAdmin) return { error: 'Admin access required' }
 
-    let template: ParsingTemplate
+    let template: any
     try {
       template = JSON.parse(templateJson)
     } catch {
       return { error: 'Invalid template JSON' }
     }
 
-    if (!template.selectors?.title?.selector && !template.useJsonLd) {
-      return { error: 'Template must have at least a title selector or useJsonLd enabled' }
-    }
-
     try {
       const html = await fetchPage(url)
-
-      // Check for JSON-LD presence regardless of template setting
       const jsonLdEvents = extractJsonLd(html)
       const jsonLdDetected = jsonLdEvents.length > 0
 
-      const events = applyTemplate(html, template, url)
-
-      // Cap results
-      return {
-        events: events.slice(0, 20),
-        jsonLdDetected
+      if (isV2Template(template)) {
+        // V2: return flat rows
+        const rows = applyTemplateV2(html, template as V2ParsingTemplate, url)
+        return { flatRows: rows.slice(0, 50), jsonLdDetected }
+      } else {
+        // V1: return ParsedEvent[]
+        if (!template.selectors?.title?.selector && !template.useJsonLd) {
+          return { error: 'Template must have at least a title selector or useJsonLd enabled' }
+        }
+        const events = applyTemplate(html, template as ParsingTemplate, url)
+        return { events: events.slice(0, 20), jsonLdDetected }
       }
     } catch (err: any) {
       return { error: `Page fetch failed: ${err.message}` }
