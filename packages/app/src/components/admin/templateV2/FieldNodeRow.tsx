@@ -34,6 +34,44 @@ function getMode(node: FieldNodeData): Mode {
   return 'select'
 }
 
+function applyPreviewProcessing(raw: string | null | undefined, node: FieldNodeData): string | null {
+  if (!raw) return null
+  let value = raw
+
+  // Apply regex
+  if (node.regex) {
+    try {
+      const match = value.match(new RegExp(node.regex))
+      value = match?.[1] ?? match?.[0] ?? value
+    } catch { /* invalid regex */ }
+  }
+
+  // Apply transform
+  if (node.transform) {
+    switch (node.transform) {
+      case 'trim':
+        value = value.trim()
+        break
+      case 'date':
+      case 'datetime': {
+        const parsed = new Date(value)
+        if (!isNaN(parsed.getTime())) {
+          value = parsed.toLocaleDateString()
+        }
+        break
+      }
+      case 'time':
+        value = value.trim()
+        break
+      case 'currency':
+        value = value.replace(/[^\d.,]/g, '').trim()
+        break
+    }
+  }
+
+  return value
+}
+
 export function FieldNodeRow({
   node,
   isActive,
@@ -47,6 +85,8 @@ export function FieldNodeRow({
   const [showOptions, setShowOptions] = useState(false)
   const [editingSelector, setEditingSelector] = useState(false)
   const [selectorDraft, setSelectorDraft] = useState('')
+
+  const processedPreview = applyPreviewProcessing(previewText, node)
 
   const label = CSV_FIELD_LABELS[node.csvField] || node.csvField
   const hasValue = !!(node.selector || node.staticValue || node.presetValue)
@@ -114,7 +154,16 @@ export function FieldNodeRow({
                 {node.selector}
               </button>
               {previewText && (
-                <p className="text-xs text-curtn-cream/60 mt-1 truncate">→ {previewText}</p>
+                <div className="mt-1">
+                  {processedPreview !== previewText ? (
+                    <>
+                      <p className="text-xs text-curtn-muted/40 truncate line-through">{previewText}</p>
+                      <p className="text-xs text-curtn-cream/60 truncate">→ {processedPreview}</p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-curtn-cream/60 truncate">→ {previewText}</p>
+                  )}
+                </div>
               )}
             </div>
           ) : editingSelector ? (
