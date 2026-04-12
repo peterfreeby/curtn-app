@@ -9,6 +9,45 @@ export const FOLLOW_TOGGLE_MUTATION = gql`
   }
 `;
 
+export const FEED_SEEN_QUERY = gql`
+  query FeedSeen($first: Int, $after: String) {
+    feedSeen(first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          id
+          createdAt
+          user {
+            id
+            username
+            fullName
+            avatarUrl
+          }
+          run {
+            id
+            show {
+              id
+              title
+              imageUrl
+              posterUrl
+            }
+            startDate
+            endDate
+            venues {
+              name
+              city
+            }
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
 export const FEED_REVIEWS_QUERY = gql`
   query FeedReviews($first: Int, $after: String) {
     feedReviews(first: $first, after: $after) {

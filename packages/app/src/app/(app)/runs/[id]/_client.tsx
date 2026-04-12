@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useNowViewing } from "@/lib/NowViewingContext";
-import { useQuery } from "urql";
+import { useQuery, useMutation } from "urql";
 import Link from "next/link";
 import { SINGLE_RUN_QUERY } from "@/lib/graphql/runs";
+import { SEEN_CREATE_MUTATION, SEEN_DELETE_MUTATION } from "@/lib/graphql/seen";
+import { Toast } from "@/components/Toast";
 import { RUN_REVIEWS_QUERY } from "@/lib/graphql/performances";
 import { DetailHero } from "@/components/DetailHero";
 import { ShowingsList } from "@/components/performances/ShowingsList";
@@ -88,6 +90,12 @@ export default function RunDetailPage() {
   const [followedOnly, setFollowedOnly] = useState(false);
   const [reviewScope, setReviewScope] = useState<"run" | "show">("run");
 
+  // Seen state
+  const [, executeSeenCreate] = useMutation(SEEN_CREATE_MUTATION);
+  const [, executeSeenDelete] = useMutation(SEEN_DELETE_MUTATION);
+  const [hasSeen, setHasSeen] = useState(false);
+  const [seenToast, setSeenToast] = useState(false);
+
   const reviewVariables = {
     ...(reviewScope === "run" ? { runId: id } : { showId: data?.singleRun?.show?.id }),
     first: REVIEW_PAGE_SIZE,
@@ -127,13 +135,38 @@ export default function RunDetailPage() {
         showId: run.show.id,
         runId: run.id,
         isOnWatchlist: false,
+        viewerHasSeen: hasSeen,
         href: `/runs/${encodeURIComponent(id)}`,
         parentHref: `/performances/${encodeURIComponent(run.show.id)}`,
         breadcrumbs,
       });
     }
     return () => setNowViewing(null);
-  }, [run?.show?.title, run?.posterUrl, run?.imageUrl, id, setNowViewing]);
+  }, [run?.show?.title, run?.posterUrl, run?.imageUrl, id, hasSeen, setNowViewing]);
+
+  // Sync seen state from server data
+  useEffect(() => {
+    if (run?.viewerHasSeen != null) setHasSeen(run.viewerHasSeen);
+  }, [run?.viewerHasSeen]);
+
+  const handleSeenToggle = useCallback(async () => {
+    if (!isAuthenticated) return;
+    if (hasSeen) {
+      setHasSeen(false);
+      const result = await executeSeenDelete({ input: { runId: id } });
+      if (result.error || result.data?.seenDelete?.error) {
+        setHasSeen(true); // revert on failure
+      }
+    } else {
+      setHasSeen(true);
+      setSeenToast(true);
+      const result = await executeSeenCreate({ input: { runId: id } });
+      if (result.error || result.data?.seenCreate?.error) {
+        setHasSeen(false); // revert on failure
+        setSeenToast(false);
+      }
+    }
+  }, [isAuthenticated, hasSeen, id, executeSeenCreate, executeSeenDelete]);
 
   if (fetching) {
     return (
@@ -237,6 +270,7 @@ export default function RunDetailPage() {
           endDate={null}
           averageRating={run.averageRating}
           reviewCount={run.reviewCount}
+          totalAttendees={run.totalAttendees}
           onEdit={isAdmin ? () => setEditing(true) : undefined}
           entityType={forceView === "run" ? "Run" : "Performance"}
         />
@@ -247,12 +281,27 @@ export default function RunDetailPage() {
           )}
         </div>
 
-        <Link
-          href={`/log?run=${id}`}
-          className="hidden sm:block w-full dog-ear dog-ear-dark bg-curtn-coral py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-curtn-deep transition-colors hover:bg-curtn-red"
-        >
-          Log This Show
-        </Link>
+        {isAuthenticated && (
+          <button
+            type="button"
+            onClick={handleSeenToggle}
+            className={`hidden sm:block w-full py-3 text-center font-display text-sm font-bold uppercase tracking-wide transition-colors ${
+              hasSeen
+                ? "border border-curtn-dark text-curtn-muted hover:text-curtn-cream hover:border-curtn-muted/50"
+                : "dog-ear dog-ear-dark bg-curtn-coral text-curtn-deep hover:bg-curtn-red"
+            }`}
+          >
+            {hasSeen ? "Logged" : "Log This Show"}
+          </button>
+        )}
+        {!isAuthenticated && (
+          <Link
+            href="/login"
+            className="hidden sm:block w-full dog-ear dog-ear-dark bg-curtn-coral py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-curtn-deep transition-colors hover:bg-curtn-red"
+          >
+            Log This Show
+          </Link>
+        )}
 
         <CreditsList cast={run.cast ?? []} crew={run.crew ?? []} />
 
@@ -343,6 +392,14 @@ export default function RunDetailPage() {
             </button>
           )}
         </div>
+        {seenToast && (
+          <Toast
+            message={`Logged ${show.title}`}
+            actionLabel="Add details"
+            actionHref={`/log?run=${id}`}
+            onDismiss={() => setSeenToast(false)}
+          />
+        )}
       </div>
       </div>
     );
@@ -372,6 +429,7 @@ export default function RunDetailPage() {
         endDate={run.endDate}
         averageRating={run.averageRating}
         reviewCount={run.reviewCount}
+        totalAttendees={run.totalAttendees}
         onEdit={isAdmin ? () => setEditing(true) : undefined}
         entityType="Run"
       />
@@ -384,12 +442,27 @@ export default function RunDetailPage() {
         <ShowingsList showings={upcomingShowings} label="Upcoming Performances" runId={id} />
       )}
 
-      <Link
-        href={`/log?run=${id}`}
-        className="hidden sm:block w-full dog-ear dog-ear-dark bg-curtn-coral py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-curtn-deep transition-colors hover:bg-curtn-red"
-      >
-        Log This Show
-      </Link>
+      {isAuthenticated && (
+        <button
+          type="button"
+          onClick={handleSeenToggle}
+          className={`hidden sm:block w-full py-3 text-center font-display text-sm font-bold uppercase tracking-wide transition-colors ${
+            hasSeen
+              ? "border border-curtn-dark text-curtn-muted hover:text-curtn-cream hover:border-curtn-muted/50"
+              : "dog-ear dog-ear-dark bg-curtn-coral text-curtn-deep hover:bg-curtn-red"
+          }`}
+        >
+          {hasSeen ? "Logged" : "Log This Show"}
+        </button>
+      )}
+      {!isAuthenticated && (
+        <Link
+          href="/login"
+          className="hidden sm:block w-full dog-ear dog-ear-dark bg-curtn-coral py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-curtn-deep transition-colors hover:bg-curtn-red"
+        >
+          Log This Show
+        </Link>
+      )}
 
       <CreditsList cast={run.cast ?? []} crew={run.crew ?? []} />
 
@@ -483,6 +556,14 @@ export default function RunDetailPage() {
 
       {pastShowings.length > 0 && (
         <ShowingsList showings={pastShowings} label="Past Performances" runId={id} onAdd={isAdmin ? () => setBatchCreating(true) : undefined} />
+      )}
+      {seenToast && (
+        <Toast
+          message={`Logged ${show.title}`}
+          actionLabel="Add details"
+          actionHref={`/log?run=${id}`}
+          onDismiss={() => setSeenToast(false)}
+        />
       )}
     </div>
     </div>

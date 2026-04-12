@@ -16,6 +16,7 @@ import { ProductionCompanyModel } from '../productionCompany/productionCompanyMo
 import { VenueModel } from '../venue/venueModel'
 import { CreditModel } from '../credit/creditModel'
 import { ReviewModel } from '../review/reviewModel'
+import { SeenModel } from '../seen/seenModel'
 import { venueType } from '../venue/venueTypes'
 import { showType } from '../show/showTypes'
 import { productionCompanyType } from '../productionCompany/productionCompanyTypes'
@@ -179,6 +180,26 @@ export const runType: GraphQLObjectType = new GraphQLObjectType({
             : await PerformanceModel.find({ run: run._id }, '_id')
           const perfIds = performances.map((p: any) => p._id)
           return await ReviewModel.countDocuments({ performance: { $in: perfIds } })
+        }
+      },
+      viewerHasSeen: {
+        type: require('graphql').GraphQLBoolean,
+        description: 'Whether the current viewer has logged this run (via Seen or Review)',
+        resolve: async (run: any, _args: any, ctx: any) => {
+          if (!ctx.user) return false
+          const seen = await SeenModel.findOne({ user: ctx.user.id, run: run._id })
+          if (seen) return true
+          const review = await ReviewModel.findOne({ user: ctx.user.id, run: run._id })
+          return !!review
+        }
+      },
+      totalAttendees: {
+        type: GraphQLInt,
+        description: 'Total users who have seen this run (Seen + unique Review users)',
+        resolve: async (run: any) => {
+          const seenCount = await SeenModel.countDocuments({ run: run._id })
+          const reviewUserCount = await ReviewModel.distinct('user', { run: run._id }).then(users => users.length)
+          return seenCount + reviewUserCount
         }
       },
       createdAt: {

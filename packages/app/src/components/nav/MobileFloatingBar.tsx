@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth/useAuth";
 import { useNowViewing } from "@/lib/NowViewingContext";
 import { useMutation } from "urql";
 import { WATCHLIST_ADD_MUTATION, WATCHLIST_REMOVE_MUTATION } from "@/lib/graphql/watchlist";
+import { SEEN_CREATE_MUTATION, SEEN_DELETE_MUTATION } from "@/lib/graphql/seen";
 
 type BarState = "default" | "expanded" | "search" | "detail";
 type TabId = "browse" | "upcoming" | "feed";
@@ -74,6 +75,8 @@ export function MobileFloatingBar() {
   const [, executeWatchlistAdd] = useMutation(WATCHLIST_ADD_MUTATION);
   const [, executeWatchlistRemove] = useMutation(WATCHLIST_REMOVE_MUTATION);
   const [isOnWatchlist, setIsOnWatchlist] = useState(false);
+  const [, executeSeenCreate] = useMutation(SEEN_CREATE_MUTATION);
+  const [isSeen, setIsSeen] = useState(false);
 
   // Show toast after logging a show (triggered by ?logged=1 URL param)
   useEffect(() => {
@@ -166,6 +169,27 @@ export function MobileFloatingBar() {
     router.back();
   }, [router]);
 
+  const handleSeenCreate = useCallback(async () => {
+    if (!user) {
+      navigateTo("/login");
+      return;
+    }
+    if (!nowViewing?.runId || isSeen) {
+      // Already seen or no run — fall back to log page
+      navigateTo(nowViewing?.runId ? `/log?run=${encodeURIComponent(nowViewing.runId)}` : "/log");
+      return;
+    }
+    setIsSeen(true);
+    setToast({ message: `Logged ${nowViewing.title}`, actionLabel: "Add details", actionHref: `/log?run=${encodeURIComponent(nowViewing.runId)}` });
+    setTimeout(() => setToast(null), 5000);
+    const result = await executeSeenCreate({ input: { runId: nowViewing.runId } });
+    if (result.error || result.data?.seenCreate?.error) {
+      setIsSeen(false);
+      setToast({ message: result.data?.seenCreate?.error || "Something went wrong" });
+      setTimeout(() => setToast(null), 3000);
+    }
+  }, [user, nowViewing?.runId, nowViewing?.title, isSeen, executeSeenCreate, navigateTo]);
+
   const handleLog = useCallback(() => {
     if (!user) {
       navigateTo("/login");
@@ -178,6 +202,11 @@ export function MobileFloatingBar() {
   useEffect(() => {
     setIsOnWatchlist(nowViewing?.isOnWatchlist ?? false);
   }, [nowViewing?.isOnWatchlist]);
+
+  // Sync seen state from context
+  useEffect(() => {
+    setIsSeen(nowViewing?.viewerHasSeen ?? false);
+  }, [nowViewing?.viewerHasSeen]);
 
   const handleBack = useCallback(() => {
     if (pathname === "/navigate") {
@@ -404,11 +433,13 @@ export function MobileFloatingBar() {
               </button>
               <button
                 type="button"
-                onClick={handleLog}
-                className="flex items-center justify-center w-8 h-8 text-curtn-coral hover:text-curtn-red transition-colors shrink-0 -ml-1.5"
-                aria-label={`Log ${nowViewing.title}`}
+                onClick={handleSeenCreate}
+                className={`flex items-center justify-center w-8 h-8 transition-colors shrink-0 -ml-1.5 ${
+                  isSeen ? "text-curtn-muted" : "text-curtn-coral hover:text-curtn-red"
+                }`}
+                aria-label={isSeen ? `${nowViewing.title} logged` : `Log ${nowViewing.title}`}
               >
-                <Icon name="plus" weight="bold" size={20} />
+                <Icon name={isSeen ? "check" : "plus"} weight="bold" size={20} />
               </button>
             </div>
           ) : (

@@ -14,6 +14,7 @@ import { entityRegister } from '../../graphql/entityHelpers'
 import { ShowModel } from './showModel'
 import { RunModel } from '../run/runModel'
 import { ReviewModel } from '../review/reviewModel'
+import { SeenModel } from '../seen/seenModel'
 
 export const showType: GraphQLObjectType = new GraphQLObjectType({
   name: 'Show',
@@ -126,6 +127,20 @@ export const showType: GraphQLObjectType = new GraphQLObjectType({
           const { WatchlistItemModel } = require('../watchlist/watchlistModel')
           const item = await WatchlistItemModel.findOne({ user: ctx.user.id, show: show._id })
           return !!item
+        }
+      },
+      viewerHasSeen: {
+        type: GraphQLBoolean,
+        description: 'Whether the current viewer has seen any run of this show',
+        resolve: async (show: any, _args: any, ctx: any) => {
+          if (!ctx.user) return false
+          const seen = await SeenModel.findOne({ user: ctx.user.id, show: show._id })
+          if (seen) return true
+          const runs = await RunModel.find({ show: show._id }, '_id')
+          if (runs.length === 0) return false
+          const runIds = runs.map((r: any) => r._id)
+          const review = await ReviewModel.findOne({ user: ctx.user.id, run: { $in: runIds } })
+          return !!review
         }
       },
       creators: {

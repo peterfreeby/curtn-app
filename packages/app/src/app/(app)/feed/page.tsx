@@ -1,22 +1,48 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
-import { FEED_REVIEWS_QUERY } from "@/lib/graphql/follows";
+import { FEED_REVIEWS_QUERY, FEED_SEEN_QUERY } from "@/lib/graphql/follows";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
+import { SeenCard } from "@/components/seen/SeenCard";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { usePaginatedConnection } from "@/hooks/usePaginatedConnection";
+import { useQuery } from "urql";
 import { useAuth } from "@/lib/auth/useAuth";
 
 export default function FeedPage() {
   const { user } = useAuth();
 
-  const { edges, loading, loadingMore, hasNextPage, sentinelRef } =
+  const { edges: reviewEdges, loading, loadingMore, hasNextPage, sentinelRef } =
     usePaginatedConnection({
       query: FEED_REVIEWS_QUERY,
       pageSize: 12,
       pause: !user,
       getConnection: (data: any) => data?.feedReviews,
     });
+
+  // Fetch recent seen entries from followed users (non-paginated, first batch)
+  const [{ data: seenData }] = useQuery({
+    query: FEED_SEEN_QUERY,
+    variables: { first: 20 },
+    pause: !user,
+  });
+
+  const seenEdges = seenData?.feedSeen?.edges ?? [];
+
+  // Merge reviews and seens, sorted by createdAt descending
+  const mergedFeed = useMemo(() => {
+    const tagged = [
+      ...reviewEdges.map((e: any) => ({ type: "review" as const, node: e.node, createdAt: e.node.createdAt })),
+      ...seenEdges.map((e: any) => ({ type: "seen" as const, node: e.node, createdAt: e.node.createdAt })),
+    ];
+    tagged.sort((a, b) => {
+      const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return db - da;
+    });
+    return tagged;
+  }, [reviewEdges, seenEdges]);
 
   // Not authenticated
   if (!user) {
@@ -63,11 +89,11 @@ export default function FeedPage() {
         Feed
       </h2>
 
-      {edges.length === 0 ? (
+      {mergedFeed.length === 0 ? (
         <div className="empty-state">
           <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">Your Feed Is Empty</p>
           <p className="text-xs text-curtn-muted max-w-[260px] mx-auto mb-4">
-            Follow people to see their reviews here.
+            Follow people to see their activity here.
           </p>
           <Link
             href="/browse"
@@ -78,13 +104,21 @@ export default function FeedPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {edges.map((edge: any) => (
-            <ReviewCard
-              key={edge.node.id}
-              review={edge.node}
-              showPerformanceLink
-            />
-          ))}
+          {mergedFeed.map((item) =>
+            item.type === "review" ? (
+              <ReviewCard
+                key={`review-${item.node.id}`}
+                review={item.node}
+                showPerformanceLink
+              />
+            ) : (
+              <SeenCard
+                key={`seen-${item.node.id}`}
+                seen={item.node}
+                showUser
+              />
+            )
+          )}
         </div>
       )}
 

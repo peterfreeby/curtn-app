@@ -44,6 +44,7 @@ const ICONS = {
   lightning: "\uE2DE",
   "folder-simple": "\uE25A",
   "folder-simple-plus": "\uE25E",
+  "check": "\uE154",
 } as const;
 
 export type IconName = keyof typeof ICONS;

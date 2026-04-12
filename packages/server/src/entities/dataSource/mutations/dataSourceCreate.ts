@@ -15,7 +15,7 @@ export const dataSourceCreate = mutationWithClientMutationId({
     },
     type: {
       type: new GraphQLNonNull(GraphQLString),
-      description: 'Type: manual, csv, rss, ical, or api'
+      description: 'Type: manual, csv, rss, ical, api, or web'
     },
     url: {
       type: GraphQLString,
@@ -52,7 +52,7 @@ export const dataSourceCreate = mutationWithClientMutationId({
     if (!adminUser?.isAdmin) return { error: 'Admin access required' }
 
     try {
-      const validTypes = ['manual', 'csv', 'rss', 'ical', 'api']
+      const validTypes = ['manual', 'csv', 'rss', 'ical', 'api', 'web']
       if (!validTypes.includes(input.type)) {
         return { error: `Invalid type "${input.type}". Must be one of: ${validTypes.join(', ')}` }
       }

@@ -6,12 +6,14 @@ import { useQuery, useMutation } from "urql";
 import { USER_BY_USERNAME_QUERY, USER_REVIEWS_QUERY } from "@/lib/graphql/users";
 import { FOLLOW_TOGGLE_MUTATION } from "@/lib/graphql/follows";
 import { MY_WATCHLIST_QUERY } from "@/lib/graphql/watchlist";
+import { USER_SEEN_QUERY } from "@/lib/graphql/seen";
 import { USER_LISTS_QUERY } from "@/lib/graphql/lists";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { EditProfileModal } from "@/components/profile/EditProfileModal";
 import { ProfileCredits } from "@/components/profile/ProfileCredits";
 import { ClaimPrompt } from "@/components/profile/ClaimPrompt";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
+import { SeenCard } from "@/components/seen/SeenCard";
 import { WiredPosterCard } from "@/components/WiredPosterCard";
 import { ListGrid } from "@/components/lists/ListGrid";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -35,6 +37,12 @@ export default function ProfilePage() {
   const [{ data: reviewData, fetching: reviewsFetching }, reexecute] = useQuery({
     query: USER_REVIEWS_QUERY,
     variables: { username, first: PAGE_SIZE, after },
+  });
+
+  const [{ data: seenData, fetching: seenFetching }] = useQuery({
+    query: USER_SEEN_QUERY,
+    variables: { username, first: 50 },
+    pause: activeTab !== "reviews",
   });
 
   const [{ fetching: followLoading }, executeFollowToggle] = useMutation(FOLLOW_TOGGLE_MUTATION);
@@ -160,7 +168,7 @@ export default function ProfilePage() {
             activeTab === "reviews" ? "active" : ""
           }`}
         >
-          Reviews
+          Shows Seen
         </button>
         {profileUser.person && (
           <button
@@ -192,51 +200,62 @@ export default function ProfilePage() {
         </button>
       </div>
 
-      {activeTab === "reviews" && (
-        <section>
-          <h2 className="text-xs uppercase tracking-widest text-curtn-muted mb-4">
-            Reviews
-          </h2>
+      {activeTab === "reviews" && (() => {
+        const seenEdges = seenData?.seenList?.edges ?? [];
+        const hasReviews = displayEdges.length > 0;
+        const hasSeen = seenEdges.length > 0;
+        const hasAnything = hasReviews || hasSeen;
+        const isLoading = reviewsFetching && !hasReviews;
 
-          {displayEdges.length === 0 && !reviewsFetching ? (
-            <div className="empty-state">
-              <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">No Reviews Yet</p>
-              <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">
-                {isOwnProfile
-                  ? "Log a performance to leave your first review."
-                  : `@${username} hasn\u2019t reviewed anything yet.`}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {displayEdges.map((edge: any) => (
-                <ReviewCard
-                  key={edge.node.id}
-                  review={edge.node}
-                  showPerformanceLink
-                  onDeleted={handleDeleted}
-                />
-              ))}
-            </div>
-          )}
+        return (
+          <section>
+            <h2 className="text-xs uppercase tracking-widest text-curtn-muted mb-4">
+              Shows Seen
+            </h2>
 
-          {reviewsFetching && (
-            <div className="mt-3 flex justify-center">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-curtn-muted/30 border-t-curtn-coral" />
-            </div>
-          )}
+            {!hasAnything && !isLoading ? (
+              <div className="empty-state">
+                <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">No Shows Logged</p>
+                <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">
+                  {isOwnProfile
+                    ? "Log a performance to start building your history."
+                    : `@${username} hasn\u2019t logged anything yet.`}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {displayEdges.map((edge: any) => (
+                  <ReviewCard
+                    key={edge.node.id}
+                    review={edge.node}
+                    showPerformanceLink
+                    onDeleted={handleDeleted}
+                  />
+                ))}
+                {seenEdges.map((edge: any) => (
+                  <SeenCard key={edge.node.id} seen={edge.node} />
+                ))}
+              </div>
+            )}
 
-          {!reviewsFetching && pageInfo?.hasNextPage && (
-            <button
-              type="button"
-              onClick={loadMore}
-              className="mt-4 w-full border border-curtn-dark py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer"
-            >
-              Load more reviews
-            </button>
-          )}
-        </section>
-      )}
+            {reviewsFetching && (
+              <div className="mt-3 flex justify-center">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-curtn-muted/30 border-t-curtn-coral" />
+              </div>
+            )}
+
+            {!reviewsFetching && pageInfo?.hasNextPage && (
+              <button
+                type="button"
+                onClick={loadMore}
+                className="mt-4 w-full border border-curtn-dark py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer"
+              >
+                Load more
+              </button>
+            )}
+          </section>
+        );
+      })()}
 
       {activeTab === "credits" && profileUser.person && (
         <section>

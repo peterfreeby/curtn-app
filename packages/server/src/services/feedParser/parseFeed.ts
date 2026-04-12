@@ -1,61 +1,18 @@
 import Parser from 'rss-parser'
 import ICAL from 'ical.js'
+import {
+  ParsedEvent,
+  CleanupRules,
+  applyCleanupRules,
+  extractTimeFromDate,
+  FETCH_TIMEOUT_MS,
+  MAX_FEED_ITEMS,
+  MAX_RESPONSE_BYTES,
+  USER_AGENT
+} from './shared'
 
-export interface ParsedEvent {
-  title: string
-  description?: string
-  date?: Date
-  time?: string
-  ticketUrl?: string
-  rawData: Record<string, any>
-}
-
-export interface CleanupRules {
-  stripPrefix?: string
-  stripSuffix?: string
-  defaultVenue?: string
-  defaultStage?: string
-  defaultCompany?: string
-  defaultTypes?: string[]
-  titleCase?: boolean
-}
-
-function applyTitleCase(str: string): string {
-  const minor = new Set(['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'at', 'by', 'in', 'of', 'on', 'to', 'up'])
-  return str.split(' ').map((word, i) => {
-    if (i === 0 || !minor.has(word.toLowerCase())) {
-      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    }
-    return word.toLowerCase()
-  }).join(' ')
-}
-
-function applyCleanupRules(title: string, rules: CleanupRules): string {
-  let cleaned = title
-  if (rules.stripPrefix && cleaned.startsWith(rules.stripPrefix)) {
-    cleaned = cleaned.slice(rules.stripPrefix.length).trim()
-  }
-  if (rules.stripSuffix && cleaned.endsWith(rules.stripSuffix)) {
-    cleaned = cleaned.slice(0, -rules.stripSuffix.length).trim()
-  }
-  if (rules.titleCase) {
-    cleaned = applyTitleCase(cleaned)
-  }
-  return cleaned
-}
-
-function extractTimeFromDate(date: Date): string {
-  const hours = date.getHours()
-  const minutes = date.getMinutes()
-  const ampm = hours >= 12 ? 'PM' : 'AM'
-  const h = hours % 12 || 12
-  return `${h}:${minutes.toString().padStart(2, '0')} ${ampm}`
-}
-
-const FETCH_TIMEOUT_MS = 15000
-const MAX_FEED_ITEMS = 200
-const MAX_RESPONSE_BYTES = 5 * 1024 * 1024 // 5MB
-const USER_AGENT = 'Curtn/1.0 (https://curtn.com; data-feed-reader)'
+export type { ParsedEvent, CleanupRules }
+export { applyCleanupRules, extractTimeFromDate }
 
 export async function parseRssFeed(url: string, rules: CleanupRules = {}): Promise<ParsedEvent[]> {
   const parser = new Parser({

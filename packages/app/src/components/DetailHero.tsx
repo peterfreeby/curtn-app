@@ -24,6 +24,7 @@ interface DetailHeroProps {
   creators?: Creator[];
   averageRating: number | null;
   reviewCount: number;
+  totalAttendees?: number | null;
   onEdit?: () => void;
   entityType?: string;
   companyName?: string | null;
@@ -49,6 +50,7 @@ export function DetailHero({
   creators,
   averageRating,
   reviewCount,
+  totalAttendees,
   onEdit,
   entityType = "Show",
   companyName,
@@ -179,13 +181,21 @@ export function DetailHero({
         <div className="mt-6 dinn-panel">
           <div className="dinn-header">
             <span className="dinn-title">Record of {entityType}</span>
-            {(averageRating !== null || reviewCount > 0) && (
-              <span className="dinn-ref flex items-center gap-1">
-                <Icon name="star" weight="fill" size={12} className="text-curtn-coral" />
-                {averageRating !== null ? averageRating.toFixed(1) : "—"}
-                <span className="text-curtn-muted/50">({reviewCount})</span>
-              </span>
-            )}
+            <span className="dinn-ref flex items-center gap-2">
+              {(averageRating !== null || reviewCount > 0) && (
+                <span className="flex items-center gap-1">
+                  <Icon name="star" weight="fill" size={12} className="text-curtn-coral" />
+                  {averageRating !== null ? averageRating.toFixed(1) : "—"}
+                  <span className="text-curtn-muted/50">({reviewCount})</span>
+                </span>
+              )}
+              {totalAttendees != null && totalAttendees > 0 && (
+                <span className="flex items-center gap-1 text-curtn-muted/50">
+                  <Icon name="eye" weight="regular" size={12} />
+                  {totalAttendees}
+                </span>
+              )}
+            </span>
           </div>
           <div className="dinn-grid">
             {performanceDate && (

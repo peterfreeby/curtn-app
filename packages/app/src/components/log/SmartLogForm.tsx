@@ -18,6 +18,7 @@ import { RUN_FIND_OR_CREATE_MUTATION } from "@/lib/graphql/runs";
 import { PERFORMANCE_CREATE_MUTATION } from "@/lib/graphql/performances";
 import { VENUE_FIND_OR_CREATE_MUTATION } from "@/lib/graphql/venues";
 import { REVIEW_CREATE_MUTATION } from "@/lib/graphql/reviews";
+import { SEEN_CREATE_MUTATION } from "@/lib/graphql/seen";
 import { saveRecentLog } from "@/lib/recentLog";
 import { StarRating } from "@/components/StarRating";
 
@@ -142,6 +143,7 @@ export function SmartLogForm() {
   const [, performanceCreate] = useMutation(PERFORMANCE_CREATE_MUTATION);
   const [, venueFindOrCreate] = useMutation(VENUE_FIND_OR_CREATE_MUTATION);
   const [, createReview] = useMutation(REVIEW_CREATE_MUTATION);
+  const [, createSeen] = useMutation(SEEN_CREATE_MUTATION);
 
   // ── Parse input on change ───────────────────────────────────────────────
 
@@ -292,8 +294,10 @@ export function SmartLogForm() {
 
   // ── Submit ──────────────────────────────────────────────────────────────
 
+  const hasDate = !!(parsed.date || manualDate);
+  const isFullReview = hasDate && rating > 0;
   const canSubmit =
-    (resolvedShow?.title || parsed.showName) && rating > 0 && !submitting;
+    (resolvedShow?.title || parsed.showName) && !submitting;
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit) return;
@@ -346,7 +350,7 @@ export function SmartLogForm() {
       const runInput: any = {
         showId,
         ...(venueId ? { venueIds: [venueId] } : {}),
-        startDate: effectiveDateStr,
+        ...(hasDate ? { startDate: effectiveDateStr } : {}),
       };
       const runResult = await runFindOrCreate({ input: runInput });
       if (runResult.data?.runFindOrCreate?.error) {
@@ -359,51 +363,67 @@ export function SmartLogForm() {
         return;
       }
 
-      // Step 4: Create performance
-      const perfResult = await performanceCreate({
-        input: {
+      // Branch: full review (has date + rating) vs. seen-only
+      if (isFullReview) {
+        // Step 4: Create performance
+        const perfResult = await performanceCreate({
+          input: {
+            runId,
+            date: effectiveDateStr,
+            time: effectiveTime || "",
+            ...(venueId ? { venueId } : {}),
+          },
+        });
+        if (perfResult.data?.performanceCreate?.error) {
+          setError(perfResult.data.performanceCreate.error);
+          return;
+        }
+        const performanceId =
+          perfResult.data?.performanceCreate?.performance?.id;
+        if (!performanceId) {
+          setError("Failed to create performance.");
+          return;
+        }
+
+        // Step 5: Create review (also promotes any existing Seen)
+        const reviewResult = await createReview({
+          input: {
+            performance: performanceId,
+            run: runId,
+            venue: venueName || "Unknown",
+            rating,
+            attendedAt: effectiveDateStr,
+            ...(reviewText.trim() ? { text: reviewText.trim() } : {}),
+          },
+        });
+        if (reviewResult.data?.reviewCreate?.error) {
+          setError(reviewResult.data.reviewCreate.error);
+          return;
+        }
+
+        saveRecentLog({
           runId,
-          date: effectiveDateStr,
-          time: effectiveTime || "",
-          ...(venueId ? { venueId } : {}),
-        },
-      });
-      if (perfResult.data?.performanceCreate?.error) {
-        setError(perfResult.data.performanceCreate.error);
-        return;
-      }
-      const performanceId =
-        perfResult.data?.performanceCreate?.performance?.id;
-      if (!performanceId) {
-        setError("Failed to create performance.");
-        return;
-      }
-
-      // Step 5: Create review
-      const reviewResult = await createReview({
-        input: {
-          performance: performanceId,
-          run: runId,
-          venue: venueName || "Unknown",
+          showTitle,
+          venueName: venueName || null,
           rating,
-          attendedAt: effectiveDateStr,
-          ...(reviewText.trim() ? { text: reviewText.trim() } : {}),
-        },
-      });
-      if (reviewResult.data?.reviewCreate?.error) {
-        setError(reviewResult.data.reviewCreate.error);
-        return;
+        });
+      } else {
+        // Lightweight seen — no date required
+        const seenResult = await createSeen({ input: { runId } });
+        if (seenResult.data?.seenCreate?.error) {
+          setError(seenResult.data.seenCreate.error);
+          return;
+        }
+
+        saveRecentLog({
+          runId,
+          showTitle,
+          venueName: venueName || null,
+          rating: rating || 0,
+        });
       }
 
-      // Save to localStorage for recently-logged card on /log
-      saveRecentLog({
-        runId,
-        showTitle,
-        venueName: venueName || null,
-        rating,
-      });
-
-      // Redirect immediately to the run page
+      // Redirect to the run page
       router.push(`/runs/${encodeURIComponent(runId)}?logged=1`);
     } catch {
       setError("Something went wrong. Try again.");
@@ -412,6 +432,8 @@ export function SmartLogForm() {
     }
   }, [
     canSubmit,
+    isFullReview,
+    hasDate,
     resolvedShow,
     resolvedVenue,
     parsed,
@@ -424,6 +446,7 @@ export function SmartLogForm() {
     runFindOrCreate,
     performanceCreate,
     createReview,
+    createSeen,
     router,
   ]);
 

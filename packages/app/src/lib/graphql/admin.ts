@@ -38,6 +38,7 @@ export const DATA_SOURCE_LIST_QUERY = gql`
           name
           type
           url
+          config
           isActive
           lastPolledAt
           createdAt
@@ -72,6 +73,41 @@ export const POLL_DATA_SOURCE_MUTATION = gql`
       eventsFound
       eventsCreated
       eventsSkipped
+      error
+    }
+  }
+`;
+
+export const DATA_SOURCE_UPDATE_MUTATION = gql`
+  mutation DataSourceUpdate($input: dataSourceUpdateInput!) {
+    dataSourceUpdate(input: $input) {
+      dataSource {
+        id
+        name
+        type
+        url
+        config
+        isActive
+      }
+      error
+    }
+  }
+`;
+
+export const TEST_PARSING_TEMPLATE_MUTATION = gql`
+  mutation TestParsingTemplate($input: testParsingTemplateInput!) {
+    testParsingTemplate(input: $input) {
+      events {
+        title
+        description
+        date
+        time
+        venue
+        ticketUrl
+        imageUrl
+        price
+      }
+      jsonLdDetected
       error
     }
   }

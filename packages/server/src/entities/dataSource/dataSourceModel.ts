@@ -2,11 +2,12 @@ import mongoose, { Schema, Types } from 'mongoose'
 
 export interface IDataSource {
   name: string
-  type: 'manual' | 'csv' | 'rss' | 'ical' | 'api'
+  type: 'manual' | 'csv' | 'rss' | 'ical' | 'api' | 'web'
   url?: string
   config: Record<string, any>
   associatedVenue?: Types.ObjectId
   associatedCompany?: Types.ObjectId
+  fetchedUrls?: string[]
   lastPolledAt?: Date
   isActive: boolean
   createdBy: Types.ObjectId
@@ -23,7 +24,7 @@ const dataSourceSchema = new Schema<IDataSource>({
   type: {
     type: String,
     required: true,
-    enum: ['manual', 'csv', 'rss', 'ical', 'api']
+    enum: ['manual', 'csv', 'rss', 'ical', 'api', 'web']
   },
   url: {
     type: String,
@@ -33,6 +34,7 @@ const dataSourceSchema = new Schema<IDataSource>({
     type: Schema.Types.Mixed,
     default: {}
   },
+  fetchedUrls: [{ type: String }],
   associatedVenue: {
     type: Schema.Types.ObjectId,
     ref: 'venue'

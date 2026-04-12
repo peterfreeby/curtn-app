@@ -4,7 +4,65 @@ import { errorField } from '../../../graphql/errorField'
 import { UserModel } from '../../user/userModel'
 import { DataSourceModel } from '../../dataSource/dataSourceModel'
 import { PendingImportModel } from '../pendingImportModel'
-import { parseFeed, CleanupRules } from '../../../services/feedParser/parseFeed'
+import { parseFeed, parseRssFeed, CleanupRules } from '../../../services/feedParser/parseFeed'
+import { ParsedEvent } from '../../../services/feedParser/shared'
+import { fetchPage, applyTemplate, ParsingTemplate } from '../../../services/pageFetcher'
+
+const MAX_PAGE_FETCHES_PER_POLL = 10
+const FETCH_DELAY_MS = 1000
+const MAX_FETCHED_URLS = 1000
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function createPendingImports(
+  events: ParsedEvent[],
+  dsId: any,
+  rules: CleanupRules
+): Promise<{ created: number; skipped: number }> {
+  let created = 0
+  let skipped = 0
+
+  for (const event of events) {
+    if (!event.title?.trim()) {
+      skipped++
+      continue
+    }
+
+    const existingQuery: any = {
+      dataSource: dsId,
+      title: event.title.trim()
+    }
+    if (event.date) {
+      existingQuery.date = event.date
+    }
+    const existing = await PendingImportModel.findOne(existingQuery)
+    if (existing) {
+      skipped++
+      continue
+    }
+
+    await new PendingImportModel({
+      dataSource: dsId,
+      status: 'pending',
+      title: event.title.trim(),
+      showDescription: event.description,
+      date: event.date,
+      time: event.time,
+      ticketUrl: event.ticketUrl,
+      venueName: event.rawData?.venue || rules.defaultVenue || undefined,
+      stageName: rules.defaultStage || undefined,
+      companyName: rules.defaultCompany || undefined,
+      performanceTypes: rules.defaultTypes || undefined,
+      rawData: event.rawData,
+      importedAt: new Date()
+    }).save()
+    created++
+  }
+
+  return { created, skipped }
+}
 
 export const pollDataSource = mutationWithClientMutationId({
   name: 'pollDataSource',
@@ -38,7 +96,7 @@ export const pollDataSource = mutationWithClientMutationId({
     const ds = await DataSourceModel.findById(dataSourceId)
     if (!ds) return { error: 'Data source not found' }
     if (!ds.url) return { error: 'Data source has no feed URL' }
-    if (ds.type !== 'rss' && ds.type !== 'ical') {
+    if (ds.type !== 'rss' && ds.type !== 'ical' && ds.type !== 'web') {
       return { error: `Cannot poll a ${ds.type} data source` }
     }
 
@@ -54,59 +112,117 @@ export const pollDataSource = mutationWithClientMutationId({
 
     try {
       const rules: CleanupRules = (ds.config as any) || {}
-      const events = await parseFeed(ds.type as 'rss' | 'ical', ds.url, rules)
+      const template: ParsingTemplate | undefined = (ds.config as any)?.parsingTemplate
 
-      let created = 0
-      let skipped = 0
-
-      for (const event of events) {
-        // Skip events without a title
-        if (!event.title?.trim()) {
-          skipped++
-          continue
+      // --- Web source: poll detection RSS, then fetch + parse each page ---
+      if (ds.type === 'web') {
+        if (!template) {
+          return { error: 'Web data source has no parsing template configured' }
         }
 
-        // Deduplicate: skip if we already have a pending import with the same
-        // title + date from this source
-        const existingQuery: any = {
-          dataSource: ds._id,
-          title: event.title.trim()
-        }
-        if (event.date) {
-          existingQuery.date = event.date
-        }
-        const existing = await PendingImportModel.findOne(existingQuery)
-        if (existing) {
-          skipped++
-          continue
+        // Poll the changedetection.io RSS feed
+        const feedItems = await parseRssFeed(ds.url, {})
+        const fetchedSet = new Set(ds.fetchedUrls || [])
+
+        // Filter to new URLs only
+        const newItems = feedItems.filter(item => {
+          const url = item.ticketUrl || item.rawData?.link
+          return url && !fetchedSet.has(url)
+        })
+
+        let totalFound = 0
+        let totalCreated = 0
+        let totalSkipped = 0
+        let pagesFetched = 0
+
+        for (const item of newItems) {
+          if (pagesFetched >= MAX_PAGE_FETCHES_PER_POLL) break
+
+          const pageUrl = item.ticketUrl || item.rawData?.link
+          if (!pageUrl) continue
+
+          try {
+            if (pagesFetched > 0) await sleep(FETCH_DELAY_MS)
+
+            const html = await fetchPage(pageUrl)
+            const events = applyTemplate(html, template, pageUrl)
+
+            totalFound += events.length
+            const { created, skipped } = await createPendingImports(events, ds._id, rules)
+            totalCreated += created
+            totalSkipped += skipped
+
+            // Track this URL as processed
+            if (!ds.fetchedUrls) ds.fetchedUrls = []
+            ds.fetchedUrls.push(pageUrl)
+            pagesFetched++
+          } catch (err: any) {
+            console.error(`Failed to fetch/parse ${pageUrl}:`, err.message)
+            // Log failure but continue with other URLs
+            totalSkipped++
+          }
         }
 
-        await new PendingImportModel({
-          dataSource: ds._id,
-          status: 'pending',
-          title: event.title.trim(),
-          showDescription: event.description,
-          date: event.date,
-          time: event.time,
-          ticketUrl: event.ticketUrl,
-          // Apply defaults from cleanup rules
-          venueName: rules.defaultVenue || undefined,
-          stageName: rules.defaultStage || undefined,
-          companyName: rules.defaultCompany || undefined,
-          performanceTypes: rules.defaultTypes || undefined,
-          rawData: event.rawData,
-          importedAt: new Date()
-        }).save()
-        created++
+        // Trim fetchedUrls to most recent entries
+        if (ds.fetchedUrls && ds.fetchedUrls.length > MAX_FETCHED_URLS) {
+          ds.fetchedUrls = ds.fetchedUrls.slice(-MAX_FETCHED_URLS)
+        }
+
+        ds.lastPolledAt = new Date()
+        await ds.save()
+
+        return { eventsFound: totalFound, eventsCreated: totalCreated, eventsSkipped: totalSkipped }
       }
 
-      // Update source polling metadata
+      // --- RSS/iCal source: standard feed parsing ---
+      const events = await parseFeed(ds.type as 'rss' | 'ical', ds.url, rules)
+
+      // Optional: enrich RSS events with parsing template
+      if (ds.type === 'rss' && template) {
+        let enriched = 0
+        for (const event of events) {
+          if (enriched >= MAX_PAGE_FETCHES_PER_POLL) break
+          if (!event.ticketUrl) continue
+
+          try {
+            if (enriched > 0) await sleep(FETCH_DELAY_MS)
+
+            const html = await fetchPage(event.ticketUrl)
+            const parsed = applyTemplate(html, template, event.ticketUrl)
+            if (parsed.length > 0) {
+              const enrichedEvent = parsed[0]
+              // Only fill in missing fields — don't overwrite RSS data
+              if (!event.description && enrichedEvent.description) {
+                event.description = enrichedEvent.description
+              }
+              if (!event.date && enrichedEvent.date) {
+                event.date = enrichedEvent.date
+              }
+              if (!event.time && enrichedEvent.time) {
+                event.time = enrichedEvent.time
+              }
+              // Pull venue from rawData if extracted
+              if (enrichedEvent.rawData?.venue) {
+                event.rawData.enrichedVenue = enrichedEvent.rawData.venue
+              }
+              if (enrichedEvent.rawData?.imageUrl) {
+                event.rawData.enrichedImageUrl = enrichedEvent.rawData.imageUrl
+              }
+            }
+            enriched++
+          } catch {
+            // Enrichment is best-effort — continue with original RSS data
+          }
+        }
+      }
+
+      const { created, skipped } = await createPendingImports(events, ds._id, rules)
+
       ds.lastPolledAt = new Date()
       await ds.save()
 
       return { eventsFound: events.length, eventsCreated: created, eventsSkipped: skipped }
     } catch (err: any) {
-      // Update source with error info
       ds.lastPolledAt = new Date()
       await ds.save()
       return { error: `Feed fetch failed: ${err.message}` }

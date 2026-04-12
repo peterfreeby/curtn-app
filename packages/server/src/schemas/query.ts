@@ -17,6 +17,7 @@ import { stageQueries } from '../entities/stage/queries/queries'
 import { pendingImportQueries } from '../entities/pendingImport/queries/queries'
 import { listQueries } from '../entities/list/queries/queries'
 import { claimRequestQueries } from '../entities/claimRequest/queries/queries'
+import { seenQueries } from '../entities/seen/queries/queries'
 import { nodeField, nodesField } from '../graphql/nodeInterface'
 
 export const query = new GraphQLObjectType({
@@ -41,6 +42,7 @@ export const query = new GraphQLObjectType({
     ...pendingImportQueries,
     ...listQueries,
     ...claimRequestQueries,
+    ...seenQueries,
     node: nodeField,
     nodes: nodesField
   })

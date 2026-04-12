@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "urql";
 import {
   DATA_SOURCE_LIST_QUERY,
@@ -15,6 +16,7 @@ interface DataSourceNode {
   name: string;
   type: string;
   url: string | null;
+  config: string | null;
   isActive: boolean;
   lastPolledAt: string | null;
   createdAt: string;
@@ -60,10 +62,21 @@ function normalizeFeedUrl(input: string): { url: string; detectedType?: "rss" | 
   return { url: trimmed, detectedType };
 }
 
+function hasTemplate(configJson: string | null): boolean {
+  if (!configJson) return false;
+  try {
+    const config = JSON.parse(configJson);
+    return !!config.parsingTemplate;
+  } catch {
+    return false;
+  }
+}
+
 export default function DataSourcesPage() {
+  const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
-  const [type, setType] = useState<"rss" | "ical">("rss");
+  const [type, setType] = useState<"rss" | "ical" | "web">("rss");
   const [url, setUrl] = useState("");
   const [urlHint, setUrlHint] = useState<string | null>(null);
   const [config, setConfig] = useState("");
@@ -151,7 +164,7 @@ export default function DataSourcesPage() {
         <div>
           <h1 className="text-xl font-bold text-curtn-cream">Data Sources</h1>
           <p className="mt-1 text-sm text-curtn-muted">
-            Manage RSS and iCal feed subscriptions.
+            Manage RSS, iCal, and web data source subscriptions.
           </p>
         </div>
         <Button variant="primary" onClick={() => setShowCreate(!showCreate)}>
@@ -189,16 +202,17 @@ export default function DataSourcesPage() {
               </label>
               <select
                 value={type}
-                onChange={(e) => setType(e.target.value as "rss" | "ical")}
+                onChange={(e) => setType(e.target.value as "rss" | "ical" | "web")}
                 className="w-full rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
               >
                 <option value="rss">RSS Feed</option>
                 <option value="ical">iCal Calendar</option>
+                <option value="web">Web (Google Alerts)</option>
               </select>
             </div>
             <div className="sm:col-span-2">
               <label className="block text-xs text-curtn-muted mb-1">
-                Feed URL, webcal:// link, or Google Calendar ID
+                {type === "web" ? "Google Alerts RSS Feed URL" : "Feed URL, webcal:// link, or Google Calendar ID"}
               </label>
               <input
                 value={url}
@@ -284,6 +298,15 @@ export default function DataSourcesPage() {
                   <span className="shrink-0 rounded-full bg-curtn-dark px-2 py-0.5 text-xs text-curtn-muted">
                     {source.type.toUpperCase()}
                   </span>
+                  {(source.type === 'web' || source.type === 'rss') && (
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
+                      hasTemplate(source.config)
+                        ? 'bg-green-900/30 text-green-400'
+                        : 'bg-curtn-dark/50 text-curtn-muted/60'
+                    }`}>
+                      {hasTemplate(source.config) ? 'template' : 'no template'}
+                    </span>
+                  )}
                   <span
                     className={`shrink-0 h-2 w-2 rounded-full ${source.isActive ? "bg-green-500" : "bg-curtn-muted/30"}`}
                   />
@@ -299,13 +322,26 @@ export default function DataSourcesPage() {
                   </p>
                 )}
               </div>
-              <Button
-                variant="secondary"
-                onClick={() => handlePoll(source.id, source.name)}
-                disabled={polling || isRecentlyPolled(source.lastPolledAt)}
-              >
-                {polling ? "Polling..." : isRecentlyPolled(source.lastPolledAt) ? "Cooldown" : "Poll Now"}
-              </Button>
+              <div className="flex items-center gap-2 shrink-0">
+                {(source.type === 'web' || source.type === 'rss') && (
+                  <Button
+                    variant="tertiary"
+                    size="sm"
+                    onClick={() => router.push(
+                      `/admin/sources/template?dataSourceId=${source.id}`
+                    )}
+                  >
+                    {hasTemplate(source.config) ? 'Edit Template' : 'Configure Template'}
+                  </Button>
+                )}
+                <Button
+                  variant="secondary"
+                  onClick={() => handlePoll(source.id, source.name)}
+                  disabled={polling || isRecentlyPolled(source.lastPolledAt)}
+                >
+                  {polling ? "Polling..." : isRecentlyPolled(source.lastPolledAt) ? "Cooldown" : "Poll Now"}
+                </Button>
+              </div>
             </Card>
           ))}
         </div>

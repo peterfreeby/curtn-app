@@ -101,6 +101,8 @@ export const SINGLE_RUN_QUERY = gql`
       }
       averageRating
       reviewCount
+      viewerHasSeen
+      totalAttendees
       createdAt
     }
   }

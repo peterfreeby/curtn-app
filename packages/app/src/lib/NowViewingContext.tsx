@@ -18,6 +18,7 @@ interface NowViewing {
   showId?: string | null;
   runId?: string | null;
   isOnWatchlist?: boolean;
+  viewerHasSeen?: boolean;
   breadcrumbs?: BreadcrumbLevel[];
 }
 

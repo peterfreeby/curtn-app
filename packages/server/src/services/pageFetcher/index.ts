@@ -1,0 +1,5 @@
+export { fetchPage } from './fetchPage'
+export { extractJsonLd } from './extractJsonLd'
+export { applyTemplate } from './applyTemplate'
+export type { ParsingTemplate, SelectorRule } from './types'
+export type { JsonLdEvent } from './extractJsonLd'

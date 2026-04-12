@@ -1,0 +1,433 @@
+"use client"
+
+import { useState, useEffect, useCallback, useRef } from "react"
+import { useSearchParams } from "next/navigation"
+import { useMutation } from "urql"
+import {
+  TEST_PARSING_TEMPLATE_MUTATION,
+  DATA_SOURCE_UPDATE_MUTATION,
+} from "@/lib/graphql/admin"
+import { Card } from "@/components/Card"
+import { Button } from "@/components/Button"
+import { TemplateFieldRow, SelectorRule } from "@/components/admin/TemplateFieldRow"
+import { TemplatePreviewTable } from "@/components/admin/TemplatePreviewTable"
+import { useAuth } from "@/lib/auth/useAuth"
+
+interface ParsingTemplate {
+  selectors: Record<string, SelectorRule | undefined>
+  listSelector?: string
+  useJsonLd?: boolean
+  cleanup?: Record<string, any>
+}
+
+interface ParsedEvent {
+  title?: string | null
+  description?: string | null
+  date?: string | null
+  time?: string | null
+  venue?: string | null
+  ticketUrl?: string | null
+  imageUrl?: string | null
+  price?: string | null
+}
+
+const FIELD_DEFS = [
+  { key: 'title', label: 'Title', required: true },
+  { key: 'date', label: 'Date' },
+  { key: 'time', label: 'Time' },
+  { key: 'venue', label: 'Venue' },
+  { key: 'description', label: 'Description' },
+  { key: 'ticketUrl', label: 'Ticket URL' },
+  { key: 'imageUrl', label: 'Image URL' },
+  { key: 'price', label: 'Price' },
+] as const
+
+const EMPTY_TEMPLATE: ParsingTemplate = {
+  selectors: {}
+}
+
+export default function TemplateBuilderPage() {
+  const searchParams = useSearchParams()
+  const { user } = useAuth()
+  const dataSourceId = searchParams.get("dataSourceId")
+
+  const [sampleUrl, setSampleUrl] = useState(searchParams.get("sampleUrl") || "")
+  const [loadedUrl, setLoadedUrl] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [activeField, setActiveField] = useState<string | null>(null)
+  const [template, setTemplate] = useState<ParsingTemplate>(EMPTY_TEMPLATE)
+  const [previewTexts, setPreviewTexts] = useState<Record<string, string>>({})
+  const [listMode, setListMode] = useState(false)
+  const [selectingListContainer, setSelectingListContainer] = useState(false)
+  const [jsonLdDetected, setJsonLdDetected] = useState(false)
+  const [testResults, setTestResults] = useState<ParsedEvent[] | null>(null)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+
+  const [, testTemplate] = useMutation(TEST_PARSING_TEMPLATE_MUTATION)
+  const [, updateDataSource] = useMutation(DATA_SOURCE_UPDATE_MUTATION)
+
+  // Listen for postMessage from iframe bridge script
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (event.data?.type !== 'CURTN_ELEMENT_SELECTED') return
+
+      const { selector, textContent } = event.data
+
+      if (selectingListContainer) {
+        setTemplate(prev => ({ ...prev, listSelector: selector }))
+        setSelectingListContainer(false)
+        setMessage({ type: 'success', text: `List container set: ${selector}` })
+        return
+      }
+
+      if (!activeField) return
+
+      setTemplate(prev => ({
+        ...prev,
+        selectors: {
+          ...prev.selectors,
+          [activeField]: { selector }
+        }
+      }))
+      setPreviewTexts(prev => ({ ...prev, [activeField]: textContent }))
+
+      // Auto-advance to next unmapped field
+      const currentIndex = FIELD_DEFS.findIndex(f => f.key === activeField)
+      const nextField = FIELD_DEFS.slice(currentIndex + 1).find(
+        f => !template.selectors[f.key]?.selector
+      )
+      setActiveField(nextField?.key || null)
+    }
+
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [activeField, selectingListContainer, template.selectors])
+
+  const loadPage = useCallback(async () => {
+    if (!sampleUrl.trim()) return
+    setLoading(true)
+    setMessage(null)
+    setTestResults(null)
+
+    try {
+      // Load iframe
+      setLoadedUrl(sampleUrl.trim())
+
+      // Check for JSON-LD
+      const result = await testTemplate({
+        input: {
+          url: sampleUrl.trim(),
+          template: JSON.stringify({ selectors: { title: { selector: 'h1' } }, useJsonLd: true })
+        }
+      })
+
+      if (result.data?.testParsingTemplate?.jsonLdDetected) {
+        setJsonLdDetected(true)
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to load page' })
+    } finally {
+      setLoading(false)
+    }
+  }, [sampleUrl, testTemplate])
+
+  const useJsonLd = useCallback(() => {
+    setTemplate(prev => ({ ...prev, useJsonLd: true }))
+    setMessage({ type: 'success', text: 'JSON-LD extraction enabled. Test the template to see results.' })
+  }, [])
+
+  const handleTest = useCallback(async () => {
+    if (!sampleUrl.trim()) return
+
+    const hasSelectors = Object.values(template.selectors).some(r => r?.selector)
+    if (!hasSelectors && !template.useJsonLd) {
+      setMessage({ type: 'error', text: 'Map at least one field or enable JSON-LD before testing' })
+      return
+    }
+
+    setMessage(null)
+    const templateJson = JSON.stringify({
+      ...template,
+      selectors: Object.fromEntries(
+        Object.entries(template.selectors).filter(([, v]) => v?.selector)
+      )
+    })
+
+    const result = await testTemplate({
+      input: { url: sampleUrl.trim(), template: templateJson }
+    })
+
+    if (result.data?.testParsingTemplate?.error) {
+      setMessage({ type: 'error', text: result.data.testParsingTemplate.error })
+    } else if (result.data?.testParsingTemplate?.events) {
+      setTestResults(result.data.testParsingTemplate.events)
+      setMessage({
+        type: 'success',
+        text: `Extracted ${result.data.testParsingTemplate.events.length} event(s)`
+      })
+    }
+  }, [sampleUrl, template, testTemplate])
+
+  const handleSave = useCallback(async () => {
+    if (!dataSourceId) {
+      setMessage({ type: 'error', text: 'No data source ID — open this page from the sources list' })
+      return
+    }
+
+    // Decode the global ID to get the MongoDB ID
+    let mongoId = dataSourceId
+    try {
+      const decoded = atob(dataSourceId)
+      if (decoded.includes(':')) {
+        mongoId = decoded.split(':')[1]
+      }
+    } catch {
+      // Already a plain ID
+    }
+
+    const cleanTemplate = {
+      ...template,
+      selectors: Object.fromEntries(
+        Object.entries(template.selectors).filter(([, v]) => v?.selector)
+      )
+    }
+
+    const config = JSON.stringify({ parsingTemplate: cleanTemplate })
+    const result = await updateDataSource({
+      input: { dataSourceId: mongoId, config }
+    })
+
+    if (result.data?.dataSourceUpdate?.error) {
+      setMessage({ type: 'error', text: result.data.dataSourceUpdate.error })
+    } else {
+      setMessage({ type: 'success', text: 'Template saved to data source' })
+    }
+  }, [dataSourceId, template, updateDataSource])
+
+  // Build the iframe URL with auth token
+  const [iframeSrc, setIframeSrc] = useState<string | null>(null)
+  useEffect(() => {
+    if (!loadedUrl) {
+      setIframeSrc(null)
+      return
+    }
+    // Build the iframe src URL
+    setIframeSrc(`/api/admin/page-preview?url=${encodeURIComponent(loadedUrl)}`)
+  }, [loadedUrl])
+
+  const statusText = selectingListContainer
+    ? 'Click the repeating container element (e.g., the card or row that wraps each event)'
+    : activeField
+      ? `Click the ${FIELD_DEFS.find(f => f.key === activeField)?.label?.toUpperCase()} element on the page`
+      : 'Select a field in the sidebar, then click the matching element on the page'
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-xl font-bold text-curtn-cream">Template Builder</h1>
+        <p className="text-sm text-curtn-muted mt-1">
+          Load a sample page, then click elements to map them to event fields.
+        </p>
+      </div>
+
+      {message && (
+        <div className={`text-sm px-3 py-2 rounded ${
+          message.type === 'error' ? 'bg-curtn-red/20 text-curtn-red' : 'bg-green-900/30 text-green-400'
+        }`}>
+          {message.text}
+        </div>
+      )}
+
+      {/* URL input bar */}
+      <Card>
+        <div className="flex gap-2 items-end">
+          <div className="flex-1">
+            <label className="text-xs text-curtn-muted block mb-1">Sample Page URL</label>
+            <input
+              type="url"
+              value={sampleUrl}
+              onChange={e => setSampleUrl(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && loadPage()}
+              placeholder="https://www.eventbrite.com/e/some-event-123"
+              className="w-full bg-curtn-deep border border-curtn-dark/30 rounded px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral outline-none"
+            />
+          </div>
+          <Button variant="primary" onClick={loadPage} disabled={loading || !sampleUrl.trim()}>
+            {loading ? 'Loading...' : 'Load Page'}
+          </Button>
+        </div>
+      </Card>
+
+      {/* JSON-LD detection banner */}
+      {jsonLdDetected && !template.useJsonLd && (
+        <div className="flex items-center justify-between bg-curtn-coral/10 border border-curtn-coral/30 rounded px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-curtn-cream">Structured event data detected</p>
+            <p className="text-xs text-curtn-muted">This page has JSON-LD schema.org data. You can auto-extract fields without manual selection.</p>
+          </div>
+          <Button variant="primary" size="sm" onClick={useJsonLd}>
+            Use It
+          </Button>
+        </div>
+      )}
+
+      {template.useJsonLd && (
+        <div className="flex items-center justify-between bg-green-900/20 border border-green-700/30 rounded px-4 py-3">
+          <p className="text-sm text-green-400">JSON-LD extraction enabled. CSS selectors below are used as fallbacks.</p>
+          <Button variant="tertiary" size="sm" onClick={() => setTemplate(prev => ({ ...prev, useJsonLd: false }))}>
+            Disable
+          </Button>
+        </div>
+      )}
+
+      {/* Main two-column layout */}
+      {loadedUrl && (
+        <div className="flex gap-4" style={{ height: 'calc(100vh - 340px)', minHeight: '400px' }}>
+          {/* Left: iframe preview */}
+          <div className="flex-[7] flex flex-col min-w-0">
+            <div className="text-xs text-curtn-coral font-medium mb-2 h-5">
+              {statusText}
+            </div>
+            <div className="flex-1 border border-curtn-dark/30 rounded overflow-hidden bg-white">
+              {iframeSrc && (
+                <iframe
+                  ref={iframeRef}
+                  src={iframeSrc}
+                  className="w-full h-full"
+                  sandbox="allow-scripts allow-same-origin"
+                  title="Page preview"
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Right: field mapping sidebar */}
+          <div className="flex-[3] flex flex-col min-w-0">
+            <div className="flex-1 overflow-y-auto space-y-2">
+              {/* List mode toggle */}
+              <div className="flex items-center gap-2 pb-2 border-b border-curtn-dark/20 mb-2">
+                <label className="flex items-center gap-2 text-sm text-curtn-cream cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={listMode}
+                    onChange={e => {
+                      setListMode(e.target.checked)
+                      if (!e.target.checked) {
+                        setTemplate(prev => ({ ...prev, listSelector: undefined }))
+                      }
+                    }}
+                    className="accent-curtn-coral"
+                  />
+                  Multiple events on page
+                </label>
+              </div>
+
+              {listMode && (
+                <div className={`border rounded p-3 mb-2 ${
+                  selectingListContainer ? 'border-curtn-coral bg-curtn-coral/5' : 'border-curtn-dark/30'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-curtn-cream">List Container</span>
+                    <Button
+                      variant={selectingListContainer ? "primary" : "secondary"}
+                      size="sm"
+                      onClick={() => {
+                        setSelectingListContainer(!selectingListContainer)
+                        setActiveField(null)
+                      }}
+                    >
+                      {selectingListContainer ? 'Selecting...' : template.listSelector ? 'Re-select' : 'Select'}
+                    </Button>
+                  </div>
+                  {template.listSelector && (
+                    <code className="text-xs text-curtn-muted bg-curtn-deep px-2 py-1 rounded block mt-2 overflow-x-auto">
+                      {template.listSelector}
+                    </code>
+                  )}
+                </div>
+              )}
+
+              {/* Field rows */}
+              {FIELD_DEFS.map(field => (
+                <TemplateFieldRow
+                  key={field.key}
+                  fieldName={field.key}
+                  label={field.label}
+                  required={'required' in field ? field.required : false}
+                  rule={template.selectors[field.key]}
+                  isActive={activeField === field.key}
+                  previewText={previewTexts[field.key] || null}
+                  onActivate={() => {
+                    setActiveField(activeField === field.key ? null : field.key)
+                    setSelectingListContainer(false)
+                  }}
+                  onClear={() => {
+                    setTemplate(prev => ({
+                      ...prev,
+                      selectors: { ...prev.selectors, [field.key]: undefined }
+                    }))
+                    setPreviewTexts(prev => {
+                      const next = { ...prev }
+                      delete next[field.key]
+                      return next
+                    })
+                  }}
+                  onUpdateRule={rule => {
+                    setTemplate(prev => ({
+                      ...prev,
+                      selectors: { ...prev.selectors, [field.key]: rule }
+                    }))
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Bottom action bar */}
+            <div className="border-t border-curtn-dark/20 pt-3 mt-3 space-y-2">
+              <Button variant="secondary" onClick={handleTest} className="w-full">
+                Test Template
+              </Button>
+              {dataSourceId && (
+                <Button variant="primary" onClick={handleSave} className="w-full">
+                  Save Template
+                </Button>
+              )}
+              {!dataSourceId && (
+                <p className="text-xs text-curtn-muted text-center">
+                  Open from a data source to save the template
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Test results */}
+      {testResults && (
+        <Card>
+          <h3 className="text-sm font-medium text-curtn-cream mb-3">Extraction Results</h3>
+          <TemplatePreviewTable events={testResults} />
+        </Card>
+      )}
+
+      {/* Current template JSON (collapsible debug view) */}
+      {Object.values(template.selectors).some(r => r?.selector) && (
+        <details className="text-xs">
+          <summary className="text-curtn-muted cursor-pointer hover:text-curtn-cream">
+            View template JSON
+          </summary>
+          <pre className="mt-2 bg-curtn-deep p-3 rounded overflow-x-auto text-curtn-muted">
+            {JSON.stringify({
+              ...template,
+              selectors: Object.fromEntries(
+                Object.entries(template.selectors).filter(([, v]) => v?.selector)
+              )
+            }, null, 2)}
+          </pre>
+        </details>
+      )}
+    </div>
+  )
+}
