@@ -89,15 +89,47 @@ function getSelectorBridgeScript(): string {
     target.style.backgroundColor = target._prevBg || '';
   }, true);
 
+  // Build ancestor chain for depth navigation
+  function getAncestorChain(el, maxDepth) {
+    var chain = [];
+    var current = el;
+    for (var i = 0; i < (maxDepth || 5); i++) {
+      if (!current || current === document.body || current === document.documentElement) break;
+      chain.push({
+        selector: generateSelector(current),
+        textContent: (current.textContent || '').trim().substring(0, 200),
+        tagName: current.tagName.toLowerCase(),
+        childCount: current.children.length
+      });
+      current = current.parentElement;
+    }
+    return chain;
+  }
+
   document.addEventListener('click', function(e) {
     e.preventDefault();
     e.stopPropagation();
 
-    const target = e.target;
-    const selector = generateSelector(target);
-    const attrs = {};
-    for (const attr of target.attributes) {
-      attrs[attr.name] = attr.value;
+    var target = e.target;
+    var selector = generateSelector(target);
+    var attrs = {};
+    for (var i = 0; i < target.attributes.length; i++) {
+      attrs[target.attributes[i].name] = target.attributes[i].value;
+    }
+
+    // Get ancestor chain for ↑ navigation
+    var ancestors = getAncestorChain(target, 5);
+
+    // Get first few children for ↓ navigation
+    var children = [];
+    for (var c = 0; c < Math.min(target.children.length, 5); c++) {
+      var child = target.children[c];
+      children.push({
+        selector: generateSelector(child),
+        textContent: (child.textContent || '').trim().substring(0, 200),
+        tagName: child.tagName.toLowerCase(),
+        childCount: child.children.length
+      });
     }
 
     window.parent.postMessage({
@@ -105,7 +137,9 @@ function getSelectorBridgeScript(): string {
       selector: selector,
       textContent: (target.textContent || '').trim().substring(0, 500),
       attributes: attrs,
-      tagName: target.tagName.toLowerCase()
+      tagName: target.tagName.toLowerCase(),
+      ancestors: ancestors,
+      children: children
     }, '*');
   }, true);
 

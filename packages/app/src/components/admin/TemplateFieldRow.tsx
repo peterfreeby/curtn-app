@@ -10,6 +10,13 @@ export interface SelectorRule {
   transform?: 'date' | 'time' | 'datetime' | 'currency' | 'trim'
 }
 
+export interface ElementInfo {
+  selector: string
+  textContent: string
+  tagName: string
+  childCount: number
+}
+
 interface TemplateFieldRowProps {
   fieldName: string
   label: string
@@ -17,9 +24,12 @@ interface TemplateFieldRowProps {
   rule: SelectorRule | undefined
   isActive: boolean
   previewText: string | null
+  ancestors?: ElementInfo[]
+  children?: ElementInfo[]
   onActivate: () => void
   onClear: () => void
   onUpdateRule: (rule: SelectorRule) => void
+  onNavigate?: (selector: string, textContent: string) => void
 }
 
 export function TemplateFieldRow({
@@ -29,11 +39,15 @@ export function TemplateFieldRow({
   rule,
   isActive,
   previewText,
+  ancestors,
+  children,
   onActivate,
   onClear,
-  onUpdateRule
+  onUpdateRule,
+  onNavigate
 }: TemplateFieldRowProps) {
   const [expanded, setExpanded] = useState(false)
+  const [showDepth, setShowDepth] = useState(false)
 
   const isMapped = rule && rule.selector
 
@@ -52,8 +66,17 @@ export function TemplateFieldRow({
         <div className="flex items-center gap-1.5 shrink-0">
           {isMapped && (
             <>
+              {((ancestors && ancestors.length > 1) || (children && children.length > 0)) && (
+                <button
+                  onClick={() => { setShowDepth(!showDepth); setExpanded(false) }}
+                  className="text-xs text-curtn-muted hover:text-curtn-cream"
+                  title="Adjust selection depth"
+                >
+                  ↕
+                </button>
+              )}
               <button
-                onClick={() => setExpanded(!expanded)}
+                onClick={() => { setExpanded(!expanded); setShowDepth(false) }}
                 className="text-xs text-curtn-muted hover:text-curtn-cream"
               >
                 {expanded ? 'collapse' : 'options'}
@@ -82,6 +105,63 @@ export function TemplateFieldRow({
             <p className="text-xs text-curtn-cream/70 mt-1 truncate">
               Preview: {previewText}
             </p>
+          )}
+        </div>
+      )}
+
+      {/* Depth navigation */}
+      {showDepth && isMapped && onNavigate && (
+        <div className="mt-3 border-t border-curtn-dark/20 pt-2 space-y-1.5">
+          <p className="text-xs text-curtn-muted mb-1">Adjust depth:</p>
+
+          {/* Ancestors (↑ broader) */}
+          {ancestors && ancestors.length > 1 && (
+            <div className="space-y-1">
+              <p className="text-xs text-curtn-muted/60">↑ Broader (parent elements)</p>
+              {ancestors.slice(1).map((a, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    onNavigate(a.selector, a.textContent)
+                    setShowDepth(false)
+                  }}
+                  className="w-full text-left text-xs px-2 py-1.5 rounded bg-curtn-deep hover:bg-curtn-dark/40 transition-colors"
+                >
+                  <span className="text-curtn-coral">&lt;{a.tagName}&gt;</span>
+                  <span className="text-curtn-muted ml-1 truncate inline-block max-w-[180px] align-bottom">
+                    {a.textContent.substring(0, 60)}{a.textContent.length > 60 ? '…' : ''}
+                  </span>
+                  {a.childCount > 0 && (
+                    <span className="text-curtn-muted/40 ml-1">({a.childCount} children)</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Children (↓ narrower) */}
+          {children && children.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-xs text-curtn-muted/60">↓ Narrower (child elements)</p>
+              {children.map((c, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    onNavigate(c.selector, c.textContent)
+                    setShowDepth(false)
+                  }}
+                  className="w-full text-left text-xs px-2 py-1.5 rounded bg-curtn-deep hover:bg-curtn-dark/40 transition-colors"
+                >
+                  <span className="text-curtn-coral">&lt;{c.tagName}&gt;</span>
+                  <span className="text-curtn-muted ml-1 truncate inline-block max-w-[180px] align-bottom">
+                    {c.textContent.substring(0, 60)}{c.textContent.length > 60 ? '…' : ''}
+                  </span>
+                  {c.childCount > 0 && (
+                    <span className="text-curtn-muted/40 ml-1">({c.childCount} children)</span>
+                  )}
+                </button>
+              ))}
+            </div>
           )}
         </div>
       )}

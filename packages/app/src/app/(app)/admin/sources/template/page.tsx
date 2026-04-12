@@ -13,7 +13,7 @@ import {
 import { Card } from "@/components/Card"
 import { Button } from "@/components/Button"
 import { RelationPicker, RelationOption } from "@/components/admin/RelationPicker"
-import { TemplateFieldRow, SelectorRule } from "@/components/admin/TemplateFieldRow"
+import { TemplateFieldRow, SelectorRule, ElementInfo } from "@/components/admin/TemplateFieldRow"
 import { TemplatePreviewTable } from "@/components/admin/TemplatePreviewTable"
 import { useAuth } from "@/lib/auth/useAuth"
 
@@ -73,6 +73,14 @@ const FIELD_DEFS = [
   { key: 'endDate', label: 'Run End Date' },
 ] as const
 
+// Credit selectors are stored separately from regular selectors
+// but use the same field row UI for consistency
+const CREDIT_FIELD_DEFS = [
+  { key: 'creditContainer', label: 'Credit Container', description: 'The element wrapping each cast/crew entry' },
+  { key: 'creditName', label: 'Credit Name', description: 'Person name within a credit entry' },
+  { key: 'creditRole', label: 'Credit Role', description: 'Role label within a credit entry (optional)' },
+] as const
+
 const EMPTY_TEMPLATE: ParsingTemplate = {
   selectors: {}
 }
@@ -90,8 +98,9 @@ export default function TemplateBuilderPage() {
   const [previewTexts, setPreviewTexts] = useState<Record<string, string>>({})
   const [listMode, setListMode] = useState(false)
   const [selectingListContainer, setSelectingListContainer] = useState(false)
-  const [creditSelectMode, setCreditSelectMode] = useState<'container' | 'name' | 'role' | null>(null)
   const [jsonLdDetected, setJsonLdDetected] = useState(false)
+  // Track ancestors/children from last click per field for depth navigation
+  const [fieldDepthInfo, setFieldDepthInfo] = useState<Record<string, { ancestors: ElementInfo[]; children: ElementInfo[] }>>({})
   const [testResults, setTestResults] = useState<ParsedEvent[] | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [presets, setPresets] = useState<Presets>({})
@@ -144,11 +153,42 @@ export default function TemplateBuilderPage() {
   }
 
   // Listen for postMessage from iframe bridge script
+  // Map credit field keys to template.credits properties
+  function applyFieldSelection(fieldKey: string, selector: string, textContent: string, ancestors: ElementInfo[], children: ElementInfo[]) {
+    // Store depth info for this field
+    setFieldDepthInfo(prev => ({ ...prev, [fieldKey]: { ancestors, children } }))
+    setPreviewTexts(prev => ({ ...prev, [fieldKey]: textContent }))
+
+    // Credit fields map to template.credits
+    if (fieldKey === 'creditContainer') {
+      setTemplate(prev => ({
+        ...prev,
+        credits: { ...prev.credits || { containerSelector: '', nameSelector: '' }, containerSelector: selector }
+      }))
+    } else if (fieldKey === 'creditName') {
+      setTemplate(prev => ({
+        ...prev,
+        credits: { ...prev.credits || { containerSelector: '', nameSelector: '' }, nameSelector: selector }
+      }))
+    } else if (fieldKey === 'creditRole') {
+      setTemplate(prev => ({
+        ...prev,
+        credits: { ...prev.credits || { containerSelector: '', nameSelector: '' }, roleSelector: selector }
+      }))
+    } else {
+      // Regular field
+      setTemplate(prev => ({
+        ...prev,
+        selectors: { ...prev.selectors, [fieldKey]: { selector } }
+      }))
+    }
+  }
+
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
       if (event.data?.type !== 'CURTN_ELEMENT_SELECTED') return
 
-      const { selector, textContent } = event.data
+      const { selector, textContent, ancestors, children } = event.data
 
       if (selectingListContainer) {
         setTemplate(prev => ({ ...prev, listSelector: selector }))
@@ -157,55 +197,25 @@ export default function TemplateBuilderPage() {
         return
       }
 
-      // Credit selection mode
-      if (creditSelectMode) {
-        setTemplate(prev => {
-          const credits = prev.credits || { containerSelector: '', nameSelector: '' }
-          if (creditSelectMode === 'container') {
-            return { ...prev, credits: { ...credits, containerSelector: selector } }
-          } else if (creditSelectMode === 'name') {
-            return { ...prev, credits: { ...credits, nameSelector: selector } }
-          } else if (creditSelectMode === 'role') {
-            return { ...prev, credits: { ...credits, roleSelector: selector } }
-          }
-          return prev
-        })
-        // Auto-advance: container → name → role → done
-        if (creditSelectMode === 'container') {
-          setCreditSelectMode('name')
-          setMessage({ type: 'success', text: `Credit container set. Now click a person's NAME within one entry.` })
-        } else if (creditSelectMode === 'name') {
-          setCreditSelectMode('role')
-          setMessage({ type: 'success', text: `Name selector set. Now click a ROLE label, or press Done if there are no roles.` })
-        } else {
-          setCreditSelectMode(null)
-          setMessage({ type: 'success', text: 'Credits configured.' })
-        }
-        return
-      }
-
       if (!activeField) return
 
-      setTemplate(prev => ({
-        ...prev,
-        selectors: {
-          ...prev.selectors,
-          [activeField]: { selector }
-        }
-      }))
-      setPreviewTexts(prev => ({ ...prev, [activeField]: textContent }))
+      applyFieldSelection(activeField, selector, textContent, ancestors || [], children || [])
 
-      // Auto-advance to next unmapped field
+      // Auto-advance to next unmapped field (only for regular fields)
       const currentIndex = FIELD_DEFS.findIndex(f => f.key === activeField)
-      const nextField = FIELD_DEFS.slice(currentIndex + 1).find(
-        f => !template.selectors[f.key]?.selector
-      )
-      setActiveField(nextField?.key || null)
+      if (currentIndex >= 0) {
+        const nextField = FIELD_DEFS.slice(currentIndex + 1).find(
+          f => !template.selectors[f.key]?.selector
+        )
+        setActiveField(nextField?.key || null)
+      } else {
+        setActiveField(null)
+      }
     }
 
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [activeField, selectingListContainer, creditSelectMode, template.selectors])
+  }, [activeField, selectingListContainer, template.selectors])
 
   const loadPage = useCallback(async () => {
     if (!sampleUrl.trim()) return
@@ -384,17 +394,17 @@ export default function TemplateBuilderPage() {
     buildSrc()
   }, [loadedUrl])
 
+  const activeFieldLabel = activeField
+    ? (FIELD_DEFS.find(f => f.key === activeField)?.label
+      || CREDIT_FIELD_DEFS.find(f => f.key === activeField)?.label
+      || activeField)
+    : null
+
   const statusText = selectingListContainer
     ? 'Click the repeating container element (e.g., the card or row that wraps each event)'
-    : creditSelectMode === 'container'
-      ? 'Click the element that wraps each credit entry (e.g., a cast member card or row)'
-      : creditSelectMode === 'name'
-        ? 'Click a person\'s NAME within one credit entry'
-        : creditSelectMode === 'role'
-          ? 'Click a ROLE label within one credit entry (or click Done below to skip)'
-          : activeField
-            ? `Click the ${FIELD_DEFS.find(f => f.key === activeField)?.label?.toUpperCase()} element on the page`
-            : 'Select a field in the sidebar, then click the matching element on the page'
+    : activeFieldLabel
+      ? `Click the ${activeFieldLabel.toUpperCase()} element on the page`
+      : 'Select a field in the sidebar, then click the matching element on the page'
 
   return (
     <div className="space-y-4">
@@ -532,6 +542,8 @@ export default function TemplateBuilderPage() {
                   rule={template.selectors[field.key]}
                   isActive={activeField === field.key}
                   previewText={previewTexts[field.key] || null}
+                  ancestors={fieldDepthInfo[field.key]?.ancestors}
+                  children={fieldDepthInfo[field.key]?.children}
                   onActivate={() => {
                     setActiveField(activeField === field.key ? null : field.key)
                     setSelectingListContainer(false)
@@ -553,86 +565,70 @@ export default function TemplateBuilderPage() {
                       selectors: { ...prev.selectors, [field.key]: rule }
                     }))
                   }}
+                  onNavigate={(selector, textContent) => {
+                    applyFieldSelection(field.key, selector, textContent, [], [])
+                  }}
                 />
               ))}
 
-              {/* Credits selector */}
+              {/* Credits — independent selector rows */}
               <div className="border-t border-curtn-dark/20 pt-3 mt-3">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs font-medium text-curtn-muted uppercase tracking-wide">
-                    Credits (Cast / Crew)
-                  </h3>
-                  {template.credits?.containerSelector ? (
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="tertiary"
-                        size="sm"
-                        onClick={() => setTemplate(prev => ({ ...prev, credits: undefined }))}
-                      >
-                        Clear
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => {
-                          setCreditSelectMode('container')
-                          setActiveField(null)
+                <h3 className="text-xs font-medium text-curtn-muted uppercase tracking-wide mb-2">
+                  Credits (Cast / Crew)
+                </h3>
+                <div className="space-y-2">
+                  {CREDIT_FIELD_DEFS.map(field => {
+                    // Map credit field keys to their current selector values
+                    const selectorValue = field.key === 'creditContainer'
+                      ? template.credits?.containerSelector
+                      : field.key === 'creditName'
+                        ? template.credits?.nameSelector
+                        : template.credits?.roleSelector
+                    const rule = selectorValue ? { selector: selectorValue } : undefined
+
+                    return (
+                      <TemplateFieldRow
+                        key={field.key}
+                        fieldName={field.key}
+                        label={field.label}
+                        rule={rule}
+                        isActive={activeField === field.key}
+                        previewText={previewTexts[field.key] || null}
+                        ancestors={fieldDepthInfo[field.key]?.ancestors}
+                        children={fieldDepthInfo[field.key]?.children}
+                        onActivate={() => {
+                          setActiveField(activeField === field.key ? null : field.key)
                           setSelectingListContainer(false)
                         }}
-                      >
-                        Re-select
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      variant={creditSelectMode ? "primary" : "secondary"}
-                      size="sm"
-                      onClick={() => {
-                        if (creditSelectMode) {
-                          setCreditSelectMode(null)
-                        } else {
-                          setCreditSelectMode('container')
-                          setActiveField(null)
-                          setSelectingListContainer(false)
-                          setMessage({ type: 'success', text: 'Click the element that wraps each credit entry (e.g., a cast member card).' })
-                        }
-                      }}
-                    >
-                      {creditSelectMode ? 'Cancel' : 'Select Credits'}
-                    </Button>
-                  )}
+                        onClear={() => {
+                          setTemplate(prev => {
+                            if (!prev.credits) return prev
+                            const credits = { ...prev.credits }
+                            if (field.key === 'creditContainer') credits.containerSelector = ''
+                            else if (field.key === 'creditName') credits.nameSelector = ''
+                            else credits.roleSelector = undefined
+                            // Clear credits entirely if container and name are both empty
+                            if (!credits.containerSelector && !credits.nameSelector) {
+                              return { ...prev, credits: undefined }
+                            }
+                            return { ...prev, credits }
+                          })
+                          setPreviewTexts(prev => {
+                            const next = { ...prev }
+                            delete next[field.key]
+                            return next
+                          })
+                        }}
+                        onUpdateRule={rule => {
+                          applyFieldSelection(field.key, rule.selector, previewTexts[field.key] || '', [], [])
+                        }}
+                        onNavigate={(selector, textContent) => {
+                          applyFieldSelection(field.key, selector, textContent, [], [])
+                        }}
+                      />
+                    )
+                  })}
                 </div>
-                {template.credits?.containerSelector && (
-                  <div className="space-y-1.5 text-xs">
-                    <div>
-                      <span className="text-curtn-muted">Container: </span>
-                      <code className="text-curtn-cream/70 bg-curtn-deep px-1.5 py-0.5 rounded">{template.credits.containerSelector}</code>
-                    </div>
-                    <div>
-                      <span className="text-curtn-muted">Name: </span>
-                      <code className="text-curtn-cream/70 bg-curtn-deep px-1.5 py-0.5 rounded">{template.credits.nameSelector}</code>
-                    </div>
-                    {template.credits.roleSelector && (
-                      <div>
-                        <span className="text-curtn-muted">Role: </span>
-                        <code className="text-curtn-cream/70 bg-curtn-deep px-1.5 py-0.5 rounded">{template.credits.roleSelector}</code>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {creditSelectMode === 'role' && (
-                  <Button
-                    variant="tertiary"
-                    size="sm"
-                    onClick={() => {
-                      setCreditSelectMode(null)
-                      setMessage({ type: 'success', text: 'Credits configured (no role selector).' })
-                    }}
-                    className="mt-2"
-                  >
-                    Done (no roles)
-                  </Button>
-                )}
               </div>
 
               {/* Presets — override fields with database entities */}
