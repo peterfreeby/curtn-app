@@ -7,8 +7,7 @@ import { useQuery } from "urql";
 import Link from "next/link";
 import { SINGLE_SHOW_QUERY } from "@/lib/graphql/shows";
 import { RUN_REVIEWS_QUERY } from "@/lib/graphql/performances";
-import { ShowHero } from "@/components/shows/ShowHero";
-import { RunHero } from "@/components/runs/RunHero";
+import { DetailHero } from "@/components/DetailHero";
 import { RunCard } from "@/components/runs/RunCard";
 import { ShowingsList } from "@/components/performances/ShowingsList";
 import { CreditsList } from "@/components/credits/CreditsList";
@@ -168,11 +167,9 @@ export default function ShowDetailPage() {
     return (
       <div className="relative">
         <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
-        <RunHero
-          showTitle={show.title}
-          showId={show.id}
-          description={singleRun.description}
-          showDescription={show.description}
+        <DetailHero
+          title={show.title}
+          description={singleRun.description || show.description}
           performanceTypes={show.performanceTypes}
           duration={show.duration}
           intermissions={singleRun.intermissions}
@@ -309,11 +306,9 @@ export default function ShowDetailPage() {
     return (
       <div className="relative">
         <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
-        <RunHero
-          showTitle={show.title}
-          showId={show.id}
-          description={singleRun.description}
-          showDescription={show.description}
+        <DetailHero
+          title={show.title}
+          description={singleRun.description || show.description}
           performanceTypes={show.performanceTypes}
           duration={show.duration}
           intermissions={singleRun.intermissions}
@@ -429,7 +424,7 @@ export default function ShowDetailPage() {
   return (
     <div className="relative">
       <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
-        <ShowHero
+        <DetailHero
           title={show.title}
           description={show.description}
           performanceTypes={show.performanceTypes}

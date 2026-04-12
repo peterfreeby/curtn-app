@@ -7,7 +7,7 @@ import { useQuery } from "urql";
 import Link from "next/link";
 import { SINGLE_RUN_QUERY } from "@/lib/graphql/runs";
 import { RUN_REVIEWS_QUERY } from "@/lib/graphql/performances";
-import { RunHero } from "@/components/runs/RunHero";
+import { DetailHero } from "@/components/DetailHero";
 import { ShowingsList } from "@/components/performances/ShowingsList";
 import { CreditsList } from "@/components/credits/CreditsList";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
@@ -220,11 +220,9 @@ export default function RunDetailPage() {
           { label: run.title || company?.name || run.venues?.[0]?.name || "Production" },
         ]} />
         <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
-        <RunHero
-          showTitle={show.title}
-          showId={show.id}
-          description={run.description}
-          showDescription={show.description}
+        <DetailHero
+          title={show.title}
+          description={run.description || show.description}
           performanceTypes={show.performanceTypes}
           duration={show.duration}
           intermissions={run.intermissions}
@@ -358,11 +356,9 @@ export default function RunDetailPage() {
         { label: run.title || company?.name || run.venues?.[0]?.name || "Production" },
       ]} />
       <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
-      <RunHero
-        showTitle={show.title}
-        showId={show.id}
-        description={run.description}
-        showDescription={show.description}
+      <DetailHero
+        title={show.title}
+        description={run.description || show.description}
         performanceTypes={show.performanceTypes}
         duration={show.duration}
         intermissions={run.intermissions}
