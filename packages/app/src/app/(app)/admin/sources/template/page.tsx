@@ -17,8 +17,15 @@ import { TemplateFieldRow, SelectorRule } from "@/components/admin/TemplateField
 import { TemplatePreviewTable } from "@/components/admin/TemplatePreviewTable"
 import { useAuth } from "@/lib/auth/useAuth"
 
+interface CreditSelectors {
+  containerSelector: string
+  nameSelector: string
+  roleSelector?: string
+}
+
 interface ParsingTemplate {
   selectors: Record<string, SelectorRule | undefined>
+  credits?: CreditSelectors
   listSelector?: string
   useJsonLd?: boolean
   cleanup?: Record<string, any>
@@ -83,6 +90,7 @@ export default function TemplateBuilderPage() {
   const [previewTexts, setPreviewTexts] = useState<Record<string, string>>({})
   const [listMode, setListMode] = useState(false)
   const [selectingListContainer, setSelectingListContainer] = useState(false)
+  const [creditSelectMode, setCreditSelectMode] = useState<'container' | 'name' | 'role' | null>(null)
   const [jsonLdDetected, setJsonLdDetected] = useState(false)
   const [testResults, setTestResults] = useState<ParsedEvent[] | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -149,6 +157,33 @@ export default function TemplateBuilderPage() {
         return
       }
 
+      // Credit selection mode
+      if (creditSelectMode) {
+        setTemplate(prev => {
+          const credits = prev.credits || { containerSelector: '', nameSelector: '' }
+          if (creditSelectMode === 'container') {
+            return { ...prev, credits: { ...credits, containerSelector: selector } }
+          } else if (creditSelectMode === 'name') {
+            return { ...prev, credits: { ...credits, nameSelector: selector } }
+          } else if (creditSelectMode === 'role') {
+            return { ...prev, credits: { ...credits, roleSelector: selector } }
+          }
+          return prev
+        })
+        // Auto-advance: container → name → role → done
+        if (creditSelectMode === 'container') {
+          setCreditSelectMode('name')
+          setMessage({ type: 'success', text: `Credit container set. Now click a person's NAME within one entry.` })
+        } else if (creditSelectMode === 'name') {
+          setCreditSelectMode('role')
+          setMessage({ type: 'success', text: `Name selector set. Now click a ROLE label, or press Done if there are no roles.` })
+        } else {
+          setCreditSelectMode(null)
+          setMessage({ type: 'success', text: 'Credits configured.' })
+        }
+        return
+      }
+
       if (!activeField) return
 
       setTemplate(prev => ({
@@ -170,7 +205,7 @@ export default function TemplateBuilderPage() {
 
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [activeField, selectingListContainer, template.selectors])
+  }, [activeField, selectingListContainer, creditSelectMode, template.selectors])
 
   const loadPage = useCallback(async () => {
     if (!sampleUrl.trim()) return
@@ -351,9 +386,15 @@ export default function TemplateBuilderPage() {
 
   const statusText = selectingListContainer
     ? 'Click the repeating container element (e.g., the card or row that wraps each event)'
-    : activeField
-      ? `Click the ${FIELD_DEFS.find(f => f.key === activeField)?.label?.toUpperCase()} element on the page`
-      : 'Select a field in the sidebar, then click the matching element on the page'
+    : creditSelectMode === 'container'
+      ? 'Click the element that wraps each credit entry (e.g., a cast member card or row)'
+      : creditSelectMode === 'name'
+        ? 'Click a person\'s NAME within one credit entry'
+        : creditSelectMode === 'role'
+          ? 'Click a ROLE label within one credit entry (or click Done below to skip)'
+          : activeField
+            ? `Click the ${FIELD_DEFS.find(f => f.key === activeField)?.label?.toUpperCase()} element on the page`
+            : 'Select a field in the sidebar, then click the matching element on the page'
 
   return (
     <div className="space-y-4">
@@ -514,6 +555,85 @@ export default function TemplateBuilderPage() {
                   }}
                 />
               ))}
+
+              {/* Credits selector */}
+              <div className="border-t border-curtn-dark/20 pt-3 mt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-medium text-curtn-muted uppercase tracking-wide">
+                    Credits (Cast / Crew)
+                  </h3>
+                  {template.credits?.containerSelector ? (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="tertiary"
+                        size="sm"
+                        onClick={() => setTemplate(prev => ({ ...prev, credits: undefined }))}
+                      >
+                        Clear
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setCreditSelectMode('container')
+                          setActiveField(null)
+                          setSelectingListContainer(false)
+                        }}
+                      >
+                        Re-select
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant={creditSelectMode ? "primary" : "secondary"}
+                      size="sm"
+                      onClick={() => {
+                        if (creditSelectMode) {
+                          setCreditSelectMode(null)
+                        } else {
+                          setCreditSelectMode('container')
+                          setActiveField(null)
+                          setSelectingListContainer(false)
+                          setMessage({ type: 'success', text: 'Click the element that wraps each credit entry (e.g., a cast member card).' })
+                        }
+                      }}
+                    >
+                      {creditSelectMode ? 'Cancel' : 'Select Credits'}
+                    </Button>
+                  )}
+                </div>
+                {template.credits?.containerSelector && (
+                  <div className="space-y-1.5 text-xs">
+                    <div>
+                      <span className="text-curtn-muted">Container: </span>
+                      <code className="text-curtn-cream/70 bg-curtn-deep px-1.5 py-0.5 rounded">{template.credits.containerSelector}</code>
+                    </div>
+                    <div>
+                      <span className="text-curtn-muted">Name: </span>
+                      <code className="text-curtn-cream/70 bg-curtn-deep px-1.5 py-0.5 rounded">{template.credits.nameSelector}</code>
+                    </div>
+                    {template.credits.roleSelector && (
+                      <div>
+                        <span className="text-curtn-muted">Role: </span>
+                        <code className="text-curtn-cream/70 bg-curtn-deep px-1.5 py-0.5 rounded">{template.credits.roleSelector}</code>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {creditSelectMode === 'role' && (
+                  <Button
+                    variant="tertiary"
+                    size="sm"
+                    onClick={() => {
+                      setCreditSelectMode(null)
+                      setMessage({ type: 'success', text: 'Credits configured (no role selector).' })
+                    }}
+                    className="mt-2"
+                  >
+                    Done (no roles)
+                  </Button>
+                )}
+              </div>
 
               {/* Presets — override fields with database entities */}
               <div className="border-t border-curtn-dark/20 pt-3 mt-3">
