@@ -44,7 +44,7 @@ export function RunCard({
 
   return (
     <Link
-      href={`/runs/${id}`}
+      href={`/runs/${id}?view=run`}
       className="group flex gap-[var(--spacing-2)] dog-ear border border-curtn-dark/50 bg-curtn-surface overflow-hidden p-[var(--spacing-2)] transition-colors duration-200 hover:border-curtn-muted/50"
     >
       {/* Poster thumbnail */}

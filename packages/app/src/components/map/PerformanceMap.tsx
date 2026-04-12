@@ -69,7 +69,7 @@ function buildPopup(venue: NonNullable<Performance["venue"]>, performances: Perf
     const company = perf.run?.productionCompany;
     const isSoldOut = perf.soldOut === true || perf.soldOut === "true";
 
-    return `<a href="/showings/${perf.id}" style="font-family:sans-serif;max-width:260px;display:block;text-decoration:none;color:inherit;cursor:pointer;">
+    return `<a href="${perf.run?.id ? `/runs/${perf.run.id}` : `/showings/${perf.id}`}" style="font-family:sans-serif;max-width:260px;display:block;text-decoration:none;color:inherit;cursor:pointer;">
       <div style="display:flex;gap:10px;">
         ${show?.posterUrl ? `<img src="${show.posterUrl}" alt="" loading="lazy" style="width:50px;height:75px;object-fit:cover;border-radius:2px;flex-shrink:0;" />` : ""}
         <div style="flex:1;min-width:0;">
@@ -87,7 +87,7 @@ function buildPopup(venue: NonNullable<Performance["venue"]>, performances: Perf
 
   // Multi-show venue popup
   const posters = shows.slice(0, 6).map(s =>
-    `<a href="/showings/${s.perfId}" style="flex-shrink:0;width:48px;display:block;text-decoration:none;">
+    `<a href="${s.runId ? `/runs/${s.runId}` : `/showings/${s.perfId}`}" style="flex-shrink:0;width:48px;display:block;text-decoration:none;">
       <div style="width:48px;height:72px;background:#1a1a1a;border-radius:2px;overflow:hidden;border:1px solid #393E41;">
         ${s.posterUrl
           ? `<img src="${s.posterUrl}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;" />`

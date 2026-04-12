@@ -24,7 +24,7 @@ function FeaturedLists() {
 
 export default function ListsPage() {
   return (
-    <div className="px-4 sm:px-6 py-8 max-w-6xl mx-auto space-y-12">
+    <div className="px-2 sm:px-6 py-8 max-w-6xl mx-auto space-y-12">
       <section>
         <div className="flex items-center justify-between border-b border-curtn-dark/50 pb-2 mb-6">
           <h2 className="text-sm font-display font-semibold uppercase tracking-widest text-curtn-muted hover:text-curtn-cream transition-colors">

@@ -21,6 +21,7 @@ const ICONS = {
   "caret-left": "\uE138",
   "caret-right": "\uE13A",
   star: "\uE46A",
+  "star-half": "\uE70A",
   heart: "\uE2A8",
   ticket: "\uE490",
   calendar: "\uE108",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useNowViewing } from "@/lib/NowViewingContext";
 import { useQuery } from "urql";
 import Link from "next/link";
@@ -29,10 +29,13 @@ const REVIEW_PAGE_SIZE = 12;
 
 export default function ShowDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = decodeURIComponent(params.id as string);
   const { user } = useAuth();
   const isAdmin = !!user?.isAdmin;
   const [editing, setEditing] = useState<"show" | "run" | null>(null);
+  // Allow ?view=show to force the show-level view even when there's only one run
+  const forceView = searchParams.get("view");
 
   const [{ data, fetching }] = useQuery({
     query: SINGLE_SHOW_QUERY,
@@ -51,14 +54,30 @@ export default function ShowDetailPage() {
       const perfDate = singlePerf?.date ? new Date(singlePerf.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
       const runDate = singleRun?.startDate ? new Date(singleRun.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
       const sub = singleRun?.title || singleRun?.productionCompany?.name || singleRun?.venues?.[0]?.name || (runCount > 1 ? `${runCount} productions` : null) || perfDate || runDate;
+      const showHref = `/performances/${encodeURIComponent(id)}?view=show`;
+      const breadcrumbs = [
+        { label: show.title, sublabel: 'Show', href: showHref },
+      ];
+      if (singleRun) {
+        const runLabel = singleRun.title || singleRun.productionCompany?.name || singleRun.venues?.[0]?.name || 'Production';
+        breadcrumbs.push({ label: runLabel, sublabel: 'Run', href: `/runs/${encodeURIComponent(singleRun.id)}?view=run` });
+        if (singlePerf) {
+          const perfLabel = perfDate || 'Performance';
+          breadcrumbs.push({ label: perfLabel, sublabel: 'Performance', href: `/performances/${encodeURIComponent(id)}` });
+        }
+      }
+      // entityType = the level we're actually viewing (respects ?view= override)
+      const entityType = forceView === 'show' ? 'Show' : (singlePerf ? 'Performance' : singleRun ? 'Run' : 'Show');
       setNowViewing({
         title: show.title,
         subtitle: sub,
+        entityType,
         posterUrl: show.posterUrl || show.imageUrl,
         showId: show.id,
         runId: singleRun?.id || null,
         isOnWatchlist: show.isOnMyWatchlist ?? false,
         href: `/performances/${encodeURIComponent(id)}`,
+        breadcrumbs,
       });
     }
     return () => setNowViewing(null);
@@ -96,7 +115,7 @@ export default function ShowDetailPage() {
 
   if (fetching) {
     return (
-      <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto animate-pulse space-y-4">
+      <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto animate-pulse space-y-4">
         <div className="flex gap-1.5">
           <div className="h-4 w-14 bg-curtn-dark/60" />
           <div className="h-4 w-18 bg-curtn-dark/60" />
@@ -111,7 +130,7 @@ export default function ShowDetailPage() {
 
   if (!show) {
     return (
-      <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto">
+      <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto">
         <p className="text-curtn-muted text-sm">Show not found.</p>
       </div>
     );
@@ -139,7 +158,8 @@ export default function ShowDetailPage() {
   }
 
   // --- SCENARIO A: 1 run, 1 performance — fully combined page ---
-  if (singleRun && singlePerf) {
+  // Skip collapse if ?view=show forces the show-level view
+  if (singleRun && singlePerf && forceView !== "show") {
     const company = singleRun.productionCompany;
     const venues = singleRun.venues || [];
     const isSoldOut =
@@ -147,7 +167,7 @@ export default function ShowDetailPage() {
 
     return (
       <div className="relative">
-        <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
+        <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
         <RunHero
           showTitle={show.title}
           showId={show.id}
@@ -188,7 +208,7 @@ export default function ShowDetailPage() {
 
         <Link
           href={`/log?run=${singleRun.id}`}
-          className="block w-full dog-ear dog-ear-dark bg-curtn-coral py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-curtn-deep transition-colors hover:bg-curtn-red"
+          className="hidden sm:block w-full dog-ear dog-ear-dark bg-curtn-coral py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-curtn-deep transition-colors hover:bg-curtn-red"
         >
           Log This Show
         </Link>
@@ -272,7 +292,7 @@ export default function ShowDetailPage() {
   }
 
   // --- SCENARIO B: 1 run, multiple performances — combined show+run, performance list ---
-  if (singleRun) {
+  if (singleRun && forceView !== "show") {
     const company = singleRun.productionCompany;
     const venues = singleRun.venues || [];
     const upcomingShowings =
@@ -284,7 +304,7 @@ export default function ShowDetailPage() {
 
     return (
       <div className="relative">
-        <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
+        <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
         <RunHero
           showTitle={show.title}
           showId={show.id}
@@ -320,12 +340,12 @@ export default function ShowDetailPage() {
         </div>
 
         {upcomingShowings.length > 0 && (
-          <ShowingsList showings={upcomingShowings} label="Upcoming Shows" />
+          <ShowingsList showings={upcomingShowings} label="Upcoming Shows" runId={singleRun.id} />
         )}
 
         <Link
           href={`/log?run=${singleRun.id}`}
-          className="block w-full dog-ear dog-ear-dark bg-curtn-coral py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-curtn-deep transition-colors hover:bg-curtn-red"
+          className="hidden sm:block w-full dog-ear dog-ear-dark bg-curtn-coral py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-curtn-deep transition-colors hover:bg-curtn-red"
         >
           Log This Show
         </Link>
@@ -390,7 +410,7 @@ export default function ShowDetailPage() {
         />
 
         {pastShowings.length > 0 && (
-          <ShowingsList showings={pastShowings} label="Past Shows" />
+          <ShowingsList showings={pastShowings} label="Past Shows" runId={singleRun.id} />
         )}
       </div>
       </div>
@@ -400,7 +420,7 @@ export default function ShowDetailPage() {
   // --- SCENARIO C: multiple runs — show info + run list ---
   return (
     <div className="relative">
-      <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
+      <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
         <ShowHero
           title={show.title}
           description={show.description}

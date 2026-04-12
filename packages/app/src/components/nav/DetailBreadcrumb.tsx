@@ -15,20 +15,9 @@ export function DetailBreadcrumb({ levels }: DetailBreadcrumbProps) {
   const parent = levels.length > 1 ? levels[levels.length - 2] : null;
 
   return (
-    <nav className="absolute top-0 left-0 right-0 z-10 px-6 pt-4">
-      {/* Mobile: labelled back button */}
-      {parent?.href && (
-        <Link
-          href={parent.href}
-          className="md:hidden inline-flex items-center gap-1 text-xs text-curtn-cream/80 hover:text-curtn-coral transition-colors bg-curtn-deep/60 backdrop-blur-sm px-2.5 py-1.5 rounded-sm"
-        >
-          <span className="text-[10px]">&larr;</span>
-          {parent.label}
-        </Link>
-      )}
-
+    <nav className="hidden md:block absolute top-0 left-0 right-0 z-10 px-6 pt-4">
       {/* Desktop: full breadcrumb */}
-      <div className="hidden md:flex items-center gap-1.5 text-xs">
+      <div className="flex items-center gap-1.5 text-xs">
         {levels.map((level, i) => {
           const isLast = i === levels.length - 1;
           return (

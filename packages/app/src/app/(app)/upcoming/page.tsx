@@ -179,7 +179,7 @@ export default function UpcomingPage() {
                       return (
                         <Link
                           key={perf.id}
-                          href={`/showings/${encodeURIComponent(perf.id)}`}
+                          href={perf.run?.id ? `/runs/${encodeURIComponent(perf.run.id)}` : `/showings/${encodeURIComponent(perf.id)}`}
                           className="flex items-center gap-3 py-2.5 border-b border-curtn-dark/30 hover:bg-curtn-surface/50 transition-colors -mx-2 px-2 rounded-sm"
                         >
                           {show?.posterUrl && (

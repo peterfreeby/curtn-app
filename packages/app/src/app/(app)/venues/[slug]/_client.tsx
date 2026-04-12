@@ -20,7 +20,7 @@ export default function VenueDetailPage() {
 
   if (fetching) {
     return (
-      <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto animate-pulse space-y-4">
+      <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto animate-pulse space-y-4">
         <div className="h-4 w-16 rounded-full bg-curtn-dark/60" />
         <div className="h-8 w-3/4 rounded bg-curtn-dark/60" />
         <div className="h-4 w-2/3 rounded bg-curtn-dark/60" />
@@ -32,14 +32,14 @@ export default function VenueDetailPage() {
 
   if (!venue) {
     return (
-      <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto">
+      <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto">
         <p className="text-curtn-muted text-sm">Venue not found.</p>
       </div>
     );
   }
 
   return (
-    <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
+    <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
       <VenueHero
         name={venue.name}
         venueType={venue.venueType}

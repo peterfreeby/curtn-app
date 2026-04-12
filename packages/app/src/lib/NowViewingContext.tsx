@@ -2,15 +2,23 @@
 
 import { createContext, useContext, useState, useCallback, useMemo } from "react";
 
+interface BreadcrumbLevel {
+  label: string;
+  sublabel?: string | null;
+  href: string;
+}
+
 interface NowViewing {
   title: string;
   subtitle?: string | null;
+  entityType?: string | null;
   posterUrl?: string | null;
   href: string;
   parentHref?: string | null;
   showId?: string | null;
   runId?: string | null;
   isOnWatchlist?: boolean;
+  breadcrumbs?: BreadcrumbLevel[];
 }
 
 interface NowViewingContextValue {

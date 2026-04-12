@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useNowViewing } from "@/lib/NowViewingContext";
 import { useQuery } from "urql";
 import Link from "next/link";
@@ -97,11 +97,13 @@ const REVIEW_PAGE_SIZE = 12;
 
 export default function RunDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = decodeURIComponent(params.id as string);
   const { isAuthenticated, user } = useAuth();
   const isAdmin = !!user?.isAdmin;
   const [editing, setEditing] = useState(false);
   const [batchCreating, setBatchCreating] = useState(false);
+  const forceView = searchParams.get("view");
 
   const [{ data, fetching }, reexecuteRun] = useQuery({
     query: SINGLE_RUN_QUERY,
@@ -132,15 +134,29 @@ export default function RunDetailPage() {
     if (run?.show) {
       const runDate = run.startDate ? new Date(run.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
       const sub = run.title || run.productionCompany?.name || run.venues?.[0]?.name || runDate || null;
+      const allPerfs = run.performances?.edges?.map((e: any) => e.node) ?? [];
+      const onlyOnePerf = allPerfs.length === 1 ? allPerfs[0] : null;
+
+      const breadcrumbs = [
+        { label: run.show.title, sublabel: 'Show', href: `/performances/${encodeURIComponent(run.show.id)}?view=show` },
+        { label: sub || 'Production', sublabel: 'Run', href: `/runs/${encodeURIComponent(id)}?view=run` },
+      ];
+      if (onlyOnePerf) {
+        const perfDate = new Date(onlyOnePerf.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        breadcrumbs.push({ label: perfDate, sublabel: 'Performance', href: `/runs/${encodeURIComponent(id)}` });
+      }
+
       setNowViewing({
         title: run.show.title,
         subtitle: sub,
+        entityType: forceView === 'run' ? 'Run' : (onlyOnePerf ? 'Performance' : 'Run'),
         posterUrl: run.posterUrl || run.imageUrl || run.show.posterUrl || run.show.imageUrl,
         showId: run.show.id,
         runId: run.id,
         isOnWatchlist: false,
         href: `/runs/${encodeURIComponent(id)}`,
         parentHref: `/performances/${encodeURIComponent(run.show.id)}`,
+        breadcrumbs,
       });
     }
     return () => setNowViewing(null);
@@ -148,7 +164,7 @@ export default function RunDetailPage() {
 
   if (fetching) {
     return (
-      <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto animate-pulse space-y-4">
+      <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto animate-pulse space-y-4">
         <div className="flex gap-1.5">
           <div className="h-4 w-14 bg-curtn-dark/60" />
           <div className="h-4 w-18 bg-curtn-dark/60" />
@@ -163,7 +179,7 @@ export default function RunDetailPage() {
 
   if (!run) {
     return (
-      <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto">
+      <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto">
         <div className="empty-state">
           <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">Run Not Found</p>
           <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">This production may have been removed.</p>
@@ -217,7 +233,8 @@ export default function RunDetailPage() {
   }
 
   // --- Single performance: absorb into run page ---
-  if (singlePerf) {
+  // Skip collapse if ?view=run forces the run-level view
+  if (singlePerf && forceView !== "run") {
     const isSoldOut = singlePerf.soldOut === true || singlePerf.soldOut === "true";
     const dateObj = new Date(singlePerf.date);
     const day = dateObj.getDate().toString().padStart(2, "0");
@@ -229,7 +246,7 @@ export default function RunDetailPage() {
           { label: show.title, href: `/performances/${encodeURIComponent(show.id)}` },
           { label: run.title || company?.name || run.venues?.[0]?.name || "Production" },
         ]} />
-        <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
+        <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
         <RunHero
           showTitle={show.title}
           showId={show.id}
@@ -255,39 +272,9 @@ export default function RunDetailPage() {
           <AddToListButton listType="runs" itemId={id} />
         )}
 
-        {/* Single performance — ticket card */}
-        <div className="card-ticket">
-          <div className={`ticket-stub ${isSoldOut ? "!bg-curtn-muted" : ""}`}>
-            <div className="ticket-date">{day}</div>
-            <div className="ticket-month">{month}</div>
-          </div>
-          <div className="ticket-body flex items-center justify-between">
-            <div className="relative">
-              <div className="ticket-title text-curtn-cream">
-                {formatShowDate(singlePerf.date)}
-              </div>
-              <div className="ticket-time">
-                {singlePerf.time && formatShowTime(singlePerf.time)}
-                {isSoldOut && <span className="badge badge-muted ml-2">Sold Out</span>}
-              </div>
-            </div>
-            {!isSoldOut && singlePerf.ticketUrl && (
-              <a
-                href={singlePerf.ticketUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 border border-curtn-coral/30 px-3 py-1.5 text-xs text-curtn-coral transition-colors hover:bg-curtn-coral/10"
-              >
-                <Icon name="ticket" size={12} />
-                Tickets
-              </a>
-            )}
-          </div>
-        </div>
-
         <Link
           href={`/log?run=${id}`}
-          className="block w-full dog-ear dog-ear-dark bg-curtn-coral py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-curtn-deep transition-colors hover:bg-curtn-red"
+          className="hidden sm:block w-full dog-ear dog-ear-dark bg-curtn-coral py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-curtn-deep transition-colors hover:bg-curtn-red"
         >
           Log This Show
         </Link>
@@ -393,7 +380,7 @@ export default function RunDetailPage() {
         { label: show.title, href: `/performances/${encodeURIComponent(show.id)}` },
         { label: run.title || company?.name || run.venues?.[0]?.name || "Production" },
       ]} />
-      <div className="px-4 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
+      <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
       <RunHero
         showTitle={show.title}
         showId={show.id}
@@ -418,12 +405,12 @@ export default function RunDetailPage() {
       }
 
       {upcomingShowings.length > 0 && (
-        <ShowingsList showings={upcomingShowings} label="Upcoming Shows" />
+        <ShowingsList showings={upcomingShowings} label="Upcoming Shows" runId={id} />
       )}
 
       <Link
         href={`/log?run=${id}`}
-        className="block w-full dog-ear dog-ear-dark bg-curtn-coral py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-curtn-deep transition-colors hover:bg-curtn-red"
+        className="hidden sm:block w-full dog-ear dog-ear-dark bg-curtn-coral py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-curtn-deep transition-colors hover:bg-curtn-red"
       >
         Log This Show
       </Link>
@@ -519,7 +506,7 @@ export default function RunDetailPage() {
       </div>
 
       {pastShowings.length > 0 && (
-        <ShowingsList showings={pastShowings} label="Past Shows" />
+        <ShowingsList showings={pastShowings} label="Past Shows" runId={id} />
       )}
     </div>
     </div>

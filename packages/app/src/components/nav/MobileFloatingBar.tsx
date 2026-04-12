@@ -19,7 +19,7 @@ const TAB_CONFIG: { id: TabId; icon: IconName; label: string; href: string }[] =
   { id: "feed", icon: "lightning", label: "Feed", href: "/feed" },
 ];
 
-const DETAIL_ROUTES = ["/performances/", "/runs/", "/showings/", "/venues/", "/people/", "/companies/"];
+const DETAIL_ROUTES = ["/performances/", "/runs/", "/showings/", "/venues/", "/people/", "/companies/", "/navigate"];
 
 function isDetailRoute(pathname: string): boolean {
   return DETAIL_ROUTES.some((r) => pathname.startsWith(r));
@@ -67,6 +67,7 @@ export function MobileFloatingBar() {
 
   const [barState, setBarState] = useState<BarState>("default");
   const [lastTab, setLastTab] = useState<TabId>("browse");
+  const [lastCoreNavPath, setLastCoreNavPath] = useState("/browse");
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [toast, setToast] = useState<{ message: string; canChangeList?: boolean; actionLabel?: string; actionHref?: string } | null>(null);
@@ -95,7 +96,10 @@ export function MobileFloatingBar() {
 
   useEffect(() => {
     const tab = getTabFromPathname(pathname);
-    if (tab) setLastTab(tab);
+    if (tab) {
+      setLastTab(tab);
+      setLastCoreNavPath(pathname);
+    }
   }, [pathname]);
 
   const isListAdd = pathname === "/lists/add";
@@ -175,7 +179,27 @@ export function MobileFloatingBar() {
     setIsOnWatchlist(nowViewing?.isOnWatchlist ?? false);
   }, [nowViewing?.isOnWatchlist]);
 
-  const handleBack = useCallback(() => { router.back(); }, [router]);
+  const handleBack = useCallback(() => {
+    if (pathname === "/navigate") {
+      // From navigate page, go back to the detail page we came from
+      try {
+        const raw = sessionStorage.getItem("curtn_nav_breadcrumbs");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.currentHref) {
+            navigateTo(parsed.currentHref);
+            return;
+          }
+        }
+      } catch {}
+      router.back();
+    } else if (isDetailRoute(pathname)) {
+      // From detail page, go to the last core nav page
+      navigateTo(lastCoreNavPath);
+    } else {
+      router.back();
+    }
+  }, [pathname, lastCoreNavPath, navigateTo, router]);
 
   const handleWatchlistToggle = useCallback(async () => {
     if (!user) {
@@ -322,9 +346,6 @@ export function MobileFloatingBar() {
                 <button type="button" onClick={handleBack} className={iconBtnMuted} aria-label="Go back">
                   <Icon name="arrow-left" weight="regular" size={20} />
                 </button>
-                <button type="button" onClick={handleSearch} className={iconBtnMuted} aria-label="Search">
-                  <Icon name="magnifying-glass" size={20} />
-                </button>
               </StateLayer>
 
             </div>
@@ -336,16 +357,24 @@ export function MobileFloatingBar() {
               className="nav-bar nav-bar-floating flex items-center gap-0.5 h-9 pl-1 pr-0.5 shrink-0"
               style={{ transition: `all ${DURATION} ${EASE}` }}
             >
-              {/* Poster + info */}
-              {nowViewing.posterUrl && (
-                <img
-                  src={nowViewing.posterUrl}
-                  alt=""
-                  className="w-7 h-7 rounded-full object-cover shrink-0"
-                />
-              )}
-              <div className="flex flex-col justify-center max-w-[120px] -translate-y-[2px] ml-2">
-                {nowViewing.title.length > 16 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (nowViewing.breadcrumbs?.length) {
+                    try {
+                      sessionStorage.setItem('curtn_nav_breadcrumbs', JSON.stringify({
+                        breadcrumbs: nowViewing.breadcrumbs,
+                        currentHref: nowViewing.href,
+                        currentEntityType: nowViewing.entityType,
+                        title: nowViewing.title,
+                      }));
+                    } catch {}
+                    navigateTo('/navigate');
+                  }
+                }}
+                className="flex flex-col justify-center max-w-[140px] -translate-y-[2px] ml-2 text-left"
+              >
+                {nowViewing.title.length > 14 ? (
                   <div className="ticker-container">
                     <span
                       className="text-xs font-bold text-curtn-cream leading-none ticker-scroll"
@@ -360,32 +389,10 @@ export function MobileFloatingBar() {
                 ) : (
                   <span className="text-xs font-bold text-curtn-cream leading-none truncate">{nowViewing.title}</span>
                 )}
-                {nowViewing.subtitle && (
-                  <span className="flex items-baseline gap-1 mt-0.5">
-                    {nowViewing.parentHref && (
-                      <a
-                        href={nowViewing.parentHref}
-                        onClick={(e) => { e.stopPropagation(); }}
-                        className="text-curtn-muted hover:text-curtn-coral transition-colors shrink-0 leading-none"
-                        aria-label="Go to parent"
-                      >
-                        <span className="inline-block rotate-90 relative top-[1px]"><Icon name="caret-down" size={8} /></span>
-                      </a>
-                    )}
-                    {nowViewing.parentHref ? (
-                      <a
-                        href={nowViewing.parentHref}
-                        onClick={(e) => { e.stopPropagation(); }}
-                        className="text-[9px] text-curtn-muted hover:text-curtn-coral leading-none truncate transition-colors"
-                      >
-                        {nowViewing.subtitle}
-                      </a>
-                    ) : (
-                      <span className="text-[9px] text-curtn-muted leading-none truncate">{nowViewing.subtitle}</span>
-                    )}
-                  </span>
+                {nowViewing.entityType && (
+                  <span className="text-[9px] text-curtn-muted leading-none mt-0.5">{nowViewing.entityType}</span>
                 )}
-              </div>
+              </button>
               {/* Add to list + Log on the right */}
               <button
                 type="button"

@@ -106,9 +106,9 @@ export function RunHero({
   return (
     <div>
       {hasHeroMedia ? (
-        <div className="relative -mx-4 sm:-mx-6 -mt-8 mb-6">
-          {/* Backdrop — only show cover image when a separate poster exists */}
-          <div className="relative h-[280px] sm:h-[400px] overflow-hidden">
+        <div className="relative -mt-8 mb-6 z-0">
+          {/* Backdrop */}
+          <div className="relative z-0 h-[280px] sm:h-[400px] overflow-hidden">
             {effectiveImage && effectivePoster ? (
               <img src={effectiveImage} alt="" className="h-full w-full object-cover" onError={() => setBackdropFailed(true)} />
             ) : (
@@ -118,8 +118,8 @@ export function RunHero({
             <div className="absolute inset-0 bg-gradient-to-r from-curtn-deep/80 to-transparent" />
           </div>
 
-          {/* Poster overlay — falls back to imageUrl */}
-          <div className="relative -mt-28 sm:-mt-36 px-4 sm:px-6 flex gap-4 sm:gap-5 items-end">
+          {/* Poster + title overlay */}
+          <div className="relative z-10 -mt-28 sm:-mt-36 flex gap-3 sm:gap-5 items-end">
             <div className="w-[90px] sm:w-[140px] shrink-0">
               <div className="relative aspect-[2/3] rounded-sm border-2 border-curtn-dark/50 bg-curtn-surface shadow-2xl overflow-hidden">
                 <img src={(effectivePoster || effectiveImage)!} alt={showTitle} className="h-full w-full object-cover" onError={() => setPosterFailed(true)} />
@@ -163,6 +163,7 @@ export function RunHero({
         </>
       )}
 
+      <div className="relative z-10">
       {effectiveDescription && (
         <div className="mt-4">
           <p
@@ -184,46 +185,7 @@ export function RunHero({
         </div>
       )}
 
-      {/* Scenario A: single-performance date/time/ticket — ticket card style */}
-      {performanceDate && (() => {
-        const dateObj = new Date(performanceDate);
-        const day = dateObj.getDate().toString().padStart(2, "0");
-        const month = dateObj.toLocaleString("en-US", { month: "short" });
-        return (
-          <div className="mt-6 card-ticket">
-            <div className={`ticket-stub ${soldOut ? "!bg-curtn-muted" : ""}`}>
-              <div className="ticket-date">{day}</div>
-              <div className="ticket-month">{month}</div>
-            </div>
-            <div className="ticket-body flex items-center justify-between">
-              <div>
-                <div className="ticket-title text-curtn-cream">
-                  {formatShowDate(performanceDate)}
-                </div>
-                <div className="ticket-time">
-                  {performanceTime && formatShowTime(performanceTime)}
-                  {soldOut && (
-                    <span className="badge badge-muted ml-2">Sold Out</span>
-                  )}
-                </div>
-              </div>
-              {!soldOut && ticketUrl && (
-                <a
-                  href={ticketUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 border border-curtn-coral/30 px-3 py-1.5 text-xs text-curtn-coral transition-colors hover:bg-curtn-coral/10"
-                >
-                  <Icon name="ticket" size={12} />
-                  Tickets
-                </a>
-              )}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Obra Dinn ledger — show metadata */}
+      {/* Record of Performance — all metadata in one panel */}
       <div className="mt-6 dinn-panel">
         <div className="dinn-header">
           <span className="dinn-title">Record of Performance</span>
@@ -236,6 +198,22 @@ export function RunHero({
           )}
         </div>
         <div className="dinn-grid">
+          {performanceDate && (
+            <>
+              <span className="dinn-label">Date</span>
+              <span className="dinn-value">
+                {formatShowDate(performanceDate)}
+                {performanceTime && <span className="text-curtn-muted/60"> · {formatShowTime(performanceTime)}</span>}
+                {soldOut && <span className="text-curtn-red ml-2 text-[10px] uppercase">Sold Out</span>}
+              </span>
+            </>
+          )}
+          {dateRange && !performanceDate && (
+            <>
+              <span className="dinn-label">Dates</span>
+              <span className="dinn-value">{dateRange}</span>
+            </>
+          )}
           {venues.length > 0 && (
             <>
               <span className="dinn-label">Venue</span>
@@ -260,12 +238,6 @@ export function RunHero({
           )}
           <span className="dinn-label">Duration</span>
           <span className="dinn-value">{metaParts.join(" · ")}</span>
-          {dateRange && !performanceDate && (
-            <>
-              <span className="dinn-label">Dates</span>
-              <span className="dinn-value">{dateRange}</span>
-            </>
-          )}
           {companyName && (
             <>
               <span className="dinn-label">Company</span>
@@ -292,7 +264,24 @@ export function RunHero({
               </span>
             </>
           )}
+          {!soldOut && ticketUrl && (
+            <>
+              <span className="dinn-label">Tickets</span>
+              <span className="dinn-value">
+                <a
+                  href={ticketUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-curtn-coral hover:underline inline-flex items-center gap-1"
+                >
+                  <Icon name="ticket" size={12} />
+                  Buy tickets
+                </a>
+              </span>
+            </>
+          )}
         </div>
+      </div>
       </div>
     </div>
   );

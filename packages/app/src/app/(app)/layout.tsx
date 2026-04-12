@@ -10,7 +10,7 @@ export default function AppLayout({
   modal: React.ReactNode;
 }) {
   return (
-    <div className="min-h-dvh w-full md:block">
+    <div className="min-h-dvh w-full md:block overflow-x-hidden">
       <DesktopNav />
       <MobileTopBar />
       <main className="pt-[calc(env(safe-area-inset-top)+3rem)] md:pt-16 pb-[calc(env(safe-area-inset-bottom)+4rem)] md:pb-0">

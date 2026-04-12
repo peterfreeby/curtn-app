@@ -17,11 +17,12 @@ interface Showing {
 interface ShowingsListProps {
   showings: Showing[];
   label: string;
+  runId?: string;
 }
 
 const INITIAL_COUNT = 5;
 
-export function ShowingsList({ showings, label }: ShowingsListProps) {
+export function ShowingsList({ showings, label, runId }: ShowingsListProps) {
   const [showAll, setShowAll] = useState(false);
 
   if (showings.length === 0) return null;
@@ -81,7 +82,7 @@ export function ShowingsList({ showings, label }: ShowingsListProps) {
             return (
               <Link
                 key={`${showing.date}-${i}`}
-                href={`/showings/${encodeURIComponent(showing.id)}`}
+                href={runId ? `/runs/${encodeURIComponent(runId)}` : `/showings/${encodeURIComponent(showing.id)}`}
                 className="card-ticket transition-colors hover:border-curtn-muted/50"
               >
                 {cardContent}

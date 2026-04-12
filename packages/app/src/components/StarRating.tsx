@@ -33,26 +33,22 @@ export function StarRating({
     [readOnly, onChange, value]
   );
 
+  function starIcon(i: number) {
+    const filled = value >= i + 1;
+    const halfFilled = !filled && value >= i + 0.5;
+
+    if (filled) return <Icon name="star" weight="fill" size={size} className="text-curtn-coral" />;
+    if (halfFilled) return <Icon name="star-half" weight="fill" size={size} className="text-curtn-coral" />;
+    return <Icon name="star" weight="regular" size={size} className="text-curtn-dark" />;
+  }
+
   return (
     <div ref={containerRef} className="flex items-center gap-0.5" role={readOnly ? "img" : "radiogroup"} aria-label={`Rating: ${value} out of 5 stars`}>
       {Array.from({ length: 5 }).map((_, i) => {
-        const filled = value >= i + 1;
-        const halfFilled = !filled && value >= i + 0.5;
-
         if (readOnly) {
           return (
-            <span key={i} className="relative inline-block" style={{ width: size, height: size }}>
-              {/* Empty star base */}
-              <Icon name="star" weight="regular" size={size} className="text-curtn-dark" />
-              {/* Filled overlay */}
-              {(filled || halfFilled) && (
-                <span
-                  className="absolute inset-0 overflow-hidden"
-                  style={{ width: filled ? "100%" : "50%" }}
-                >
-                  <Icon name="star" weight="fill" size={size} className="text-curtn-coral" />
-                </span>
-              )}
+            <span key={i} className="inline-block" style={{ width: size, height: size }}>
+              {starIcon(i)}
             </span>
           );
         }
@@ -66,19 +62,7 @@ export function StarRating({
             style={{ width: Math.max(size, 44), height: Math.max(size, 44) }}
             aria-label={`${i + 1} star${i === 0 ? "" : "s"}`}
           >
-            <span className="relative inline-block" style={{ width: size, height: size }}>
-              {/* Empty star base */}
-              <Icon name="star" weight="regular" size={size} className="text-curtn-dark" />
-              {/* Filled overlay */}
-              {(filled || halfFilled) && (
-                <span
-                  className="absolute inset-0 overflow-hidden"
-                  style={{ width: filled ? "100%" : "50%" }}
-                >
-                  <Icon name="star" weight="fill" size={size} className="text-curtn-coral" />
-                </span>
-              )}
-            </span>
+            {starIcon(i)}
           </button>
         );
       })}

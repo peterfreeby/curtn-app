@@ -36,7 +36,7 @@ export default function ListDetailPage() {
 
   if (fetching) {
     return (
-      <div className="px-4 sm:px-6 py-8 max-w-2xl mx-auto space-y-4">
+      <div className="px-2 sm:px-6 py-8 max-w-2xl mx-auto space-y-4">
         <div className="h-6 w-48 bg-curtn-dark/30 animate-pulse" />
         <div className="h-4 w-32 bg-curtn-dark/30 animate-pulse" />
         <div className="space-y-3 mt-6">
@@ -50,7 +50,7 @@ export default function ListDetailPage() {
 
   if (!list) {
     return (
-      <div className="px-4 sm:px-6 py-8 max-w-2xl mx-auto">
+      <div className="px-2 sm:px-6 py-8 max-w-2xl mx-auto">
         <div className="empty-state">
           <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">List Not Found</p>
           <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">
@@ -84,7 +84,7 @@ export default function ListDetailPage() {
   }
 
   return (
-    <div className="px-4 sm:px-6 py-8 max-w-2xl mx-auto space-y-6">
+    <div className="px-2 sm:px-6 py-8 max-w-2xl mx-auto space-y-6">
       <ListHeader
         name={list.name}
         description={list.description}

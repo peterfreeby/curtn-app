@@ -10,7 +10,7 @@ export default function AddPage() {
 
   if (isLoading) {
     return (
-      <div className="px-4 sm:px-6 py-8 max-w-lg mx-auto animate-pulse space-y-4">
+      <div className="px-2 sm:px-6 py-8 max-w-lg mx-auto animate-pulse space-y-4">
         <div className="h-4 w-32 rounded bg-curtn-dark/60" />
         <div className="h-48 rounded-xl bg-curtn-dark/60" />
       </div>
@@ -19,7 +19,7 @@ export default function AddPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="px-4 sm:px-6 py-8 max-w-lg mx-auto">
+      <div className="px-2 sm:px-6 py-8 max-w-lg mx-auto">
         <Card className="text-center space-y-4">
           <p className="text-curtn-cream font-medium">
             Sign in to add a performance
@@ -39,7 +39,7 @@ export default function AddPage() {
   }
 
   return (
-    <div className="px-4 sm:px-6 py-8">
+    <div className="px-2 sm:px-6 py-8">
       <h2 className="text-xs uppercase tracking-widest text-curtn-muted mb-8 max-w-lg mx-auto">
         Add a Performance
       </h2>

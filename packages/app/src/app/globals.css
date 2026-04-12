@@ -312,17 +312,20 @@ h1, h2, h3, h4, h5, h6 {
 }
 .card-ticket:hover { transform: translateY(-1px); }
 .ticket-stub {
-  width: 72px;
+  width: 56px;
   background-color: var(--color-curtn-coral);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 12px 8px;
+  padding: 10px 6px;
   background-image: radial-gradient(circle at calc(100% + 2px) 50%, var(--color-curtn-deep) 3px, transparent 3px);
   background-size: 6px 10px;
   background-repeat: repeat-y;
   background-position: right center;
+}
+@media (min-width: 640px) {
+  .ticket-stub { width: 72px; padding: 12px 8px; }
 }
 .ticket-stub-acid { background-color: var(--color-curtn-acid); }
 .ticket-stub-ice { background-color: var(--color-curtn-ice); }
