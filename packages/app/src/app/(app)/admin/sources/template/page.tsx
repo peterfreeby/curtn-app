@@ -2,13 +2,16 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useSearchParams } from "next/navigation"
-import { useMutation } from "urql"
+import { useQuery, useMutation } from "urql"
 import {
   TEST_PARSING_TEMPLATE_MUTATION,
   DATA_SOURCE_UPDATE_MUTATION,
+  PICKER_VENUES_QUERY,
+  PICKER_COMPANIES_QUERY,
 } from "@/lib/graphql/admin"
 import { Card } from "@/components/Card"
 import { Button } from "@/components/Button"
+import { RelationPicker, RelationOption } from "@/components/admin/RelationPicker"
 import { TemplateFieldRow, SelectorRule } from "@/components/admin/TemplateFieldRow"
 import { TemplatePreviewTable } from "@/components/admin/TemplatePreviewTable"
 import { useAuth } from "@/lib/auth/useAuth"
@@ -18,6 +21,13 @@ interface ParsingTemplate {
   listSelector?: string
   useJsonLd?: boolean
   cleanup?: Record<string, any>
+}
+
+interface Presets {
+  venueName?: string
+  companyName?: string
+  stageName?: string
+  performanceTypes?: string[]
 }
 
 interface ParsedEvent {
@@ -62,11 +72,42 @@ export default function TemplateBuilderPage() {
   const [jsonLdDetected, setJsonLdDetected] = useState(false)
   const [testResults, setTestResults] = useState<ParsedEvent[] | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [presets, setPresets] = useState<Presets>({})
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   const [, testTemplate] = useMutation(TEST_PARSING_TEMPLATE_MUTATION)
   const [, updateDataSource] = useMutation(DATA_SOURCE_UPDATE_MUTATION)
+
+  // Picker queries for presets
+  const [{ data: venueData }] = useQuery({ query: PICKER_VENUES_QUERY, variables: { first: 200 } })
+  const [{ data: companyData }] = useQuery({ query: PICKER_COMPANIES_QUERY, variables: { first: 200 } })
+
+  const venueOptions: RelationOption[] = venueData?.venueList?.edges?.map((e: any) => ({
+    id: e.node.id,
+    label: e.node.name,
+    sublabel: e.node.city || undefined,
+    _name: e.node.name
+  })) || []
+
+  const companyOptions: RelationOption[] = companyData?.productionCompanyList?.edges?.map((e: any) => ({
+    id: e.node.id,
+    label: e.node.name,
+    _name: e.node.name
+  })) || []
+
+  // Helper to get entity name from picker ID
+  function getVenueName(id: string | null): string | undefined {
+    if (!id) return undefined
+    return (venueOptions.find(o => o.id === id) as any)?._name
+  }
+  function getCompanyName(id: string | null): string | undefined {
+    if (!id) return undefined
+    return (companyOptions.find(o => o.id === id) as any)?._name
+  }
+
+  const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null)
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null)
 
   // Listen for postMessage from iframe bridge script
   useEffect(() => {
@@ -194,7 +235,19 @@ export default function TemplateBuilderPage() {
       )
     }
 
-    const config = JSON.stringify({ parsingTemplate: cleanTemplate })
+    // Build presets from selected entities
+    const activePresets: Presets = {}
+    const vName = getVenueName(selectedVenueId)
+    const cName = getCompanyName(selectedCompanyId)
+    if (vName) activePresets.venueName = vName
+    if (cName) activePresets.companyName = cName
+    if (presets.stageName) activePresets.stageName = presets.stageName
+    if (presets.performanceTypes?.length) activePresets.performanceTypes = presets.performanceTypes
+
+    const config = JSON.stringify({
+      parsingTemplate: cleanTemplate,
+      ...(Object.keys(activePresets).length > 0 ? { presets: activePresets } : {})
+    })
     const result = await updateDataSource({
       input: { dataSourceId: mongoId, config }
     })
@@ -391,6 +444,56 @@ export default function TemplateBuilderPage() {
                   }}
                 />
               ))}
+
+              {/* Presets — override fields with database entities */}
+              <div className="border-t border-curtn-dark/20 pt-3 mt-3">
+                <h3 className="text-xs font-medium text-curtn-muted uppercase tracking-wide mb-2">
+                  Presets
+                </h3>
+                <p className="text-xs text-curtn-muted/60 mb-3">
+                  Set default values from your database. These override extracted values for every event from this source.
+                </p>
+                <div className="space-y-3">
+                  <RelationPicker
+                    label="Venue"
+                    options={venueOptions}
+                    value={selectedVenueId}
+                    onChange={setSelectedVenueId}
+                    placeholder="Search venues..."
+                  />
+                  <RelationPicker
+                    label="Production Company"
+                    options={companyOptions}
+                    value={selectedCompanyId}
+                    onChange={setSelectedCompanyId}
+                    placeholder="Search companies..."
+                  />
+                  <div>
+                    <label className="block text-xs text-curtn-muted mb-1">Stage</label>
+                    <input
+                      type="text"
+                      value={presets.stageName || ''}
+                      onChange={e => setPresets(prev => ({ ...prev, stageName: e.target.value || undefined }))}
+                      placeholder="e.g. Main Stage, Downstairs"
+                      className="w-full bg-curtn-deep border border-curtn-dark/30 rounded px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-curtn-muted mb-1">Performance Types</label>
+                    <input
+                      type="text"
+                      value={presets.performanceTypes?.join(', ') || ''}
+                      onChange={e => setPresets(prev => ({
+                        ...prev,
+                        performanceTypes: e.target.value ? e.target.value.split(',').map(s => s.trim()).filter(Boolean) : undefined
+                      }))}
+                      placeholder="e.g. comedy, cabaret, music"
+                      className="w-full bg-curtn-deep border border-curtn-dark/30 rounded px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral outline-none"
+                    />
+                    <p className="text-xs text-curtn-muted/40 mt-1">Comma-separated</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Bottom action bar */}

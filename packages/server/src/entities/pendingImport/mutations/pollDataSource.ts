@@ -16,10 +16,18 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+interface Presets {
+  venueName?: string
+  companyName?: string
+  stageName?: string
+  performanceTypes?: string[]
+}
+
 async function createPendingImports(
   events: ParsedEvent[],
   dsId: any,
-  rules: CleanupRules
+  rules: CleanupRules,
+  presets?: Presets
 ): Promise<{ created: number; skipped: number }> {
   let created = 0
   let skipped = 0
@@ -51,10 +59,11 @@ async function createPendingImports(
       date: event.date,
       time: event.time,
       ticketUrl: event.ticketUrl,
-      venueName: event.rawData?.venue || rules.defaultVenue || undefined,
-      stageName: rules.defaultStage || undefined,
-      companyName: rules.defaultCompany || undefined,
-      performanceTypes: rules.defaultTypes || undefined,
+      // Presets take priority, then extracted values, then cleanup rule defaults
+      venueName: presets?.venueName || event.rawData?.venue || rules.defaultVenue || undefined,
+      stageName: presets?.stageName || rules.defaultStage || undefined,
+      companyName: presets?.companyName || rules.defaultCompany || undefined,
+      performanceTypes: presets?.performanceTypes || rules.defaultTypes || undefined,
       rawData: event.rawData,
       importedAt: new Date()
     }).save()
@@ -113,6 +122,7 @@ export const pollDataSource = mutationWithClientMutationId({
     try {
       const rules: CleanupRules = (ds.config as any) || {}
       const template: ParsingTemplate | undefined = (ds.config as any)?.parsingTemplate
+      const presets: Presets | undefined = (ds.config as any)?.presets
 
       // --- Web source: poll detection RSS, then fetch + parse each page ---
       if (ds.type === 'web') {
@@ -148,7 +158,7 @@ export const pollDataSource = mutationWithClientMutationId({
             const events = applyTemplate(html, template, pageUrl)
 
             totalFound += events.length
-            const { created, skipped } = await createPendingImports(events, ds._id, rules)
+            const { created, skipped } = await createPendingImports(events, ds._id, rules, presets)
             totalCreated += created
             totalSkipped += skipped
 
@@ -216,7 +226,7 @@ export const pollDataSource = mutationWithClientMutationId({
         }
       }
 
-      const { created, skipped } = await createPendingImports(events, ds._id, rules)
+      const { created, skipped } = await createPendingImports(events, ds._id, rules, presets)
 
       ds.lastPolledAt = new Date()
       await ds.save()
