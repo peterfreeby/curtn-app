@@ -117,7 +117,9 @@ export default function TemplateBuilderPage() {
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   // Send a message to the iframe to inspect an element (triggers a simulated click → full context back)
-  const inspectElement = useCallback((selector: string) => {
+  const inspectElement = useCallback((selector: string, fieldKey?: string) => {
+    // Ensure the field is active so handleMessage captures the response
+    if (fieldKey) setActiveField(fieldKey)
     iframeRef.current?.contentWindow?.postMessage(
       { type: 'CURTN_INSPECT_ELEMENT', selector },
       '*'
@@ -582,7 +584,7 @@ export default function TemplateBuilderPage() {
                   onNavigate={(selector, textContent) => {
                     applyFieldSelection(field.key, selector, textContent, [], [])
                   }}
-                  onInspect={inspectElement}
+                  onInspect={(selector) => inspectElement(selector, field.key)}
                 />
               ))}
 
@@ -645,7 +647,7 @@ export default function TemplateBuilderPage() {
                           onNavigate={(selector, textContent) => {
                             applyFieldSelection(field.key, selector, textContent, [], [])
                           }}
-                          onInspect={inspectElement}
+                          onInspect={(selector) => inspectElement(selector, field.key)}
                         />
                       )
                     })}

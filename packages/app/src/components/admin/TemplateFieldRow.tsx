@@ -129,6 +129,7 @@ export function TemplateFieldRow({
             onKeyDown={e => {
               if (e.key === 'Enter' && selectorDraft.trim()) {
                 onUpdateRule({ ...(rule || { selector: '' }), selector: selectorDraft.trim() })
+                onInspect?.(selectorDraft.trim())
                 setEditingSelector(false)
               }
               if (e.key === 'Escape') setEditingSelector(false)
@@ -142,6 +143,8 @@ export function TemplateFieldRow({
               onClick={() => {
                 if (selectorDraft.trim()) {
                   onUpdateRule({ ...(rule || { selector: '' }), selector: selectorDraft.trim() })
+                  // Trigger inspect to get preview text and depth info
+                  onInspect?.(selectorDraft.trim())
                 }
                 setEditingSelector(false)
               }}
