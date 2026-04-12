@@ -1,8 +1,16 @@
-import { GraphQLString, GraphQLNonNull, GraphQLBoolean, GraphQLObjectType, GraphQLList } from 'graphql'
+import { GraphQLString, GraphQLNonNull, GraphQLBoolean, GraphQLInt, GraphQLObjectType, GraphQLList } from 'graphql'
 import { mutationWithClientMutationId } from 'graphql-relay'
 import { errorField } from '../../../graphql/errorField'
 import { UserModel } from '../../user/userModel'
 import { fetchPage, applyTemplate, extractJsonLd, ParsingTemplate } from '../../../services/pageFetcher'
+
+const parsedCreditType = new GraphQLObjectType({
+  name: 'TestParsedCredit',
+  fields: () => ({
+    name: { type: GraphQLString },
+    role: { type: GraphQLString }
+  })
+})
 
 const parsedEventType = new GraphQLObjectType({
   name: 'TestParsedEvent',
@@ -13,8 +21,15 @@ const parsedEventType = new GraphQLObjectType({
     time: { type: GraphQLString },
     venue: { type: GraphQLString, resolve: e => e.rawData?.venue },
     ticketUrl: { type: GraphQLString },
-    imageUrl: { type: GraphQLString, resolve: e => e.rawData?.imageUrl },
-    price: { type: GraphQLString, resolve: e => e.rawData?.price }
+    imageUrl: { type: GraphQLString, resolve: e => e.imageUrl },
+    price: { type: GraphQLString, resolve: e => e.rawData?.price },
+    runTitle: { type: GraphQLString },
+    showDescription: { type: GraphQLString },
+    runDescription: { type: GraphQLString },
+    duration: { type: GraphQLInt },
+    startDate: { type: GraphQLString, resolve: e => e.startDate?.toISOString?.() ?? e.startDate },
+    endDate: { type: GraphQLString, resolve: e => e.endDate?.toISOString?.() ?? e.endDate },
+    credits: { type: new GraphQLList(parsedCreditType) }
   })
 })
 

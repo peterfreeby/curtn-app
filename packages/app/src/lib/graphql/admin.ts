@@ -116,8 +116,28 @@ export const TEST_PARSING_TEMPLATE_MUTATION = gql`
         ticketUrl
         imageUrl
         price
+        runTitle
+        showDescription
+        runDescription
+        duration
+        startDate
+        endDate
+        credits {
+          name
+          role
+        }
       }
       jsonLdDetected
+      error
+    }
+  }
+`;
+
+export const SCRAPE_URL_MUTATION = gql`
+  mutation ScrapeUrl($input: scrapeUrlInput!) {
+    scrapeUrl(input: $input) {
+      eventsFound
+      eventsCreated
       error
     }
   }

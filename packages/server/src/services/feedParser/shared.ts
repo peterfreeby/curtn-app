@@ -4,6 +4,15 @@ export interface ParsedEvent {
   date?: Date
   time?: string
   ticketUrl?: string
+  imageUrl?: string
+  // Extended fields
+  runTitle?: string
+  showDescription?: string
+  runDescription?: string
+  duration?: number
+  startDate?: Date
+  endDate?: Date
+  credits?: { name: string; role?: string }[]
   rawData: Record<string, any>
 }
 

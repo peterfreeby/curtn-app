@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio'
 import { ParsedEvent, applyCleanupRules, extractTimeFromDate } from '../feedParser/shared'
-import { ParsingTemplate, SelectorRule } from './types'
+import { ParsingTemplate, SelectorRule, CreditSelectorRule } from './types'
 import { extractJsonLd, JsonLdEvent } from './extractJsonLd'
 
 const DEFAULT_JSON_LD_FIELD_MAP: Record<string, string> = {
@@ -199,15 +199,69 @@ export function applyTemplate(html: string, template: ParsingTemplate, sourceUrl
     const imageUrlRaw = selectors.imageUrl ? extractWithRule($, context, selectors.imageUrl) : undefined
     const price = selectors.price ? extractWithRule($, context, selectors.price) : undefined
 
+    // Extended fields
+    const runTitle = selectors.runTitle ? extractWithRule($, context, selectors.runTitle) : undefined
+    const showDescription = selectors.showDescription ? extractWithRule($, context, selectors.showDescription) : undefined
+    const runDescription = selectors.runDescription ? extractWithRule($, context, selectors.runDescription) : undefined
+
+    let duration: number | undefined
+    if (selectors.duration) {
+      const durationRaw = extractWithRule($, context, selectors.duration)
+      if (durationRaw) {
+        const parsed = parseInt(durationRaw.replace(/[^\d]/g, ''), 10)
+        if (!isNaN(parsed)) duration = parsed
+      }
+    }
+
+    let startDate: Date | undefined
+    let endDate: Date | undefined
+    if (selectors.startDate) {
+      const raw = extractWithRule($, context, selectors.startDate)
+      if (raw) {
+        const parsed = new Date(raw)
+        if (!isNaN(parsed.getTime())) startDate = parsed
+      }
+    }
+    if (selectors.endDate) {
+      const raw = extractWithRule($, context, selectors.endDate)
+      if (raw) {
+        const parsed = new Date(raw)
+        if (!isNaN(parsed.getTime())) endDate = parsed
+      }
+    }
+
+    // Credits extraction
+    let credits: { name: string; role?: string }[] | undefined
+    if (template.credits?.containerSelector) {
+      credits = []
+      context.find(template.credits.containerSelector).each((_i: number, el: any) => {
+        const creditEl = $(el)
+        const name = creditEl.find(template.credits!.nameSelector).text().trim()
+        if (!name) return
+        const role = template.credits!.roleSelector
+          ? creditEl.find(template.credits!.roleSelector).text().trim() || undefined
+          : undefined
+        credits!.push({ name, role })
+      })
+      if (credits.length === 0) credits = undefined
+    }
+
     events.push({
       title,
-      description,
+      description: description || showDescription,
       date,
       time,
       ticketUrl: resolveUrl(ticketUrlRaw, sourceUrl),
+      imageUrl: resolveUrl(imageUrlRaw, sourceUrl),
+      runTitle,
+      showDescription,
+      runDescription,
+      duration,
+      startDate,
+      endDate,
+      credits,
       rawData: {
         extractionMethod: 'css-selector',
-        imageUrl: resolveUrl(imageUrlRaw, sourceUrl),
         price,
         venue,
         sourceUrl

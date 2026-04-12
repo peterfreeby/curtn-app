@@ -9,6 +9,8 @@ import { RunModel } from '../../run/runModel'
 import { PerformanceModel } from '../../performance/performanceModel'
 import { VenueModel } from '../../venue/venueModel'
 import { ProductionCompanyModel } from '../../productionCompany/productionCompanyModel'
+import { PersonModel } from '../../person/personModel'
+import { CreditModel } from '../../credit/creditModel'
 import { ensureDefaultStage } from '../../stage/ensureDefaultStage'
 import { StageModel } from '../../stage/stageModel'
 
@@ -26,6 +28,7 @@ async function promoteToRecords(pi: any, userId: string) {
       description: pi.showDescription || '',
       performanceTypes: pi.performanceTypes || [],
       duration: pi.duration || 0,
+      ...(pi.imageUrl && { imageUrl: pi.imageUrl }),
       submittedBy: userId,
       source: pi.dataSource
     }).save()
@@ -106,6 +109,8 @@ async function promoteToRecords(pi: any, userId: string) {
       productionCompany: companyId,
       venues: venueIds,
       ...(stageId && { stage: stageId }),
+      ...(pi.startDate && { startDate: pi.startDate }),
+      ...(pi.endDate && { endDate: pi.endDate }),
       submittedBy: userId,
       source: pi.dataSource
     }).save()
@@ -145,6 +150,37 @@ async function promoteToRecords(pi: any, userId: string) {
       run.endDate = pi.date
     }
     await run.save()
+  }
+
+  // 6. Create credits (Person + Credit records) if provided
+  if (pi.credits?.length > 0 && run) {
+    for (let i = 0; i < pi.credits.length; i++) {
+      const { name, role } = pi.credits[i]
+      if (!name?.trim()) continue
+
+      const personSlug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+      let person = await PersonModel.findOne({ slug: personSlug })
+      if (!person) {
+        person = await new PersonModel({
+          name: name.trim(),
+          slug: personSlug,
+          submittedBy: userId
+        }).save()
+      }
+
+      // Check if credit already exists for this person + run
+      const existingCredit = await CreditModel.findOne({ person: person._id, run: run._id })
+      if (!existingCredit) {
+        await new CreditModel({
+          person: person._id,
+          run: run._id,
+          creditType: 'cast',
+          role: role?.trim() || 'Performer',
+          order: i,
+          submittedBy: userId
+        }).save()
+      }
+    }
   }
 }
 

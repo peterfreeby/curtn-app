@@ -6,6 +6,7 @@ import { useQuery, useMutation } from "urql"
 import {
   TEST_PARSING_TEMPLATE_MUTATION,
   DATA_SOURCE_UPDATE_MUTATION,
+  SCRAPE_URL_MUTATION,
   PICKER_VENUES_QUERY,
   PICKER_COMPANIES_QUERY,
 } from "@/lib/graphql/admin"
@@ -39,6 +40,13 @@ interface ParsedEvent {
   ticketUrl?: string | null
   imageUrl?: string | null
   price?: string | null
+  runTitle?: string | null
+  showDescription?: string | null
+  runDescription?: string | null
+  duration?: number | null
+  startDate?: string | null
+  endDate?: string | null
+  credits?: { name: string; role?: string }[] | null
 }
 
 const FIELD_DEFS = [
@@ -50,6 +58,12 @@ const FIELD_DEFS = [
   { key: 'ticketUrl', label: 'Ticket URL' },
   { key: 'imageUrl', label: 'Image URL' },
   { key: 'price', label: 'Price' },
+  { key: 'runTitle', label: 'Run Title' },
+  { key: 'showDescription', label: 'Show Description' },
+  { key: 'runDescription', label: 'Run Description' },
+  { key: 'duration', label: 'Duration (min)' },
+  { key: 'startDate', label: 'Run Start Date' },
+  { key: 'endDate', label: 'Run End Date' },
 ] as const
 
 const EMPTY_TEMPLATE: ParsingTemplate = {
@@ -78,6 +92,7 @@ export default function TemplateBuilderPage() {
 
   const [, testTemplate] = useMutation(TEST_PARSING_TEMPLATE_MUTATION)
   const [, updateDataSource] = useMutation(DATA_SOURCE_UPDATE_MUTATION)
+  const [{ fetching: scraping }, executeScrape] = useMutation(SCRAPE_URL_MUTATION)
 
   // Picker queries for presets — search-driven so we find all entities
   const [venueSearch, setVenueSearch] = useState("")
@@ -266,7 +281,53 @@ export default function TemplateBuilderPage() {
     } else {
       setMessage({ type: 'success', text: 'Template saved to data source' })
     }
-  }, [dataSourceId, template, updateDataSource])
+  }, [dataSourceId, template, selectedVenueName, selectedCompanyName, presets, updateDataSource])
+
+  const handleScrape = useCallback(async () => {
+    if (!sampleUrl.trim()) return
+
+    const cleanTemplate = {
+      ...template,
+      selectors: Object.fromEntries(
+        Object.entries(template.selectors).filter(([, v]) => v?.selector)
+      )
+    }
+
+    const hasSelectors = Object.values(cleanTemplate.selectors).some(r => (r as any)?.selector)
+    if (!hasSelectors && !template.useJsonLd) {
+      setMessage({ type: 'error', text: 'Configure a template or enable JSON-LD before scraping' })
+      return
+    }
+
+    // Decode dataSourceId if present
+    let mongoId: string | undefined
+    if (dataSourceId) {
+      try {
+        const decoded = atob(dataSourceId)
+        mongoId = decoded.includes(':') ? decoded.split(':')[1] : dataSourceId
+      } catch {
+        mongoId = dataSourceId
+      }
+    }
+
+    const result = await executeScrape({
+      input: {
+        url: sampleUrl.trim(),
+        ...(mongoId && { dataSourceId: mongoId }),
+        template: JSON.stringify(cleanTemplate)
+      }
+    })
+
+    const data = result.data?.scrapeUrl
+    if (data?.error) {
+      setMessage({ type: 'error', text: data.error })
+    } else if (data) {
+      setMessage({
+        type: 'success',
+        text: `Scraped: ${data.eventsFound} found, ${data.eventsCreated} imported to pending review`
+      })
+    }
+  }, [sampleUrl, template, dataSourceId, executeScrape])
 
   // Build the iframe URL with auth token
   const [iframeSrc, setIframeSrc] = useState<string | null>(null)
@@ -513,6 +574,14 @@ export default function TemplateBuilderPage() {
             <div className="border-t border-curtn-dark/20 pt-3 mt-3 space-y-2">
               <Button variant="secondary" onClick={handleTest} className="w-full">
                 Test Template
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleScrape}
+                disabled={scraping || !sampleUrl.trim()}
+                className="w-full"
+              >
+                {scraping ? 'Scraping...' : 'Scrape This Page'}
               </Button>
               {dataSourceId && (
                 <Button variant="primary" onClick={handleSave} className="w-full">

@@ -18,6 +18,10 @@ export interface IPendingImport {
   stageName?: string
   companyName?: string
   ticketUrl?: string
+  imageUrl?: string
+  startDate?: Date
+  endDate?: Date
+  credits?: { name: string; role?: string }[]
 
   // Raw source data for debugging
   rawData?: Record<string, any>
@@ -59,6 +63,13 @@ const pendingImportSchema = new Schema<IPendingImport>({
   stageName: { type: String, trim: true },
   companyName: { type: String, trim: true },
   ticketUrl: { type: String, trim: true },
+  imageUrl: { type: String, trim: true },
+  startDate: Date,
+  endDate: Date,
+  credits: [{
+    name: { type: String, trim: true },
+    role: { type: String, trim: true }
+  }],
   rawData: Schema.Types.Mixed,
   importedAt: {
     type: Date,
