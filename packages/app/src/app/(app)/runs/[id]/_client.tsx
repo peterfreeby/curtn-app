@@ -37,58 +37,31 @@ function ReviewFilters({
   onScopeChange: (v: "run" | "show") => void;
   isAuthenticated: boolean;
 }) {
+  const btn = (active: boolean) =>
+    `px-2.5 py-1 transition-colors cursor-pointer ${
+      active ? "bg-curtn-dark text-curtn-cream" : "text-curtn-muted hover:text-curtn-cream"
+    }`;
+
   return (
-    <div className="flex items-center gap-3 flex-wrap">
+    <div className="flex items-center gap-2 flex-wrap text-xs">
+      <div className="flex rounded-lg border border-curtn-dark overflow-hidden">
+        <button type="button" onClick={() => onScopeChange("run")} className={btn(reviewScope === "run")}>
+          This Run
+        </button>
+        <button type="button" onClick={() => onScopeChange("show")} className={btn(reviewScope === "show")}>
+          All
+        </button>
+      </div>
       {isAuthenticated && (
-        <div className="flex rounded-lg border border-curtn-dark overflow-hidden text-xs">
-          <button
-            type="button"
-            onClick={() => onFollowedChange(false)}
-            className={`px-2.5 py-1 transition-colors cursor-pointer ${
-              !followedOnly
-                ? "bg-curtn-dark text-curtn-cream"
-                : "text-curtn-muted hover:text-curtn-cream"
-            }`}
-          >
-            All
+        <div className="flex rounded-lg border border-curtn-dark overflow-hidden">
+          <button type="button" onClick={() => onFollowedChange(false)} className={btn(!followedOnly)}>
+            Everyone
           </button>
-          <button
-            type="button"
-            onClick={() => onFollowedChange(true)}
-            className={`px-2.5 py-1 transition-colors cursor-pointer ${
-              followedOnly
-                ? "bg-curtn-dark text-curtn-cream"
-                : "text-curtn-muted hover:text-curtn-cream"
-            }`}
-          >
+          <button type="button" onClick={() => onFollowedChange(true)} className={btn(followedOnly)}>
             Friends
           </button>
         </div>
       )}
-      <div className="flex rounded-lg border border-curtn-dark overflow-hidden text-xs">
-        <button
-          type="button"
-          onClick={() => onScopeChange("run")}
-          className={`px-2.5 py-1 transition-colors cursor-pointer ${
-            reviewScope === "run"
-              ? "bg-curtn-dark text-curtn-cream"
-              : "text-curtn-muted hover:text-curtn-cream"
-          }`}
-        >
-          This Run
-        </button>
-        <button
-          type="button"
-          onClick={() => onScopeChange("show")}
-          className={`px-2.5 py-1 transition-colors cursor-pointer ${
-            reviewScope === "show"
-              ? "bg-curtn-dark text-curtn-cream"
-              : "text-curtn-muted hover:text-curtn-cream"
-          }`}
-        >
-          All Productions
-        </button>
-      </div>
     </div>
   );
 }
@@ -469,8 +442,8 @@ export default function RunDetailPage() {
 
       {/* Reviews */}
       <div className="relative">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs uppercase tracking-widest text-curtn-muted">
+        <div className="mb-3">
+          <h2 className="text-xs uppercase tracking-widest text-curtn-muted mb-2">
             Reviews{displayReviewEdges.length > 0 && ` (${displayReviewEdges.length}${reviewPageInfo?.hasNextPage ? "+" : ""})`}
           </h2>
           <ReviewFilters
