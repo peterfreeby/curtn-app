@@ -79,35 +79,46 @@ export default function TemplateBuilderPage() {
   const [, testTemplate] = useMutation(TEST_PARSING_TEMPLATE_MUTATION)
   const [, updateDataSource] = useMutation(DATA_SOURCE_UPDATE_MUTATION)
 
-  // Picker queries for presets
-  const [{ data: venueData }] = useQuery({ query: PICKER_VENUES_QUERY, variables: { first: 200 } })
-  const [{ data: companyData }] = useQuery({ query: PICKER_COMPANIES_QUERY, variables: { first: 200 } })
+  // Picker queries for presets — search-driven so we find all entities
+  const [venueSearch, setVenueSearch] = useState("")
+  const [companySearch, setCompanySearch] = useState("")
 
-  const venueOptions: RelationOption[] = venueData?.venueList?.edges?.map((e: any) => ({
+  const [{ data: venueData, fetching: venuesFetching }] = useQuery({
+    query: PICKER_VENUES_QUERY,
+    variables: { first: 50, search: venueSearch || undefined }
+  })
+  const [{ data: companyData, fetching: companiesFetching }] = useQuery({
+    query: PICKER_COMPANIES_QUERY,
+    variables: { first: 50, search: companySearch || undefined }
+  })
+
+  const venueOptions: (RelationOption & { _name: string })[] = venueData?.venueList?.edges?.map((e: any) => ({
     id: e.node.id,
     label: e.node.name,
     sublabel: e.node.city || undefined,
     _name: e.node.name
   })) || []
 
-  const companyOptions: RelationOption[] = companyData?.productionCompanyList?.edges?.map((e: any) => ({
+  const companyOptions: (RelationOption & { _name: string })[] = companyData?.productionCompanyList?.edges?.map((e: any) => ({
     id: e.node.id,
     label: e.node.name,
     _name: e.node.name
   })) || []
 
-  // Helper to get entity name from picker ID
-  function getVenueName(id: string | null): string | undefined {
-    if (!id) return undefined
-    return (venueOptions.find(o => o.id === id) as any)?._name
-  }
-  function getCompanyName(id: string | null): string | undefined {
-    if (!id) return undefined
-    return (companyOptions.find(o => o.id === id) as any)?._name
-  }
-
+  // Track selected entity names so we can save them even after search changes
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null)
+  const [selectedVenueName, setSelectedVenueName] = useState<string | null>(null)
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null)
+  const [selectedCompanyName, setSelectedCompanyName] = useState<string | null>(null)
+
+  function handleVenueSelect(id: string | null) {
+    setSelectedVenueId(id)
+    setSelectedVenueName(id ? venueOptions.find(o => o.id === id)?._name || null : null)
+  }
+  function handleCompanySelect(id: string | null) {
+    setSelectedCompanyId(id)
+    setSelectedCompanyName(id ? companyOptions.find(o => o.id === id)?._name || null : null)
+  }
 
   // Listen for postMessage from iframe bridge script
   useEffect(() => {
@@ -237,10 +248,8 @@ export default function TemplateBuilderPage() {
 
     // Build presets from selected entities
     const activePresets: Presets = {}
-    const vName = getVenueName(selectedVenueId)
-    const cName = getCompanyName(selectedCompanyId)
-    if (vName) activePresets.venueName = vName
-    if (cName) activePresets.companyName = cName
+    if (selectedVenueName) activePresets.venueName = selectedVenueName
+    if (selectedCompanyName) activePresets.companyName = selectedCompanyName
     if (presets.stageName) activePresets.stageName = presets.stageName
     if (presets.performanceTypes?.length) activePresets.performanceTypes = presets.performanceTypes
 
@@ -458,14 +467,18 @@ export default function TemplateBuilderPage() {
                     label="Venue"
                     options={venueOptions}
                     value={selectedVenueId}
-                    onChange={setSelectedVenueId}
+                    onChange={handleVenueSelect}
+                    onSearch={setVenueSearch}
+                    loading={venuesFetching}
                     placeholder="Search venues..."
                   />
                   <RelationPicker
                     label="Production Company"
                     options={companyOptions}
                     value={selectedCompanyId}
-                    onChange={setSelectedCompanyId}
+                    onChange={handleCompanySelect}
+                    onSearch={setCompanySearch}
+                    loading={companiesFetching}
                     placeholder="Search companies..."
                   />
                   <div>

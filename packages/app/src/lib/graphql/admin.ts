@@ -723,8 +723,8 @@ export const PICKER_SHOWS_QUERY = gql`
 `;
 
 export const PICKER_VENUES_QUERY = gql`
-  query PickerVenues($first: Int) {
-    venueList(first: $first) {
+  query PickerVenues($first: Int, $search: String) {
+    venueList(first: $first, search: $search) {
       edges {
         node {
           id
@@ -737,8 +737,8 @@ export const PICKER_VENUES_QUERY = gql`
 `;
 
 export const PICKER_COMPANIES_QUERY = gql`
-  query PickerCompanies($first: Int) {
-    productionCompanyList(first: $first) {
+  query PickerCompanies($first: Int, $search: String) {
+    productionCompanyList(first: $first, search: $search) {
       edges {
         node {
           id
