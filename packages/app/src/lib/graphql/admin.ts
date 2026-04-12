@@ -148,6 +148,7 @@ export const TEST_PARSING_TEMPLATE_MUTATION = gql`
           headshotUrl
         }
       }
+      flatRows
       jsonLdDetected
       error
     }
@@ -159,6 +160,14 @@ export const SCRAPE_URL_MUTATION = gql`
     scrapeUrl(input: $input) {
       eventsFound
       eventsCreated
+      showsCreated
+      showsMatched
+      runsCreated
+      performancesCreated
+      venuesCreated
+      personsCreated
+      creditsCreated
+      importErrors
       error
     }
   }
