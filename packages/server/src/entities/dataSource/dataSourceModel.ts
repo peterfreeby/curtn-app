@@ -2,7 +2,7 @@ import mongoose, { Schema, Types } from 'mongoose'
 
 export interface IDataSource {
   name: string
-  type: 'manual' | 'csv' | 'rss' | 'ical' | 'api' | 'web'
+  type: 'manual' | 'csv' | 'rss' | 'ical' | 'api' | 'web' | 'url'
   url?: string
   config: Record<string, any>
   associatedVenue?: Types.ObjectId
@@ -24,7 +24,7 @@ const dataSourceSchema = new Schema<IDataSource>({
   type: {
     type: String,
     required: true,
-    enum: ['manual', 'csv', 'rss', 'ical', 'api', 'web']
+    enum: ['manual', 'csv', 'rss', 'ical', 'api', 'web', 'url']
   },
   url: {
     type: String,

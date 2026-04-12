@@ -113,7 +113,7 @@ export const pollDataSource = mutationWithClientMutationId({
     const ds = await DataSourceModel.findById(dataSourceId)
     if (!ds) return { error: 'Data source not found' }
     if (!ds.url) return { error: 'Data source has no feed URL' }
-    if (ds.type !== 'rss' && ds.type !== 'ical' && ds.type !== 'web') {
+    if (ds.type !== 'rss' && ds.type !== 'ical' && ds.type !== 'web' && ds.type !== 'url') {
       return { error: `Cannot poll a ${ds.type} data source` }
     }
 
@@ -190,6 +190,29 @@ export const pollDataSource = mutationWithClientMutationId({
         await ds.save()
 
         return { eventsFound: totalFound, eventsCreated: totalCreated, eventsSkipped: totalSkipped }
+      }
+
+      // --- URL source: fetch the page directly and apply template ---
+      if (ds.type === 'url') {
+        if (!template) {
+          return { error: 'URL data source has no parsing template configured' }
+        }
+
+        try {
+          const html = await fetchPage(ds.url)
+          const events = applyTemplate(html, template, ds.url)
+
+          const { created, skipped } = await createPendingImports(events, ds._id, rules, presets)
+
+          ds.lastPolledAt = new Date()
+          await ds.save()
+
+          return { eventsFound: events.length, eventsCreated: created, eventsSkipped: skipped }
+        } catch (err: any) {
+          ds.lastPolledAt = new Date()
+          await ds.save()
+          return { error: `Page fetch failed: ${err.message}` }
+        }
       }
 
       // --- RSS/iCal source: standard feed parsing ---

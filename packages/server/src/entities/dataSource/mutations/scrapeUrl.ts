@@ -83,13 +83,7 @@ export const scrapeUrl = mutationWithClientMutationId({
       for (const event of events) {
         if (!event.title?.trim()) continue
 
-        // Dedup if we have a data source
-        if (dsId) {
-          const existingQuery: any = { dataSource: dsId, title: event.title.trim() }
-          if (event.date) existingQuery.date = event.date
-          const existing = await PendingImportModel.findOne(existingQuery)
-          if (existing) continue
-        }
+        // No dedup for one-off scrapes — the user explicitly asked to import this page
 
         await new PendingImportModel({
           ...(dsId && { dataSource: dsId }),

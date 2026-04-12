@@ -77,7 +77,7 @@ export default function DataSourcesPage() {
   const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
-  const [type, setType] = useState<"rss" | "ical" | "web">("rss");
+  const [type, setType] = useState<"rss" | "ical" | "web" | "url">("rss");
   const [url, setUrl] = useState("");
   const [urlHint, setUrlHint] = useState<string | null>(null);
   const [config, setConfig] = useState("");
@@ -225,17 +225,20 @@ export default function DataSourcesPage() {
               </label>
               <select
                 value={type}
-                onChange={(e) => setType(e.target.value as "rss" | "ical" | "web")}
+                onChange={(e) => setType(e.target.value as "rss" | "ical" | "web" | "url")}
                 className="w-full rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
               >
                 <option value="rss">RSS Feed</option>
                 <option value="ical">iCal Calendar</option>
                 <option value="web">Web (Google Alerts)</option>
+                <option value="url">URL (Direct Page)</option>
               </select>
             </div>
             <div className="sm:col-span-2">
               <label className="block text-xs text-curtn-muted mb-1">
-                {type === "web" ? "Google Alerts RSS Feed URL" : "Feed URL, webcal:// link, or Google Calendar ID"}
+                {type === "web" ? "Google Alerts RSS Feed URL"
+                  : type === "url" ? "Page URL (fetched directly with template)"
+                  : "Feed URL, webcal:// link, or Google Calendar ID"}
               </label>
               <input
                 value={url}
@@ -321,7 +324,7 @@ export default function DataSourcesPage() {
                   <span className="shrink-0 rounded-full bg-curtn-dark px-2 py-0.5 text-xs text-curtn-muted">
                     {source.type.toUpperCase()}
                   </span>
-                  {(source.type === 'web' || source.type === 'rss') && (
+                  {(source.type === 'web' || source.type === 'rss' || source.type === 'url') && (
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
                       hasTemplate(source.config)
                         ? 'bg-green-900/30 text-green-400'
@@ -346,7 +349,7 @@ export default function DataSourcesPage() {
                 )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                {(source.type === 'web' || source.type === 'rss') && (
+                {(source.type === 'web' || source.type === 'rss' || source.type === 'url') && (
                   <Button
                     variant="tertiary"
                     size="sm"
