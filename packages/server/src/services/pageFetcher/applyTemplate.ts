@@ -244,7 +244,17 @@ export function applyTemplate(html: string, template: ParsingTemplate, sourceUrl
         let headshotUrl: string | undefined
         if (template.credits!.headshotSelector) {
           const img = creditEl.find(template.credits!.headshotSelector).first()
-          const src = img.attr('src') || img.attr('data-src') || undefined
+          // Try multiple image source attributes (handles lazy-loaded images)
+          let src = img.attr('src')
+          // Skip tiny placeholder src (common with lazy loading)
+          if (src && src.includes('fit=10')) src = undefined
+          if (!src) src = img.attr('data-src') || undefined
+          if (!src) {
+            // Extract first URL from srcset/data-srcset
+            const srcset = img.attr('srcset') || img.attr('data-srcset') || ''
+            const firstEntry = srcset.split(',')[0]?.trim().split(/\s+/)[0]
+            if (firstEntry) src = firstEntry
+          }
           headshotUrl = resolveUrl(src, sourceUrl)
         }
         credits!.push({ name, role, headshotUrl })

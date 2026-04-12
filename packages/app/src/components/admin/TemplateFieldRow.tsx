@@ -53,6 +53,8 @@ export function TemplateFieldRow({
   const [expanded, setExpanded] = useState(false)
   const [showDepth, setShowDepth] = useState(false)
   const [expandedAncestor, setExpandedAncestor] = useState<number | null>(null)
+  const [editingSelector, setEditingSelector] = useState(false)
+  const [selectorDraft, setSelectorDraft] = useState('')
 
   const isMapped = rule && rule.selector
 
@@ -101,17 +103,69 @@ export function TemplateFieldRow({
         </div>
       </div>
 
-      {isMapped && (
+      {isMapped && !editingSelector && (
         <div className="mt-2">
-          <code className="text-xs text-curtn-muted bg-curtn-deep px-2 py-1 rounded block overflow-x-auto">
-            {rule.selector}
-          </code>
+          <button
+            onClick={() => { setSelectorDraft(rule.selector); setEditingSelector(true) }}
+            className="text-xs text-curtn-muted bg-curtn-deep px-2 py-1 rounded block overflow-x-auto w-full text-left hover:bg-curtn-dark/40 cursor-text"
+            title="Click to edit selector"
+          >
+            <code>{rule.selector}</code>
+          </button>
           {previewText && (
             <p className="text-xs text-curtn-cream/70 mt-1 truncate">
               Preview: {previewText}
             </p>
           )}
         </div>
+      )}
+
+      {editingSelector && (
+        <div className="mt-2 space-y-1.5">
+          <input
+            type="text"
+            value={selectorDraft}
+            onChange={e => setSelectorDraft(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && selectorDraft.trim()) {
+                onUpdateRule({ ...(rule || { selector: '' }), selector: selectorDraft.trim() })
+                setEditingSelector(false)
+              }
+              if (e.key === 'Escape') setEditingSelector(false)
+            }}
+            autoFocus
+            placeholder="CSS selector, e.g. .c-col-bio__name"
+            className="w-full text-xs bg-curtn-deep border border-curtn-coral rounded px-2 py-1.5 text-curtn-cream font-mono focus:outline-none"
+          />
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => {
+                if (selectorDraft.trim()) {
+                  onUpdateRule({ ...(rule || { selector: '' }), selector: selectorDraft.trim() })
+                }
+                setEditingSelector(false)
+              }}
+              className="text-xs px-2 py-1 rounded bg-curtn-coral/20 text-curtn-coral hover:bg-curtn-coral/30"
+            >
+              Save
+            </button>
+            <button
+              onClick={() => setEditingSelector(false)}
+              className="text-xs px-2 py-1 rounded text-curtn-muted hover:text-curtn-cream"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!isMapped && !editingSelector && (
+        <button
+          onClick={() => { setSelectorDraft(''); setEditingSelector(true) }}
+          className="mt-2 text-xs text-curtn-muted/50 hover:text-curtn-muted"
+        >
+          or type a selector manually
+        </button>
       )}
 
       {/* Depth navigation */}
