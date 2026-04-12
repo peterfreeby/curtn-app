@@ -323,8 +323,8 @@ export const ADMIN_SHOW_LIST_QUERY = gql`
 `;
 
 export const ADMIN_VENUE_LIST_QUERY = gql`
-  query AdminVenueList($first: Int, $after: String) {
-    venueList(first: $first, after: $after) {
+  query AdminVenueList($first: Int, $after: String, $search: String) {
+    venueList(first: $first, after: $after, search: $search) {
       edges {
         node {
           id

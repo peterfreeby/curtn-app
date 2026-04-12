@@ -1,15 +1,26 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "urql";
 import { VENUE_BY_SLUG_QUERY } from "@/lib/graphql/venues";
 import { VenueHero } from "@/components/venues/VenueHero";
 import { VenuePerformances } from "@/components/venues/VenuePerformances";
 import { AddToListButton } from "@/components/lists/AddToListButton";
+import { Button } from "@/components/Button";
+import { InlineEditor } from "@/components/admin/InlineEditor";
+import { useAuth } from "@/lib/auth/useAuth";
+
+function decodeId(globalId: string): string {
+  return atob(globalId).split(":")[1];
+}
 
 export default function VenueDetailPage() {
   const params = useParams();
   const slug = params.slug as string;
+  const { user } = useAuth();
+  const isAdmin = !!user?.isAdmin;
+  const [editing, setEditing] = useState(false);
 
   const [{ data, fetching }] = useQuery({
     query: VENUE_BY_SLUG_QUERY,
@@ -58,6 +69,36 @@ export default function VenueDetailPage() {
       />
 
       <AddToListButton itemId={venue.id} listType="venues" />
+
+      {isAdmin && !editing && (
+        <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing(true)}>
+          Edit
+        </Button>
+      )}
+      {editing && (
+        <InlineEditor
+          entityType="venue"
+          entityId={decodeId(venue.id)}
+          initialValues={{
+            name: venue.name,
+            venueType: venue.venueType || "theater",
+            address: venue.address,
+            city: venue.city,
+            state: venue.state,
+            zipCode: venue.zipCode || "",
+            capacity: venue.capacity ?? "",
+            website: venue.website || "",
+            phone: venue.phone || "",
+            email: venue.email || "",
+            permanentlyClosed: String(!!venue.permanentlyClosed),
+            closedDate: venue.closedDate ? venue.closedDate.split("T")[0] : "",
+            description: venue.description || "",
+            imageUrl: venue.imageUrl || "",
+          }}
+          onSaved={() => { setEditing(false); window.location.reload(); }}
+          onCancel={() => setEditing(false)}
+        />
+      )}
 
       <VenuePerformances venueName={venue.name} />
     </div>

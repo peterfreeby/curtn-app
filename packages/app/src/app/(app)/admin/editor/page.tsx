@@ -708,6 +708,7 @@ function ShowsEditor() {
 
 // --- Venues Tab ---
 function VenuesEditor() {
+  const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
@@ -720,7 +721,7 @@ function VenuesEditor() {
 
   const [{ data, fetching }, reexecute] = useQuery({
     query: ADMIN_VENUE_LIST_QUERY,
-    variables: { first: PAGE_SIZE, after: afterCursor },
+    variables: { first: PAGE_SIZE, after: afterCursor, search: search || undefined },
   });
   const [, executeUpdate] = useMutation(VENUE_UPDATE_MUTATION);
   const [, executeDelete] = useMutation(VENUE_DELETE_MUTATION);
@@ -854,7 +855,13 @@ function VenuesEditor() {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 justify-end">
+      <div className="flex gap-2">
+        <input
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setAfterCursor(null); setAllVenues([]); }}
+          placeholder="Search venues..."
+          className="flex-1 rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
+        />
         <Button variant="primary" onClick={() => setAdding(!adding)}>
           {adding ? "Cancel" : "+ Add Venue"}
         </Button>

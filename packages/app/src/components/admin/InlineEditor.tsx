@@ -8,6 +8,7 @@ import {
   SHOW_UPDATE_MUTATION,
   RUN_UPDATE_MUTATION,
   PERFORMANCE_UPDATE_MUTATION,
+  VENUE_UPDATE_MUTATION,
 } from "@/lib/graphql/admin";
 import { RUN_FIND_OR_CREATE_MUTATION } from "@/lib/graphql/runs";
 import { PERFORMANCE_CREATE_MUTATION } from "@/lib/graphql/performances";
@@ -56,22 +57,42 @@ const PERFORMANCE_FIELDS: FieldDef[] = [
   { key: "imageUrl", label: "Poster Override", type: "image", imageEntityType: "performance" },
 ];
 
+const VENUE_FIELDS: FieldDef[] = [
+  { key: "name", label: "Name" },
+  { key: "venueType", label: "Venue Type", type: "select", options: ["theater", "concert-hall", "dance-studio", "comedy-club", "multi-purpose", "outdoor", "other"] },
+  { key: "address", label: "Address" },
+  { key: "city", label: "City" },
+  { key: "state", label: "State" },
+  { key: "zipCode", label: "ZIP Code" },
+  { key: "capacity", label: "Capacity", type: "number" },
+  { key: "website", label: "Website", type: "url" },
+  { key: "phone", label: "Phone" },
+  { key: "email", label: "Email" },
+  { key: "permanentlyClosed", label: "Permanently Closed", type: "select", options: ["false", "true"] },
+  { key: "closedDate", label: "Closed Date", type: "date" },
+  { key: "description", label: "Description", type: "textarea" },
+  { key: "imageUrl", label: "Image", type: "image", imageEntityType: "venue" },
+];
+
 const FIELD_MAP: Record<string, FieldDef[]> = {
   show: SHOW_FIELDS,
   run: RUN_FIELDS,
   performance: PERFORMANCE_FIELDS,
+  venue: VENUE_FIELDS,
 };
 
 const MUTATION_MAP: Record<string, any> = {
   show: SHOW_UPDATE_MUTATION,
   run: RUN_UPDATE_MUTATION,
   performance: PERFORMANCE_UPDATE_MUTATION,
+  venue: VENUE_UPDATE_MUTATION,
 };
 
 const ID_FIELD_MAP: Record<string, string> = {
   show: "showId",
   run: "runId",
   performance: "performanceId",
+  venue: "venueId",
 };
 
 // --- Field renderer ---
@@ -163,7 +184,7 @@ interface CreditData {
 }
 
 interface InlineEditorProps {
-  entityType: "show" | "run" | "performance";
+  entityType: "show" | "run" | "performance" | "venue";
   entityId: string; // MongoDB ObjectId
   initialValues: Record<string, any>;
   // Child creation props
@@ -310,7 +331,7 @@ export function InlineEditor({
     <div className="dinn-panel space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xs uppercase tracking-widest text-curtn-muted">
-          {entityType === "show" ? "Show" : entityType === "run" ? "Production" : "Performance"} Editor
+          {entityType === "show" ? "Show" : entityType === "run" ? "Production" : entityType === "venue" ? "Venue" : "Performance"} Editor
         </h2>
         <button
           type="button"
