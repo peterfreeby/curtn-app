@@ -23,6 +23,7 @@ interface ShowHeroProps {
   creators?: Creator[];
   averageRating: number | null;
   reviewCount: number;
+  onEdit?: () => void;
 }
 
 export function ShowHero({
@@ -36,6 +37,7 @@ export function ShowHero({
   creators,
   averageRating,
   reviewCount,
+  onEdit,
 }: ShowHeroProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -194,6 +196,16 @@ export function ShowHero({
             </>
           )}
         </div>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="mt-3 pt-3 border-t border-curtn-dark/30 flex items-center gap-1.5 text-xs text-curtn-muted hover:text-curtn-coral transition-colors cursor-pointer w-full"
+          >
+            <Icon name="pencil" size={12} />
+            Edit details
+          </button>
+        )}
       </div>
     </div>
   );

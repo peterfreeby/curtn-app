@@ -217,11 +217,13 @@ export default function ShowDetailPage() {
 
         <CreditsList cast={singleRun.cast ?? []} crew={singleRun.crew ?? []} />
 
-        {isAdmin && !editing && (
-          <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
-            Edit
-          </Button>
-        )}
+        <div className="hidden sm:block">
+          {isAdmin && !editing && (
+            <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
+              Edit
+            </Button>
+          )}
+        </div>
         {editing && (
           <div className="space-y-4">
             <InlineEditor
@@ -356,11 +358,13 @@ export default function ShowDetailPage() {
 
         <CreditsList cast={singleRun.cast ?? []} crew={singleRun.crew ?? []} />
 
-        {isAdmin && !editing && (
-          <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
-            Edit
-          </Button>
-        )}
+        <div className="hidden sm:block">
+          {isAdmin && !editing && (
+            <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
+              Edit
+            </Button>
+          )}
+        </div>
         {editing && (
           <div className="space-y-4">
             <InlineEditor
@@ -436,6 +440,7 @@ export default function ShowDetailPage() {
           creators={creators}
           averageRating={show.averageRating}
           reviewCount={show.reviewCount}
+          onEdit={isAdmin ? () => setEditing("show") : undefined}
         />
 
         <div className="hidden sm:block">
@@ -446,11 +451,13 @@ export default function ShowDetailPage() {
           />
         </div>
 
-        {isAdmin && !editing && (
-          <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
-            Edit
-          </Button>
-        )}
+        <div className="hidden sm:block">
+          {isAdmin && !editing && (
+            <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
+              Edit
+            </Button>
+          )}
+        </div>
         {editing && (
           <InlineEditor
             entityType="show"
