@@ -169,6 +169,19 @@ function getSelectorBridgeScript(): string {
     }, '*');
   }, true);
 
+  // Listen for inspect requests from parent (for depth panel navigation)
+  window.addEventListener('message', function(msg) {
+    if (!msg.data || msg.data.type !== 'CURTN_INSPECT_ELEMENT') return;
+    var selector = msg.data.selector;
+    try {
+      var el = document.querySelector(selector);
+      if (!el) return;
+      // Simulate a click on this element to get full context
+      var evt = new MouseEvent('click', { bubbles: true, cancelable: true });
+      el.dispatchEvent(evt);
+    } catch(e) {}
+  });
+
   // Prevent navigation
   document.addEventListener('submit', function(e) { e.preventDefault(); }, true);
   var anchors = document.querySelectorAll('a');

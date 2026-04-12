@@ -32,6 +32,7 @@ interface TemplateFieldRowProps {
   onClear: () => void
   onUpdateRule: (rule: SelectorRule) => void
   onNavigate?: (selector: string, textContent: string) => void
+  onInspect?: (selector: string) => void  // Ask iframe for fresh context without applying
 }
 
 export function TemplateFieldRow({
@@ -46,7 +47,8 @@ export function TemplateFieldRow({
   onActivate,
   onClear,
   onUpdateRule,
-  onNavigate
+  onNavigate,
+  onInspect
 }: TemplateFieldRowProps) {
   const [expanded, setExpanded] = useState(false)
   const [showDepth, setShowDepth] = useState(false)
@@ -128,16 +130,13 @@ export function TemplateFieldRow({
                   <div key={levelIndex}>
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => {
-                          onNavigate(a.selector, a.textContent)
-                          setShowDepth(false)
-                          setExpandedAncestor(null)
-                        }}
+                        onClick={() => onInspect?.(a.selector)}
                         className="flex-1 text-left text-xs px-2 py-1.5 rounded bg-curtn-deep hover:bg-curtn-dark/40 transition-colors"
+                        title="Drill into this element"
                       >
                         <span className="text-curtn-coral">&lt;{a.tagName}&gt;</span>
                         <span className="text-curtn-muted ml-1">
-                          {a.textContent.substring(0, 40)}{a.textContent.length > 40 ? '…' : ''}
+                          {a.textContent.substring(0, 35)}{a.textContent.length > 35 ? '…' : ''}
                         </span>
                       </button>
                       {sibCount > 0 && (
@@ -149,25 +148,42 @@ export function TemplateFieldRow({
                           ←→ {sibCount}
                         </button>
                       )}
+                      <button
+                        onClick={() => {
+                          onNavigate?.(a.selector, a.textContent)
+                          setShowDepth(false)
+                          setExpandedAncestor(null)
+                        }}
+                        className="shrink-0 text-xs px-1.5 py-1 rounded bg-curtn-coral/20 text-curtn-coral hover:bg-curtn-coral/30"
+                      >
+                        Use
+                      </button>
                     </div>
                     {isExpanded && a.siblings && (
                       <div className="ml-3 mt-1 space-y-1 border-l-2 border-curtn-dark/20 pl-2">
-                        <p className="text-xs text-curtn-muted/40">Siblings at this level:</p>
                         {a.siblings.filter(s => !s.isCurrent).map((s, si) => (
-                          <button
-                            key={si}
-                            onClick={() => {
-                              onNavigate(s.selector, s.textContent)
-                              setShowDepth(false)
-                              setExpandedAncestor(null)
-                            }}
-                            className="w-full text-left text-xs px-2 py-1 rounded bg-curtn-deep/50 hover:bg-curtn-dark/40 transition-colors"
-                          >
-                            <span className="text-curtn-coral">&lt;{s.tagName}&gt;</span>
-                            <span className="text-curtn-muted ml-1">
-                              {s.textContent.substring(0, 50)}{s.textContent.length > 50 ? '…' : ''}
-                            </span>
-                          </button>
+                          <div key={si} className="flex items-center gap-1">
+                            <button
+                              onClick={() => onInspect?.(s.selector)}
+                              className="flex-1 text-left text-xs px-2 py-1 rounded bg-curtn-deep/50 hover:bg-curtn-dark/40 transition-colors"
+                              title="Drill into this sibling"
+                            >
+                              <span className="text-curtn-coral">&lt;{s.tagName}&gt;</span>
+                              <span className="text-curtn-muted ml-1">
+                                {s.textContent.substring(0, 40)}{s.textContent.length > 40 ? '…' : ''}
+                              </span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                onNavigate?.(s.selector, s.textContent)
+                                setShowDepth(false)
+                                setExpandedAncestor(null)
+                              }}
+                              className="shrink-0 text-xs px-1.5 py-1 rounded bg-curtn-coral/20 text-curtn-coral hover:bg-curtn-coral/30"
+                            >
+                              Use
+                            </button>
+                          </div>
                         ))}
                       </div>
                     )}
@@ -182,23 +198,31 @@ export function TemplateFieldRow({
             <div className="space-y-1">
               <p className="text-xs text-curtn-muted/60">↓ Narrower (child elements)</p>
               {children.map((c, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    onNavigate(c.selector, c.textContent)
-                    setShowDepth(false)
-                    setExpandedAncestor(null)
-                  }}
-                  className="w-full text-left text-xs px-2 py-1.5 rounded bg-curtn-deep hover:bg-curtn-dark/40 transition-colors"
-                >
-                  <span className="text-curtn-coral">&lt;{c.tagName}&gt;</span>
-                  <span className="text-curtn-muted ml-1">
-                    {c.textContent.substring(0, 50)}{c.textContent.length > 50 ? '…' : ''}
-                  </span>
-                  {c.childCount > 0 && (
-                    <span className="text-curtn-muted/40 ml-1">({c.childCount} children)</span>
-                  )}
-                </button>
+                <div key={i} className="flex items-center gap-1">
+                  <button
+                    onClick={() => onInspect?.(c.selector)}
+                    className="flex-1 text-left text-xs px-2 py-1.5 rounded bg-curtn-deep hover:bg-curtn-dark/40 transition-colors"
+                    title="Drill into this element"
+                  >
+                    <span className="text-curtn-coral">&lt;{c.tagName}&gt;</span>
+                    <span className="text-curtn-muted ml-1">
+                      {c.textContent.substring(0, 40)}{c.textContent.length > 40 ? '…' : ''}
+                    </span>
+                    {c.childCount > 0 && (
+                      <span className="text-curtn-muted/40 ml-1">({c.childCount} children)</span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      onNavigate?.(c.selector, c.textContent)
+                      setShowDepth(false)
+                      setExpandedAncestor(null)
+                    }}
+                    className="shrink-0 text-xs px-1.5 py-1 rounded bg-curtn-coral/20 text-curtn-coral hover:bg-curtn-coral/30"
+                  >
+                    Use
+                  </button>
+                </div>
               ))}
             </div>
           )}

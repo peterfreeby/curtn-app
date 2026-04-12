@@ -109,6 +109,14 @@ export default function TemplateBuilderPage() {
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
+  // Send a message to the iframe to inspect an element (triggers a simulated click → full context back)
+  const inspectElement = useCallback((selector: string) => {
+    iframeRef.current?.contentWindow?.postMessage(
+      { type: 'CURTN_INSPECT_ELEMENT', selector },
+      '*'
+    )
+  }, [])
+
   const [, testTemplate] = useMutation(TEST_PARSING_TEMPLATE_MUTATION)
   const [, updateDataSource] = useMutation(DATA_SOURCE_UPDATE_MUTATION)
   const [{ fetching: scraping }, executeScrape] = useMutation(SCRAPE_URL_MUTATION)
@@ -575,6 +583,7 @@ export default function TemplateBuilderPage() {
                   onNavigate={(selector, textContent) => {
                     applyFieldSelection(field.key, selector, textContent, [], [])
                   }}
+                  onInspect={inspectElement}
                 />
               ))}
 
