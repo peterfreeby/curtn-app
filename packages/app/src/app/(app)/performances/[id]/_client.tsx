@@ -195,9 +195,11 @@ export default function ShowDetailPage() {
           performanceTime={singlePerf.time}
           ticketUrl={singlePerf.ticketUrl}
           soldOut={isSoldOut}
+          onEdit={isAdmin ? () => setEditing("show") : undefined}
+          entityType={forceView === "show" ? "Show" : "Performance"}
         />
 
-        <div className="flex items-center gap-3">
+        <div className="hidden sm:flex items-center gap-3">
           <WatchlistButton
             showId={show.id}
             initialIsOnWatchlist={show.isOnMyWatchlist ?? false}
@@ -328,9 +330,11 @@ export default function ShowDetailPage() {
           endDate={singleRun.endDate}
           averageRating={singleRun.averageRating}
           reviewCount={singleRun.reviewCount}
+          onEdit={isAdmin ? () => setEditing("show") : undefined}
+          entityType={forceView === "show" ? "Show" : "Run"}
         />
 
-        <div className="flex items-center gap-3">
+        <div className="hidden sm:flex items-center gap-3">
           <WatchlistButton
             showId={show.id}
             initialIsOnWatchlist={show.isOnMyWatchlist ?? false}
@@ -340,7 +344,7 @@ export default function ShowDetailPage() {
         </div>
 
         {upcomingShowings.length > 0 && (
-          <ShowingsList showings={upcomingShowings} label="Upcoming Shows" runId={singleRun.id} />
+          <ShowingsList showings={upcomingShowings} label="Upcoming Performances" runId={singleRun.id} />
         )}
 
         <Link
@@ -410,7 +414,7 @@ export default function ShowDetailPage() {
         />
 
         {pastShowings.length > 0 && (
-          <ShowingsList showings={pastShowings} label="Past Shows" runId={singleRun.id} />
+          <ShowingsList showings={pastShowings} label="Past Performances" runId={singleRun.id} />
         )}
       </div>
       </div>
@@ -434,11 +438,13 @@ export default function ShowDetailPage() {
           reviewCount={show.reviewCount}
         />
 
-        <WatchlistButton
-          showId={show.id}
-          initialIsOnWatchlist={show.isOnMyWatchlist ?? false}
-          initialWatchlistCount={show.watchlistCount ?? 0}
-        />
+        <div className="hidden sm:block">
+          <WatchlistButton
+            showId={show.id}
+            initialIsOnWatchlist={show.isOnMyWatchlist ?? false}
+            initialWatchlistCount={show.watchlistCount ?? 0}
+          />
+        </div>
 
         {isAdmin && !editing && (
           <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>

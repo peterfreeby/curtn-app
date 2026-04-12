@@ -18,11 +18,12 @@ interface ShowingsListProps {
   showings: Showing[];
   label: string;
   runId?: string;
+  onAdd?: () => void;
 }
 
 const INITIAL_COUNT = 5;
 
-export function ShowingsList({ showings, label, runId }: ShowingsListProps) {
+export function ShowingsList({ showings, label, runId, onAdd }: ShowingsListProps) {
   const [showAll, setShowAll] = useState(false);
 
   if (showings.length === 0) return null;
@@ -32,7 +33,19 @@ export function ShowingsList({ showings, label, runId }: ShowingsListProps) {
 
   return (
     <div>
-      <h2 className="mb-3 text-xs uppercase tracking-widest text-curtn-muted">{label}</h2>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-xs uppercase tracking-widest text-curtn-muted">{label}</h2>
+        {onAdd && (
+          <button
+            type="button"
+            onClick={onAdd}
+            className="flex items-center justify-center w-6 h-6 text-curtn-muted hover:text-curtn-coral transition-colors cursor-pointer"
+            aria-label="Add performance"
+          >
+            <Icon name="plus" weight="bold" size={14} />
+          </button>
+        )}
+      </div>
 
       <div className="space-y-2">
         {visible.map((showing, i) => {

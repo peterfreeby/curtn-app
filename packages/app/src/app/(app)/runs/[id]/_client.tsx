@@ -266,11 +266,15 @@ export default function RunDetailPage() {
           endDate={null}
           averageRating={run.averageRating}
           reviewCount={run.reviewCount}
+          onEdit={isAdmin ? () => setEditing(true) : undefined}
+          entityType={forceView === "run" ? "Run" : "Performance"}
         />
 
-        {isAuthenticated && (
-          <AddToListButton listType="runs" itemId={id} />
-        )}
+        <div className="hidden sm:block">
+          {isAuthenticated && (
+            <AddToListButton listType="runs" itemId={id} />
+          )}
+        </div>
 
         <Link
           href={`/log?run=${id}`}
@@ -399,13 +403,16 @@ export default function RunDetailPage() {
         endDate={run.endDate}
         averageRating={run.averageRating}
         reviewCount={run.reviewCount}
+        onEdit={isAdmin ? () => setEditing(true) : undefined}
+        entityType="Run"
       />
 
-      {isAuthenticated && <AddToListButton listType="runs" itemId={id} />
-      }
+      <div className="hidden sm:block">
+        {isAuthenticated && <AddToListButton listType="runs" itemId={id} />}
+      </div>
 
       {upcomingShowings.length > 0 && (
-        <ShowingsList showings={upcomingShowings} label="Upcoming Shows" runId={id} />
+        <ShowingsList showings={upcomingShowings} label="Upcoming Performances" runId={id} />
       )}
 
       <Link
@@ -418,7 +425,7 @@ export default function RunDetailPage() {
       <CreditsList cast={run.cast ?? []} crew={run.crew ?? []} />
 
       {isAdmin && !editing && !batchCreating && (
-        <div className="flex gap-2">
+        <div className="hidden sm:flex gap-2">
           <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing(true)}>
             Edit Run
           </Button>
@@ -506,7 +513,7 @@ export default function RunDetailPage() {
       </div>
 
       {pastShowings.length > 0 && (
-        <ShowingsList showings={pastShowings} label="Past Shows" runId={id} />
+        <ShowingsList showings={pastShowings} label="Past Performances" runId={id} onAdd={isAdmin ? () => setBatchCreating(true) : undefined} />
       )}
     </div>
     </div>

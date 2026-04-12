@@ -35,6 +35,8 @@ interface RunHeroProps {
   performanceTime?: string | null;
   ticketUrl?: string | null;
   soldOut?: boolean;
+  onEdit?: () => void;
+  entityType?: string;
 }
 
 export function RunHero({
@@ -60,6 +62,8 @@ export function RunHero({
   performanceTime,
   ticketUrl,
   soldOut,
+  onEdit,
+  entityType = "Performance",
 }: RunHeroProps) {
   const [expanded, setExpanded] = useState(false);
   const [posterFailed, setPosterFailed] = useState(false);
@@ -185,10 +189,10 @@ export function RunHero({
         </div>
       )}
 
-      {/* Record of Performance — all metadata in one panel */}
+      {/* Record panel — title reflects entity type */}
       <div className="mt-6 dinn-panel">
         <div className="dinn-header">
-          <span className="dinn-title">Record of Performance</span>
+          <span className="dinn-title">Record of {entityType}</span>
           {(averageRating !== null || reviewCount > 0) && (
             <span className="dinn-ref flex items-center gap-1">
               <Icon name="star" weight="fill" size={12} className="text-curtn-coral" />
@@ -281,6 +285,16 @@ export function RunHero({
             </>
           )}
         </div>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="mt-3 pt-3 border-t border-curtn-dark/30 flex items-center gap-1.5 text-xs text-curtn-muted hover:text-curtn-coral transition-colors cursor-pointer w-full"
+          >
+            <Icon name="pencil" size={12} />
+            Edit details
+          </button>
+        )}
       </div>
       </div>
     </div>
