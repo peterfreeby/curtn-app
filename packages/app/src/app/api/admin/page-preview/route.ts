@@ -159,7 +159,10 @@ export async function GET(request: Request) {
     await connectToDatabase()
 
     // Auth check — admin only
-    const authorization = request.headers.get('authorization') || undefined
+    // Accept token from Authorization header or query param (iframes can't send headers)
+    const url = new URL(request.url)
+    const tokenParam = url.searchParams.get('token')
+    const authorization = request.headers.get('authorization') || (tokenParam ? `Bearer ${tokenParam}` : undefined)
     const user = await getUser({ authorization })
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -172,7 +175,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    const url = new URL(request.url)
     const targetUrl = url.searchParams.get('url')
 
     if (!targetUrl) {

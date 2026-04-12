@@ -213,8 +213,17 @@ export default function TemplateBuilderPage() {
       setIframeSrc(null)
       return
     }
-    // Build the iframe src URL
-    setIframeSrc(`/api/admin/page-preview?url=${encodeURIComponent(loadedUrl)}`)
+    async function buildSrc() {
+      try {
+        const { auth } = await import("@/lib/firebase/config")
+        const token = await auth?.currentUser?.getIdToken()
+        const tokenParam = token ? `&token=${encodeURIComponent(token)}` : ''
+        setIframeSrc(`/api/admin/page-preview?url=${encodeURIComponent(loadedUrl!)}${tokenParam}`)
+      } catch {
+        setIframeSrc(`/api/admin/page-preview?url=${encodeURIComponent(loadedUrl!)}`)
+      }
+    }
+    buildSrc()
   }, [loadedUrl])
 
   const statusText = selectingListContainer
