@@ -163,9 +163,28 @@ export default function ShowDetailPage() {
     const venues = singleRun.venues || [];
     const isSoldOut =
       singlePerf.soldOut === true || singlePerf.soldOut === "true";
+    const runLabel =
+      singleRun.title ||
+      company?.name ||
+      venues[0]?.name ||
+      "Production";
+    const perfLabel = singlePerf.date
+      ? new Date(singlePerf.date).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      : "Performance";
 
     return (
       <div className="relative">
+        <DetailBreadcrumb
+          levels={[
+            { label: show.title, href: `/performances/${encodeURIComponent(id)}?view=show` },
+            { label: runLabel, href: `/performances/${encodeURIComponent(id)}?view=run` },
+            { label: perfLabel },
+          ]}
+        />
         <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
         <DetailHero
           title={show.title}
@@ -302,9 +321,20 @@ export default function ShowDetailPage() {
     const pastShowings = allShowings.filter(
       (s: any) => new Date(s.date) <= new Date()
     );
+    const runLabel =
+      singleRun.title ||
+      company?.name ||
+      venues[0]?.name ||
+      "Production";
 
     return (
       <div className="relative">
+        <DetailBreadcrumb
+          levels={[
+            { label: show.title, href: `/performances/${encodeURIComponent(id)}?view=show` },
+            { label: runLabel },
+          ]}
+        />
         <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
         <DetailHero
           title={show.title}
@@ -327,7 +357,7 @@ export default function ShowDetailPage() {
           endDate={singleRun.endDate}
           averageRating={singleRun.averageRating}
           reviewCount={singleRun.reviewCount}
-          onEdit={isAdmin ? () => setEditing("show") : undefined}
+          onEdit={isAdmin ? () => setEditing("run") : undefined}
           entityType={forceView === "show" ? "Show" : "Run"}
         />
 
@@ -355,50 +385,32 @@ export default function ShowDetailPage() {
 
         <div className="hidden sm:block">
           {isAdmin && !editing && (
-            <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
+            <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("run")}>
               Edit
             </Button>
           )}
         </div>
         {editing && (
-          <div className="space-y-4">
-            <InlineEditor
-              entityType="show"
-              entityId={decodeId(show.id)}
-              showId={show.id}
-              initialValues={{
-                title: show.title,
-                description: show.description,
-                performanceTypes: show.performanceTypes,
-                duration: show.duration,
-                url: show.url,
-                posterUrl: show.posterUrl || "",
-                imageUrl: show.imageUrl || "",
-              }}
-              onSaved={() => { setEditing(null); window.location.reload(); }}
-              onCancel={() => setEditing(null)}
-            />
-            <InlineEditor
-              entityType="run"
-              entityId={decodeId(singleRun.id)}
-              runId={singleRun.id}
-              venueId={venues[0]?.id}
-              showId={show.id}
-              effectiveCast={(singleRun.cast ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
-              effectiveCrew={(singleRun.crew ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
-              initialValues={{
-                title: singleRun.title || "",
-                description: singleRun.description || "",
-                intermissions: singleRun.intermissions ?? 0,
-                startDate: singleRun.startDate || "",
-                endDate: singleRun.endDate || "",
-                posterUrl: singleRun.posterUrl || "",
-                imageUrl: singleRun.imageUrl || "",
-              }}
-              onSaved={() => window.location.reload()}
-              onCancel={() => setEditing(null)}
-            />
-          </div>
+          <InlineEditor
+            entityType="run"
+            entityId={decodeId(singleRun.id)}
+            runId={singleRun.id}
+            venueId={venues[0]?.id}
+            showId={show.id}
+            effectiveCast={(singleRun.cast ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
+            effectiveCrew={(singleRun.crew ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
+            initialValues={{
+              title: singleRun.title || "",
+              description: singleRun.description || "",
+              intermissions: singleRun.intermissions ?? 0,
+              startDate: singleRun.startDate || "",
+              endDate: singleRun.endDate || "",
+              posterUrl: singleRun.posterUrl || "",
+              imageUrl: singleRun.imageUrl || "",
+            }}
+            onSaved={() => { setEditing(null); window.location.reload(); }}
+            onCancel={() => setEditing(null)}
+          />
         )}
 
         <ReviewsSection

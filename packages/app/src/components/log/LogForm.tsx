@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "urql";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -79,6 +79,13 @@ export function LogForm({ runId }: LogFormProps) {
     if (!run?.performances?.edges) return [];
     return run.performances.edges.map((e: any) => e.node);
   }, [run]);
+
+  // Auto-select venue when there's only one
+  useEffect(() => {
+    if (venueOptions.length === 1 && !venue) {
+      setVenue(venueOptions[0].name);
+    }
+  }, [venueOptions]);
 
   // Mutations
   const [{ fetching: submitting }, createReview] = useMutation(REVIEW_CREATE_MUTATION);
@@ -486,37 +493,36 @@ export function LogForm({ runId }: LogFormProps) {
               htmlFor="showing"
               className="text-xs uppercase tracking-widest text-curtn-muted"
             >
-              Showing
+              When did you see it?
             </label>
-            <select
-              id="showing"
-              value={selectedPerformanceId}
-              onChange={(e) => {
-                setSelectedPerformanceId(e.target.value);
-                const showing = showingOptions.find((s: any) => s.id === e.target.value);
-                if (showing) {
-                  setAttendedDate(new Date(showing.date).toISOString().slice(0, 10));
-                  if (showing.venue?.name) setVenue(showing.venue.name);
-                }
-              }}
-              className="bg-transparent border-b border-curtn-dark text-curtn-cream py-2 text-sm outline-none focus:border-curtn-coral transition-colors duration-200 cursor-pointer"
-            >
-              <option value="" className="bg-curtn-surface">
-                Select a showing...
-              </option>
-              {showingOptions.map((s: any) => (
-                <option key={s.id} value={s.id} className="bg-curtn-surface">
-                  {new Date(s.date).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                  {" — "}
-                  {s.time}
-                  {s.venue?.name ? ` at ${s.venue.name}` : ""}
-                </option>
-              ))}
-            </select>
+            <div className="flex flex-wrap gap-2">
+              {showingOptions.map((s: any) => {
+                const isSelected = selectedPerformanceId === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedPerformanceId(s.id);
+                      setAttendedDate(new Date(s.date).toISOString().slice(0, 10));
+                      if (s.venue?.name) setVenue(s.venue.name);
+                    }}
+                    className={`px-3 py-1.5 text-xs border transition-colors cursor-pointer ${
+                      isSelected
+                        ? "border-curtn-coral text-curtn-coral"
+                        : "border-curtn-dark/50 text-curtn-muted hover:border-curtn-dark hover:text-curtn-cream"
+                    }`}
+                  >
+                    {new Date(s.date).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                    {s.time ? ` · ${s.time}` : ""}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 

@@ -394,7 +394,7 @@ export default function RunDetailPage() {
         </div>
         {seenToast && (
           <Toast
-            message={`Logged ${show.title}`}
+            message="Logged"
             actionLabel="Add details"
             actionHref={`/log?run=${id}`}
             onDismiss={() => setSeenToast(false)}
@@ -559,7 +559,7 @@ export default function RunDetailPage() {
       )}
       {seenToast && (
         <Toast
-          message={`Logged ${show.title}`}
+          message="Logged"
           actionLabel="Add details"
           actionHref={`/log?run=${id}`}
           onDismiss={() => setSeenToast(false)}

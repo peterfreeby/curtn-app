@@ -180,7 +180,7 @@ export function MobileFloatingBar() {
       return;
     }
     setIsSeen(true);
-    setToast({ message: `Logged ${nowViewing.title}`, actionLabel: "Add details", actionHref: `/log?run=${encodeURIComponent(nowViewing.runId)}` });
+    setToast({ message: "Logged", actionLabel: "Add details", actionHref: `/log?run=${encodeURIComponent(nowViewing.runId)}` });
     setTimeout(() => setToast(null), 5000);
     const result = await executeSeenCreate({ input: { runId: nowViewing.runId } });
     if (result.error || result.data?.seenCreate?.error) {

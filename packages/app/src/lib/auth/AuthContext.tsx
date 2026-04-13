@@ -63,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUser = useCallback(async (fbUser: FirebaseUser | null) => {
     if (!fbUser) {
+      console.debug("[auth] fetchUser: no firebase user, clearing state");
       setUser(null);
       setIsLoading(false);
       return;
@@ -76,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       // Try to get existing user
+      console.debug("[auth] fetchUser: querying me...");
       const res = await fetch("/api/graphql", {
         method: "POST",
         headers,
@@ -83,9 +85,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       const json = await res.json();
       let me = json.data?.me;
+      console.debug("[auth] fetchUser: me query returned", me ? `user ${me.username} (hasProfile: ${me.hasProfile})` : "null");
 
       // If no MongoDB user exists, create one via authenticateWithPhone
       if (!me) {
+        console.debug("[auth] fetchUser: no existing user, calling authenticateWithPhone...");
         const authRes = await fetch("/api/graphql", {
           method: "POST",
           headers,
@@ -97,13 +101,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const authJson = await authRes.json();
         const result = authJson.data?.authenticateWithPhone;
 
+        if (result?.error) {
+          console.error("[auth] authenticateWithPhone failed:", result.error);
+          setUser(null);
+          setIsLoading(false);
+          return;
+        }
+
         if (result?.user) {
           me = result.user;
-
-          // New users need onboarding
-          if (result.isNewUser) {
-            router.push("/onboarding");
-          }
+          console.debug("[auth] fetchUser: user created, isNewUser:", result.isNewUser, "hasProfile:", me.hasProfile);
         }
       }
 
@@ -117,12 +124,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           : null
       );
+      console.debug("[auth] fetchUser: setUser called, hasProfile:", me?.hasProfile, "username:", me?.username);
 
       // Existing users without a profile also need onboarding
       if (me && !me.hasProfile && !me.username) {
+        console.debug("[auth] fetchUser: redirecting to /onboarding");
         router.push("/onboarding");
       }
-    } catch {
+    } catch (err) {
+      console.error("[auth] fetchUser error:", err);
       setUser(null);
     } finally {
       setIsLoading(false);

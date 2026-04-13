@@ -8,6 +8,7 @@
     "populate": "tsnd --clear --transpile-only src/scripts/populateDatabase.ts",
     "seed:island": "tsnd --clear --transpile-only src/scripts/seedDevIsland.ts",
     "seed:island:reset": "tsnd --clear --transpile-only src/scripts/seedDevIsland.ts -- --reset",
+    "reset:user": "tsnd --clear --transpile-only src/scripts/resetUser.ts --",
     "test": "jest --runInBand --detectOpenHandles",
     "schema": "tsnd --clear --transpile-only src/scripts/printSchema.ts"
   },

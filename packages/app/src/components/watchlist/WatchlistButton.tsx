@@ -56,28 +56,26 @@ export function WatchlistButton({
   }
 
   return (
-    <div className="flex flex-col gap-1">
-      <button
-        type="button"
-        onClick={handleToggle}
-        className={
-          isOn
-            ? "flex items-center gap-2 border border-curtn-coral/30 bg-curtn-coral/10 px-4 py-2 text-sm text-curtn-coral transition-colors hover:bg-curtn-coral/20 cursor-pointer"
-            : "flex items-center gap-2 border border-curtn-dark px-4 py-2 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer"
-        }
-      >
-        <Icon
-          name={isOn ? "eye" : "eye"}
-          weight={isOn ? "fill" : "regular"}
-          size={16}
-        />
-        {isOn ? "On your watchlist" : "Want to see"}
-      </button>
+    <button
+      type="button"
+      onClick={handleToggle}
+      className={
+        isOn
+          ? "inline-flex h-10 items-center gap-2 border border-curtn-coral/30 bg-curtn-coral/10 px-4 text-sm text-curtn-coral transition-colors hover:bg-curtn-coral/20 cursor-pointer"
+          : "inline-flex h-10 items-center gap-2 border border-curtn-dark px-4 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer"
+      }
+    >
+      <Icon
+        name={isOn ? "eye" : "eye"}
+        weight={isOn ? "fill" : "regular"}
+        size={16}
+      />
+      {isOn ? "On your watchlist" : "Want to see"}
       {count > 0 && (
-        <span className="text-xs text-curtn-muted/60">
-          {count} {count === 1 ? "wants" : "want"} to see
+        <span className="text-xs text-curtn-muted/60 ml-1">
+          ({count})
         </span>
       )}
-    </div>
+    </button>
   );
 }

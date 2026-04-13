@@ -13,7 +13,7 @@ type Step = "phone" | "otp";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, user } = useAuth();
   const [step, setStep] = useState<Step>("phone");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [otp, setOtp] = useState("");
@@ -23,10 +23,10 @@ export default function LoginPage() {
   const [recaptchaReady, setRecaptchaReady] = useState(false);
 
   useEffect(() => {
-    if (firebaseUser) {
+    if (firebaseUser && user?.hasProfile) {
       router.push("/feed");
     }
-  }, [firebaseUser, router]);
+  }, [firebaseUser, user, router]);
 
   // Initialize reCAPTCHA once on mount
   useEffect(() => {

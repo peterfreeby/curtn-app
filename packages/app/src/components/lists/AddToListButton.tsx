@@ -61,9 +61,9 @@ export function AddToListButton({ itemId, listType }: AddToListButtonProps) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 border border-curtn-dark px-3 py-1.5 text-xs text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer"
+        className="inline-flex h-10 items-center gap-2 border border-curtn-dark px-4 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream cursor-pointer"
       >
-        <Icon name="list-bullets" size={14} />
+        <Icon name="list-bullets" size={16} />
         Add to list
       </button>
 
