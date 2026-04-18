@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation } from "urql";
+import { useMutation, useQuery } from "urql";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import {
@@ -9,6 +9,7 @@ import {
   RUN_UPDATE_MUTATION,
   PERFORMANCE_UPDATE_MUTATION,
   VENUE_UPDATE_MUTATION,
+  PICKER_VENUES_QUERY,
 } from "@/lib/graphql/admin";
 import { RUN_FIND_OR_CREATE_MUTATION } from "@/lib/graphql/runs";
 import { PERFORMANCE_CREATE_MUTATION } from "@/lib/graphql/performances";
@@ -16,6 +17,11 @@ import { AddShowCreditForm } from "@/components/credits/AddShowCreditForm";
 import { RunCreditEditor } from "@/components/admin/RunCreditEditor";
 import { PerformanceCreditEditor } from "@/components/admin/PerformanceCreditEditor";
 import { ImageUpload } from "@/components/admin/ImageUpload";
+import { RelationPicker, RelationOption } from "@/components/admin/RelationPicker";
+
+function decodeGlobalId(globalId: string): string {
+  return atob(globalId).split(":")[1];
+}
 
 // --- Field definitions ---
 
@@ -187,6 +193,8 @@ interface InlineEditorProps {
   entityType: "show" | "run" | "performance" | "venue";
   entityId: string; // MongoDB ObjectId
   initialValues: Record<string, any>;
+  /** For run editing: currently selected venues (with global IDs) so the picker can prefill. */
+  initialVenues?: { id: string; name: string }[];
   // Child creation props
   showId?: string; // Global ID — for "add run" on show editor, "add show credit"
   runId?: string; // Global ID — for "add performance" on run editor, "add credit"
@@ -202,6 +210,7 @@ export function InlineEditor({
   entityType,
   entityId,
   initialValues,
+  initialVenues,
   showId,
   runId,
   effectiveCast,
@@ -229,6 +238,33 @@ export function InlineEditor({
     return init;
   });
 
+  const [venueIds, setVenueIds] = useState<string[]>(
+    () => initialVenues?.map((v) => v.id) || []
+  );
+  const initialVenueIdsKey = (initialVenues?.map((v) => v.id) || []).join(",");
+
+  const [{ data: venuesData }] = useQuery({
+    query: PICKER_VENUES_QUERY,
+    variables: { first: 100 },
+    pause: entityType !== "run",
+  });
+  const venueOptions: RelationOption[] = (() => {
+    const base: RelationOption[] =
+      venuesData?.venueList?.edges?.map((e: any) => ({
+        id: e.node.id,
+        label: e.node.name,
+        sublabel: e.node.city,
+      })) || [];
+    const seen = new Set(base.map((o) => o.id));
+    for (const v of initialVenues || []) {
+      if (!seen.has(v.id)) {
+        base.push({ id: v.id, label: v.name });
+        seen.add(v.id);
+      }
+    }
+    return base;
+  })();
+
   const [{ fetching }, executeMutation] = useMutation(mutation);
   const [error, setError] = useState<string | null>(null);
   const [section, setSection] = useState<"fields" | "addChild" | "credits">("fields");
@@ -252,6 +288,10 @@ export function InlineEditor({
       if (values[field.key] !== original) {
         input[field.key] = values[field.key];
       }
+    }
+
+    if (entityType === "run" && venueIds.join(",") !== initialVenueIdsKey) {
+      input.venueIds = JSON.stringify(venueIds.map(decodeGlobalId));
     }
 
     if (Object.keys(input).length === 1) {
@@ -365,6 +405,16 @@ export function InlineEditor({
       {/* Edit fields */}
       {section === "fields" && (
         <>
+          {entityType === "run" && (
+            <RelationPicker
+              label="Venues"
+              multi
+              options={venueOptions}
+              value={venueIds}
+              onChange={setVenueIds}
+              placeholder="Search venues..."
+            />
+          )}
           <EditorFields fields={fields} values={values} onChange={handleChange} entityId={entityId} />
           {error && <p className="text-xs text-curtn-red">{error}</p>}
           <div className="flex gap-2">

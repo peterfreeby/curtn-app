@@ -334,6 +334,7 @@ export default function RunDetailPage() {
               posterUrl: run.posterUrl || "",
               imageUrl: run.imageUrl || "",
             }}
+            initialVenues={(run.venues || []).map((v: any) => ({ id: v.id, name: v.name }))}
             onSaved={() => { setEditing(false); window.location.reload(); }}
             onCancel={() => setEditing(false)}
           />
@@ -496,9 +497,10 @@ export default function RunDetailPage() {
             intermissions: run.intermissions ?? 0,
             startDate: run.startDate || "",
             endDate: run.endDate || "",
-              posterUrl: run.posterUrl || "",
-              imageUrl: run.imageUrl || "",
+            posterUrl: run.posterUrl || "",
+            imageUrl: run.imageUrl || "",
           }}
+          initialVenues={(run.venues || []).map((v: any) => ({ id: v.id, name: v.name }))}
           onSaved={() => { setEditing(false); window.location.reload(); }}
           onCancel={() => setEditing(false)}
         />

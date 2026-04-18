@@ -1222,19 +1222,41 @@ function RunsEditor() {
     reexecute({ requestPolicy: "network-only" });
   }
 
-  const showOptions: RelationOption[] =
-    showsData?.showList?.edges?.map((e: any) => ({ id: e.node.id, label: e.node.title })) || [];
-  const venueOptions: RelationOption[] =
+  const currentRun = editingId ? runs.find((r: any) => r.id === editingId) : null;
+
+  function mergeSelected<T extends RelationOption>(base: T[], extras: T[]): T[] {
+    const seen = new Set(base.map((o) => o.id));
+    const merged = [...base];
+    for (const extra of extras) {
+      if (!seen.has(extra.id)) {
+        merged.push(extra);
+        seen.add(extra.id);
+      }
+    }
+    return merged;
+  }
+
+  const showOptions: RelationOption[] = mergeSelected(
+    showsData?.showList?.edges?.map((e: any) => ({ id: e.node.id, label: e.node.title })) || [],
+    currentRun?.show ? [{ id: currentRun.show.id, label: currentRun.show.title }] : []
+  );
+  const venueOptions: RelationOption[] = mergeSelected(
     venuesData?.venueList?.edges?.map((e: any) => ({
       id: e.node.id,
       label: e.node.name,
       sublabel: e.node.city,
-    })) || [];
-  const companyOptions: RelationOption[] =
+    })) || [],
+    (currentRun?.venues || []).map((v: any) => ({ id: v.id, label: v.name }))
+  );
+  const companyOptions: RelationOption[] = mergeSelected(
     companiesData?.productionCompanyList?.edges?.map((e: any) => ({
       id: e.node.id,
       label: e.node.name,
-    })) || [];
+    })) || [],
+    currentRun?.productionCompany
+      ? [{ id: currentRun.productionCompany.id, label: currentRun.productionCompany.name }]
+      : []
+  );
 
   async function handleCreateShow(title: string) {
     const result = await executeShowCreate({ input: { title } });
