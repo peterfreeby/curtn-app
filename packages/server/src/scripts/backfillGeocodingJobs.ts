@@ -14,23 +14,16 @@ async function main() {
 
   const dryRun = process.argv.includes('--dry-run')
 
+  // Require a non-empty street address — geocoding a bare city would just
+  // land the pin on the city centroid, which is worse than no pin.
   const candidates = await VenueModel.find({
-    $and: [
-      {
-        $or: [
-          { address: { $exists: true, $ne: '' } },
-          { city: { $exists: true, $ne: '' } }
-        ]
-      },
-      {
-        $or: [
-          { coordinates: { $exists: false } },
-          { 'coordinates.lat': { $exists: false } },
-          { 'coordinates.lng': { $exists: false } },
-          // NYC city-center default — known to be wrong for specific venues
-          { 'coordinates.lat': 40.7128, 'coordinates.lng': -74.006 }
-        ]
-      }
+    address: { $exists: true, $nin: ['', null] },
+    $or: [
+      { coordinates: { $exists: false } },
+      { 'coordinates.lat': { $exists: false } },
+      { 'coordinates.lng': { $exists: false } },
+      // NYC city-center default — known to be wrong for specific venues
+      { 'coordinates.lat': 40.7128, 'coordinates.lng': -74.006 }
     ]
   }).select('_id name address city state zipCode').lean()
 
