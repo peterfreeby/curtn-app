@@ -9,6 +9,7 @@ import { VenuePerformances } from "@/components/venues/VenuePerformances";
 import { AddToListButton } from "@/components/lists/AddToListButton";
 import { Button } from "@/components/Button";
 import { InlineEditor } from "@/components/admin/InlineEditor";
+import { EntityDataSourcesPanel } from "@/components/admin/EntityDataSourcesPanel";
 import { useAuth } from "@/lib/auth/useAuth";
 
 function decodeId(globalId: string): string {
@@ -75,6 +76,10 @@ export default function VenueDetailPage() {
           Edit
         </Button>
       )}
+      {isAdmin && (
+        <EntityDataSourcesPanel entityType="venue" entityId={venue.id} />
+      )}
+
       {editing && (
         <InlineEditor
           entityType="venue"

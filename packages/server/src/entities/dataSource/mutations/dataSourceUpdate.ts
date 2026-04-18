@@ -28,6 +28,22 @@ export const dataSourceUpdate = mutationWithClientMutationId({
     isActive: {
       type: GraphQLBoolean,
       description: 'Whether the source is active'
+    },
+    associatedVenueId: {
+      type: GraphQLString,
+      description: 'Associated venue ID (pass empty string to clear)'
+    },
+    associatedCompanyId: {
+      type: GraphQLString,
+      description: 'Associated production company ID (pass empty string to clear)'
+    },
+    associatedShowId: {
+      type: GraphQLString,
+      description: 'Associated show ID (pass empty string to clear)'
+    },
+    associatedRunId: {
+      type: GraphQLString,
+      description: 'Associated run ID (pass empty string to clear)'
     }
   },
   outputFields: {
@@ -65,6 +81,19 @@ export const dataSourceUpdate = mutationWithClientMutationId({
 
       if (input.isActive !== undefined) {
         ds.isActive = input.isActive
+      }
+
+      if (input.associatedVenueId !== undefined) {
+        ds.associatedVenue = input.associatedVenueId ? input.associatedVenueId as any : undefined
+      }
+      if (input.associatedCompanyId !== undefined) {
+        ds.associatedCompany = input.associatedCompanyId ? input.associatedCompanyId as any : undefined
+      }
+      if (input.associatedShowId !== undefined) {
+        ds.associatedShow = input.associatedShowId ? input.associatedShowId as any : undefined
+      }
+      if (input.associatedRunId !== undefined) {
+        ds.associatedRun = input.associatedRunId ? input.associatedRunId as any : undefined
       }
 
       await ds.save()

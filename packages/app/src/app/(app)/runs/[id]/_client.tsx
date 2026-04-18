@@ -19,6 +19,7 @@ import { AddToListButton } from "@/components/lists/AddToListButton";
 import { Button } from "@/components/Button";
 import { InlineEditor } from "@/components/admin/InlineEditor";
 import { BatchPerformanceCreator } from "@/components/admin/BatchPerformanceCreator";
+import { EntityDataSourcesPanel } from "@/components/admin/EntityDataSourcesPanel";
 import { DetailBreadcrumb } from "@/components/nav/DetailBreadcrumb";
 import { formatShowDate, formatShowTime } from "@/lib/format";
 
@@ -348,6 +349,10 @@ export default function RunDetailPage() {
           />
         )}
 
+        {isAdmin && (
+          <EntityDataSourcesPanel entityType="run" entityId={id} />
+        )}
+
         {/* Reviews */}
         <div className="relative">
           <div className="flex items-center justify-between mb-3">
@@ -507,6 +512,10 @@ export default function RunDetailPage() {
           onCreated={() => { setBatchCreating(false); window.location.reload(); }}
           onCancel={() => setBatchCreating(false)}
         />
+      )}
+
+      {isAdmin && (
+        <EntityDataSourcesPanel entityType="run" entityId={id} />
       )}
 
       {/* Reviews */}

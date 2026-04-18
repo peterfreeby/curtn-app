@@ -40,6 +40,7 @@ import {
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { RelationPicker, type RelationOption } from "@/components/admin/RelationPicker";
+import { EntityDataSourcesPanel } from "@/components/admin/EntityDataSourcesPanel";
 
 const PAGE_SIZE = 50;
 
@@ -643,6 +644,8 @@ function ShowsEditor() {
                     onChanged={() => refreshList()}
                   />
 
+                  <EntityDataSourcesPanel entityType="show" entityId={show.id} />
+
                   <div className="flex gap-2">
                     <Button variant="primary" onClick={handleSave}>Save</Button>
                     <Button variant="tertiary" onClick={() => setEditingId(null)}>Cancel</Button>
@@ -919,6 +922,7 @@ function VenuesEditor() {
                     currentImageUrl={fields.imageUrl || null}
                     onUploaded={(url) => setFields((f) => ({ ...f, imageUrl: url }))}
                   />
+                  <EntityDataSourcesPanel entityType="venue" entityId={venue.id} />
                   <div className="flex gap-2">
                     <Button variant="primary" onClick={handleSave}>Save</Button>
                     <Button variant="tertiary" onClick={() => setEditingId(null)}>Cancel</Button>
@@ -1468,6 +1472,8 @@ function RunsEditor() {
                     crew={run.crew || []}
                     onChanged={() => reexecute({ requestPolicy: "network-only" })}
                   />
+
+                  <EntityDataSourcesPanel entityType="run" entityId={run.id} />
 
                   <div className="flex gap-2">
                     <Button variant="primary" onClick={handleSave}>Save</Button>

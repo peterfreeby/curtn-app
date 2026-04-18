@@ -7,6 +7,8 @@ export interface IDataSource {
   config: Record<string, any>
   associatedVenue?: Types.ObjectId
   associatedCompany?: Types.ObjectId
+  associatedShow?: Types.ObjectId
+  associatedRun?: Types.ObjectId
   fetchedUrls?: string[]
   lastPolledAt?: Date
   isActive: boolean
@@ -43,6 +45,14 @@ const dataSourceSchema = new Schema<IDataSource>({
     type: Schema.Types.ObjectId,
     ref: 'productionCompany'
   },
+  associatedShow: {
+    type: Schema.Types.ObjectId,
+    ref: 'show'
+  },
+  associatedRun: {
+    type: Schema.Types.ObjectId,
+    ref: 'run'
+  },
   lastPolledAt: Date,
   isActive: {
     type: Boolean,
@@ -59,5 +69,9 @@ const dataSourceSchema = new Schema<IDataSource>({
 
 dataSourceSchema.index({ type: 1 })
 dataSourceSchema.index({ isActive: 1 })
+dataSourceSchema.index({ associatedVenue: 1 })
+dataSourceSchema.index({ associatedCompany: 1 })
+dataSourceSchema.index({ associatedShow: 1 })
+dataSourceSchema.index({ associatedRun: 1 })
 
 export const DataSourceModel = (mongoose.models.dataSource as mongoose.Model<IDataSource>) || mongoose.model<IDataSource>('dataSource', dataSourceSchema)

@@ -33,6 +33,14 @@ export const dataSourceCreate = mutationWithClientMutationId({
       type: GraphQLString,
       description: 'Optional associated production company ID'
     },
+    associatedShowId: {
+      type: GraphQLString,
+      description: 'Optional associated show ID'
+    },
+    associatedRunId: {
+      type: GraphQLString,
+      description: 'Optional associated run ID'
+    },
     isActive: {
       type: GraphQLBoolean,
       description: 'Whether the source is active (default true)'
@@ -73,6 +81,8 @@ export const dataSourceCreate = mutationWithClientMutationId({
         config,
         associatedVenue: input.associatedVenueId || undefined,
         associatedCompany: input.associatedCompanyId || undefined,
+        associatedShow: input.associatedShowId || undefined,
+        associatedRun: input.associatedRunId || undefined,
         isActive: input.isActive !== undefined ? input.isActive : true,
         createdBy: ctx.user.id
       }).save()

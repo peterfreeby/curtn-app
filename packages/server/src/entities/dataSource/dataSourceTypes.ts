@@ -42,6 +42,16 @@ export const dataSourceType = new GraphQLObjectType({
       description: 'Associated production company ID',
       resolve: ds => ds.associatedCompany?.toString()
     },
+    associatedShow: {
+      type: GraphQLString,
+      description: 'Associated show ID',
+      resolve: ds => ds.associatedShow?.toString()
+    },
+    associatedRun: {
+      type: GraphQLString,
+      description: 'Associated run ID',
+      resolve: ds => ds.associatedRun?.toString()
+    },
     lastPolledAt: {
       type: GraphQLString,
       resolve: ds => ds.lastPolledAt?.toISOString()

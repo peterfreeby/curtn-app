@@ -7,10 +7,14 @@ import { COMPANY_BY_SLUG_QUERY } from "@/lib/graphql/companies";
 import { CompanyHero } from "@/components/companies/CompanyHero";
 import { CompanyRuns } from "@/components/companies/CompanyRuns";
 import { Icon } from "@/components/icons/Icons";
+import { EntityDataSourcesPanel } from "@/components/admin/EntityDataSourcesPanel";
+import { useAuth } from "@/lib/auth/useAuth";
 
 export default function CompanyDetailPage() {
   const params = useParams();
   const slug = params.slug as string;
+  const { user } = useAuth();
+  const isAdmin = !!user?.isAdmin;
 
   const [{ data, fetching }] = useQuery({
     query: COMPANY_BY_SLUG_QUERY,
@@ -56,6 +60,10 @@ export default function CompanyDetailPage() {
         description={company.description}
         logoUrl={company.logoUrl}
       />
+
+      {isAdmin && (
+        <EntityDataSourcesPanel entityType="company" entityId={company.id} />
+      )}
 
       <CompanyRuns
         runs={runs}

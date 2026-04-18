@@ -44,8 +44,22 @@ export const DATA_SOURCE_GET_QUERY = gql`
 `;
 
 export const DATA_SOURCE_LIST_QUERY = gql`
-  query DataSourceList($first: Int, $after: String) {
-    dataSourceList(first: $first, after: $after) {
+  query DataSourceList(
+    $first: Int
+    $after: String
+    $associatedVenueId: String
+    $associatedCompanyId: String
+    $associatedShowId: String
+    $associatedRunId: String
+  ) {
+    dataSourceList(
+      first: $first
+      after: $after
+      associatedVenueId: $associatedVenueId
+      associatedCompanyId: $associatedCompanyId
+      associatedShowId: $associatedShowId
+      associatedRunId: $associatedRunId
+    ) {
       edges {
         cursor
         node {
@@ -57,6 +71,10 @@ export const DATA_SOURCE_LIST_QUERY = gql`
           isActive
           lastPolledAt
           createdAt
+          associatedVenue
+          associatedCompany
+          associatedShow
+          associatedRun
         }
       }
       pageInfo {
