@@ -19,6 +19,7 @@ function getSelectorBridgeScript(): string {
 (function() {
   let highlightedEl = null;
   let containerScope = null; // CSS selector of the active container (set by parent)
+  let selectionMode = 'field'; // 'field' | 'container'
   const HIGHLIGHT_STYLE = '2px solid #FF6B5A';
   const HIGHLIGHT_BG = 'rgba(255, 107, 90, 0.1)';
 
@@ -107,12 +108,65 @@ function getSelectorBridgeScript(): string {
     return chain;
   }
 
+  // Walks up from el. Returns the shallowest ancestor (including el) whose
+  // tag+classes selector matches >= 2 elements in scope — i.e. the likely
+  // repeating unit. Falls back to a unique selector if nothing repeats.
+  function generateContainerSelector(el, scope) {
+    var root = scope || document;
+    var current = el;
+
+    while (current && current !== root && current !== document.body && current !== document.documentElement) {
+      var tag = current.tagName.toLowerCase();
+      var classes = Array.from(current.classList).filter(function(c) {
+        return !c.startsWith('js-') && !c.startsWith('_') && c.length < 40;
+      });
+      var sel = tag + (classes.length > 0 ? '.' + classes.map(function(c) { return CSS.escape(c); }).join('.') : '');
+
+      try {
+        var matches = root.querySelectorAll(sel);
+        var matchesCurrent = false;
+        for (var i = 0; i < matches.length; i++) {
+          if (matches[i] === current) { matchesCurrent = true; break; }
+        }
+        if (matches.length >= 2 && matchesCurrent) return sel;
+      } catch(e) {}
+
+      current = current.parentElement;
+    }
+
+    return scope ? generateRelativeSelector(el, scope) : generateSelector(el);
+  }
+
+  function findContainerEl(startEl, scopeSelector) {
+    if (!scopeSelector) return null;
+    var walk = startEl;
+    while (walk && walk !== document.body) {
+      if (walk.matches && walk.matches(scopeSelector)) return walk;
+      walk = walk.parentElement;
+    }
+    return null;
+  }
+
   document.addEventListener('click', function(e) {
     e.preventDefault();
     e.stopPropagation();
 
     var target = e.target;
-    var selector = generateSelector(target);
+    var containerEl = findContainerEl(target, containerScope);
+
+    var selector, relativeSelector = null;
+    if (selectionMode === 'container') {
+      selector = generateContainerSelector(target, null);
+      if (containerEl) {
+        relativeSelector = generateContainerSelector(target, containerEl);
+      }
+    } else {
+      selector = generateSelector(target);
+      if (containerEl) {
+        relativeSelector = generateRelativeSelector(target, containerEl);
+      }
+    }
+
     var attrs = {};
     for (var i = 0; i < target.attributes.length; i++) {
       attrs[target.attributes[i].name] = target.attributes[i].value;
@@ -157,26 +211,6 @@ function getSelectorBridgeScript(): string {
         tagName: child.tagName.toLowerCase(),
         childCount: child.children.length
       });
-    }
-
-    // If inside a container scope, generate a relative selector
-    var relativeSelector = null;
-    if (containerScope) {
-      // Find the nearest container element that matches the scope
-      var containerEl = null;
-      var walk = target;
-      while (walk && walk !== document.body) {
-        if (walk.matches && walk.matches(containerScope)) {
-          containerEl = walk;
-          break;
-        }
-        // Also check if an ancestor of the clicked element matches
-        walk = walk.parentElement;
-      }
-      // If clicked element is inside a container match, generate relative selector
-      if (containerEl) {
-        relativeSelector = generateRelativeSelector(target, containerEl);
-      }
     }
 
     window.parent.postMessage({
@@ -226,24 +260,39 @@ function getSelectorBridgeScript(): string {
     return parts.join(' > ');
   }
 
-  // Listen for container scope updates from parent
+  // Listen for container scope + selection mode updates from parent
   window.addEventListener('message', function(msg) {
     if (!msg.data) return;
     if (msg.data.type === 'CURTN_SET_CONTAINER_SCOPE') {
       containerScope = msg.data.containerSelector || null;
     }
+    if (msg.data.type === 'CURTN_SET_SELECTION_MODE') {
+      selectionMode = msg.data.mode === 'container' ? 'container' : 'field';
+    }
   });
 
-  // Listen for inspect requests from parent (for depth panel navigation)
+  // Inspect: scroll to + flash-highlight matches. Read-only — does NOT dispatch
+  // a click, which would retrigger the click handler and overwrite the user's
+  // selector with a freshly regenerated (pinned) one.
   window.addEventListener('message', function(msg) {
     if (!msg.data || msg.data.type !== 'CURTN_INSPECT_ELEMENT') return;
     var selector = msg.data.selector;
     try {
-      var el = document.querySelector(selector);
-      if (!el) return;
-      // Simulate a click on this element to get full context
-      var evt = new MouseEvent('click', { bubbles: true, cancelable: true });
-      el.dispatchEvent(evt);
+      var els = document.querySelectorAll(selector);
+      if (els.length === 0) return;
+      els[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      for (var i = 0; i < els.length; i++) {
+        (function(el) {
+          var prevOutline = el.style.outline;
+          var prevBg = el.style.backgroundColor;
+          el.style.outline = HIGHLIGHT_STYLE;
+          el.style.backgroundColor = HIGHLIGHT_BG;
+          setTimeout(function() {
+            el.style.outline = prevOutline;
+            el.style.backgroundColor = prevBg;
+          }, 1500);
+        })(els[i]);
+      }
     } catch(e) {}
   });
 

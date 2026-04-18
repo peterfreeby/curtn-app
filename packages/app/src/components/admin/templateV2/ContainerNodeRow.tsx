@@ -90,9 +90,17 @@ export function ContainerNodeRow({
             <button
               onClick={() => { setSelectorDraft(node.selector); setEditingSelector(true) }}
               className="flex-1 text-xs text-curtn-muted bg-curtn-deep px-2 py-0.5 rounded font-mono text-left hover:bg-curtn-dark/40 cursor-text truncate"
+              title="Click to edit"
             >
               {node.selector}
             </button>
+            <Button
+              variant={isActive ? "primary" : "tertiary"}
+              size="sm"
+              onClick={onActivate}
+            >
+              {isActive ? 'Selecting\u2026' : 'Re-select'}
+            </Button>
           </div>
         ) : editingSelector ? (
           <div className="space-y-1">

@@ -87,12 +87,28 @@ export default function TemplateBuilderPage() {
     return undefined
   }
 
-  // When active node changes, tell the iframe about the container scope
+  function findNodeType(tree: TemplateNodeUI[], targetId: string): 'field' | 'container' | null {
+    for (const node of tree) {
+      if (node.id === targetId) return node.type
+      if (node.type === 'container') {
+        const found = findNodeType(node.children, targetId)
+        if (found) return found
+      }
+    }
+    return null
+  }
+
+  // When active node changes, tell the iframe about the container scope + selection mode
   useEffect(() => {
     if (!activeNodeId || !iframeRef.current?.contentWindow) return
     const containerSelector = findParentContainerSelector(nodes, activeNodeId)
+    const nodeType = findNodeType(nodes, activeNodeId)
     iframeRef.current.contentWindow.postMessage(
       { type: 'CURTN_SET_CONTAINER_SCOPE', containerSelector: containerSelector || null },
+      '*'
+    )
+    iframeRef.current.contentWindow.postMessage(
+      { type: 'CURTN_SET_SELECTION_MODE', mode: nodeType === 'container' ? 'container' : 'field' },
       '*'
     )
   }, [activeNodeId, nodes])
