@@ -22,6 +22,38 @@ function generateId(): string {
   return Math.random().toString(36).slice(2, 10)
 }
 
+// Fields whose value is an image URL (take `src` when selecting an <img>)
+const IMAGE_URL_FIELDS = new Set([
+  'showImageUrl', 'showPosterUrl',
+  'venueImageUrl',
+  'runImageUrl', 'runPosterUrl',
+  'companyLogoUrl', 'personHeadshotUrl',
+  'performanceImageUrl',
+])
+
+// Fields whose value is a link URL (take `href` when selecting an <a>)
+const LINK_URL_FIELDS = new Set([
+  'showUrl', 'venueWebsite', 'ticketUrl',
+])
+
+function findNodeById(tree: TemplateNodeUI[], targetId: string): TemplateNodeUI | null {
+  for (const node of tree) {
+    if (node.id === targetId) return node
+    if (node.type === 'container') {
+      const found = findNodeById(node.children, targetId)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+function inferAttribute(tagName: string | undefined, csvField: string | undefined): string | undefined {
+  if (!tagName || !csvField) return undefined
+  if (tagName === 'img' && IMAGE_URL_FIELDS.has(csvField)) return 'src'
+  if (tagName === 'a' && LINK_URL_FIELDS.has(csvField)) return 'href'
+  return undefined
+}
+
 export default function TemplateBuilderPage() {
   const searchParams = useSearchParams()
   const { user } = useAuth()
@@ -122,15 +154,22 @@ export default function TemplateBuilderPage() {
       // Use relativeSelector if the bridge generated one (scoped to container)
       const selector = event.data.relativeSelector || event.data.selector
       const textContent = event.data.textContent
+      const tagName: string | undefined = event.data.tagName
 
-      // Find the active node and update it
-      setNodes(prev => updateNodeInTree(prev, activeNodeId, { selector }))
+      const active = findNodeById(nodes, activeNodeId)
+      const updates: any = { selector }
+      if (active?.type === 'field' && !active.attribute) {
+        const inferred = inferAttribute(tagName, active.csvField)
+        if (inferred) updates.attribute = inferred
+      }
+
+      setNodes(prev => updateNodeInTree(prev, activeNodeId, updates))
       setPreviewTexts(prev => ({ ...prev, [activeNodeId]: textContent }))
     }
 
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [activeNodeId])
+  }, [activeNodeId, nodes])
 
   // Tree mutation helpers
   function updateNodeInTree(tree: TemplateNodeUI[], id: string, updates: any): TemplateNodeUI[] {
