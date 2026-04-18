@@ -5,6 +5,7 @@ import { RunModel } from '../../run/runModel'
 import { PerformanceModel } from '../../performance/performanceModel'
 import { DataSourceModel } from '../../dataSource/dataSourceModel'
 import { UserModel } from '../../user/userModel'
+import { StageModel } from '../../stage/stageModel'
 import { errorField } from '../../../graphql/errorField'
 
 export const venueMerge = mutationWithClientMutationId({
@@ -56,9 +57,29 @@ export const venueMerge = mutationWithClientMutationId({
       // Reassign data sources
       await DataSourceModel.updateMany({ defaultVenue: source._id }, { defaultVenue: target._id })
 
-      // Move stages to target venue
-      const { StageModel } = require('../../stage/stageModel')
-      await StageModel.updateMany({ venue: source._id }, { venue: target._id })
+      // Move stages to target venue, handling slug collisions.
+      // Stages have a unique { slug, venue } index. For each source stage whose slug
+      // already exists on target, repoint stageOverride references and delete the source stage.
+      const sourceStages = await StageModel.find({ venue: source._id })
+      const targetStages = await StageModel.find({ venue: target._id })
+      const targetSlugMap = new Map(targetStages.map(s => [s.slug, s._id]))
+
+      for (const sourceStage of sourceStages) {
+        const collidingTargetId = targetSlugMap.get(sourceStage.slug)
+        if (collidingTargetId) {
+          await PerformanceModel.updateMany(
+            { stageOverride: sourceStage._id },
+            { stageOverride: collidingTargetId }
+          )
+          await RunModel.updateMany(
+            { stage: sourceStage._id },
+            { stage: collidingTargetId }
+          )
+          await StageModel.findByIdAndDelete(sourceStage._id)
+        } else {
+          await StageModel.updateOne({ _id: sourceStage._id }, { venue: target._id })
+        }
+      }
 
       // Delete source venue
       await VenueModel.findByIdAndDelete(source._id)
@@ -66,7 +87,8 @@ export const venueMerge = mutationWithClientMutationId({
       return { deletedId: input.sourceId }
     } catch (err) {
       console.error('venueMerge error:', err)
-      return { error: 'Failed to merge venues' }
+      const message = err instanceof Error ? err.message : String(err)
+      return { error: `Failed to merge venues: ${message}` }
     }
   }
 })
