@@ -1,0 +1,18 @@
+name: Geocoding Queue Tick
+
+on:
+  schedule:
+    # Every 5 minutes. GitHub cron is best-effort — expect occasional drift.
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit geocoding worker
+        run: |
+          curl -fsS \
+            --max-time 65 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/geocoding"

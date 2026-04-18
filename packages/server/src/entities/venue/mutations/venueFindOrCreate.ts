@@ -78,10 +78,12 @@ export const venueFindOrCreate = mutationWithClientMutationId({
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '')
 
+      const trimmedAddress = input.address.trim()
+
       const venue = await new VenueModel({
         name,
         slug,
-        address: input.address.trim(),
+        address: trimmedAddress,
         city: input.city,
         state: input.state,
         coordinates: {

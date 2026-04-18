@@ -1,4 +1,7 @@
 import mongoose, { Schema, Types } from 'mongoose'
+import { enqueueGeocodingJob } from '../../services/geocoding/enqueueGeocodingJob'
+
+const ADDRESS_FIELDS = ['address', 'city', 'state', 'zipCode'] as const
 
 export interface IVenue {
   // Basic venue information
@@ -162,6 +165,45 @@ venueSchema.pre('save', function(next) {
       .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
   }
   next()
+})
+
+// Geocoding enqueue: address writes trigger a job, the cron worker drains
+// the queue at 1 req/sec. Mongoose resets isModified/isNew after save, so
+// we stash intent in pre('save') and execute in post('save').
+venueSchema.pre('save', function(next) {
+  const addressTouched = ADDRESS_FIELDS.some(field => this.isModified(field))
+  if (this.isNew || addressTouched) {
+    this.$locals.shouldEnqueueGeocoding = true
+  }
+  next()
+})
+
+venueSchema.post('save', async function() {
+  if (!this.$locals.shouldEnqueueGeocoding) return
+  this.$locals.shouldEnqueueGeocoding = false
+
+  await enqueueGeocodingJob(this._id, {
+    address: this.address,
+    city: this.city,
+    state: this.state,
+    zipCode: this.zipCode
+  })
+})
+
+venueSchema.post('findOneAndUpdate', async function(doc: any) {
+  if (!doc) return
+  const update = (this.getUpdate() || {}) as Record<string, any>
+  const set = (update.$set || update) as Record<string, any>
+
+  const touchesAddress = ADDRESS_FIELDS.some(field => field in set)
+  if (!touchesAddress) return
+
+  await enqueueGeocodingJob(doc._id, {
+    address: doc.address,
+    city: doc.city,
+    state: doc.state,
+    zipCode: doc.zipCode
+  })
 })
 
 export const VenueModel = (mongoose.models.venue as mongoose.Model<IVenue>) || mongoose.model<IVenue>('venue', venueSchema)
