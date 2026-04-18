@@ -7,13 +7,13 @@ export interface IVenue {
   description?: string
   
   // Location data
-  address: string
-  city: string // NYC, Minneapolis, LA
-  state: string // NY, MN, CA
+  address?: string
+  city?: string
+  state?: string
   zipCode?: string
-  coordinates: {
-    lat: number
-    lng: number
+  coordinates?: {
+    lat?: number
+    lng?: number
   }
   
   // Venue details
@@ -63,19 +63,14 @@ const venueSchema = new Schema<IVenue>({
   },
   address: {
     type: String,
-    required: true,
     trim: true
   },
   city: {
     type: String,
-    required: true,
-    enum: ['NYC', 'Minneapolis', 'LA'], // Your three target cities
     trim: true
   },
   state: {
     type: String,
-    required: true,
-    enum: ['NY', 'MN', 'CA'],
     trim: true
   },
   zipCode: {
@@ -85,13 +80,11 @@ const venueSchema = new Schema<IVenue>({
   coordinates: {
     lat: {
       type: Number,
-      required: true,
       min: -90,
       max: 90
     },
     lng: {
       type: Number,
-      required: true,
       min: -180,
       max: 180
     }

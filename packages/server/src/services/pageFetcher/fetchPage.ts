@@ -26,8 +26,12 @@ export async function fetchPage(url: string): Promise<string> {
     throw new Error(`Page fetch failed: HTTP ${response.status} ${response.statusText}`)
   }
 
-  const contentType = response.headers.get('content-type') || ''
-  if (!contentType.includes('text/html') && !contentType.includes('application/xhtml+xml')) {
+  // Loose content-type check: accept any text/* or xml/xhtml, reject only clearly
+  // binary types (images, video, audio, etc.). Many dynamic backends (PHP, etc.)
+  // return quirky or missing content-types that are still HTML in practice.
+  const contentType = (response.headers.get('content-type') || '').toLowerCase()
+  const binaryTypes = ['image/', 'video/', 'audio/', 'font/', 'application/pdf', 'application/zip', 'application/octet-stream']
+  if (contentType && binaryTypes.some(t => contentType.includes(t))) {
     throw new Error(`Unexpected content type: ${contentType} (expected HTML)`)
   }
 

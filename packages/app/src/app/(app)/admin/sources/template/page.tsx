@@ -418,7 +418,7 @@ export default function TemplateBuilderPage() {
           <div className="flex-1">
             <label className="text-xs text-curtn-muted block mb-1">Sample Page URL</label>
             <input
-              type="url"
+              type="text"
               value={sampleUrl}
               onChange={e => setSampleUrl(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && loadPage()}

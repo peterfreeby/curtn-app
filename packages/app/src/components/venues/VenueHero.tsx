@@ -7,9 +7,9 @@ import { VENUE_TYPE_LABELS } from "./VenueCard";
 interface VenueHeroProps {
   name: string;
   venueType: string;
-  address: string;
-  city: string;
-  state: string;
+  address: string | null;
+  city: string | null;
+  state: string | null;
   zipCode: string | null;
   capacity: number | null;
   description: string | null;
@@ -39,7 +39,8 @@ export function VenueHero({
 }: VenueHeroProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const fullAddress = [address, `${city}, ${state}`, zipCode]
+  const cityState = [city, state].filter(Boolean).join(", ");
+  const fullAddress = [address, cityState, zipCode]
     .filter(Boolean)
     .join(", ");
 

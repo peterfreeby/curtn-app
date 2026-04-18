@@ -257,10 +257,9 @@ export async function processImportRows(
           venue = await new VenueModel({
             name: row.venueName.trim(),
             slug: venueSlug,
-            address: row.venueAddress?.trim() || 'TBD',
-            city: row.venueCity?.trim() || 'NYC',
-            state: row.venueState?.trim() || 'NY',
-            coordinates: { lat: 40.7128, lng: -74.0060 },
+            ...(row.venueAddress?.trim() && { address: row.venueAddress.trim() }),
+            ...(row.venueCity?.trim() && { city: row.venueCity.trim() }),
+            ...(row.venueState?.trim() && { state: row.venueState.trim() }),
             ...(row.venueDescription?.trim() && { description: row.venueDescription.trim() }),
             ...(row.venueZipCode?.trim() && { zipCode: row.venueZipCode.trim() }),
             ...(row.venueCapacity?.trim() && { capacity: parseInt(row.venueCapacity, 10) || undefined }),

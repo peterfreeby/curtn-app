@@ -54,18 +54,18 @@ import {
         resolve: venue => venue.description
       },
       address: {
-        type: new GraphQLNonNull(GraphQLString),
+        type: GraphQLString,
         description: 'Street address',
         resolve: venue => venue.address
       },
       city: {
-        type: new GraphQLNonNull(GraphQLString),
-        description: 'City (NYC, Minneapolis, LA)',
+        type: GraphQLString,
+        description: 'City',
         resolve: venue => venue.city
       },
       state: {
-        type: new GraphQLNonNull(GraphQLString),
-        description: 'State abbreviation (NY, MN, CA)',
+        type: GraphQLString,
+        description: 'State abbreviation',
         resolve: venue => venue.state
       },
       zipCode: {
@@ -74,7 +74,7 @@ import {
         resolve: venue => venue.zipCode
       },
       coordinates: {
-        type: new GraphQLNonNull(coordinatesType),
+        type: coordinatesType,
         description: 'Geographic coordinates',
         resolve: venue => venue.coordinates
       },

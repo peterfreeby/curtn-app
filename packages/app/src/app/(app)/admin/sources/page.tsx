@@ -6,6 +6,7 @@ import { useQuery, useMutation } from "urql";
 import {
   DATA_SOURCE_LIST_QUERY,
   DATA_SOURCE_CREATE_MUTATION,
+  DATA_SOURCE_UPDATE_MUTATION,
   POLL_DATA_SOURCE_MUTATION,
   DATA_SOURCE_DELETE_MUTATION,
 } from "@/lib/graphql/admin";
@@ -97,7 +98,12 @@ export default function DataSourcesPage() {
   const [{ fetching: deleting }, executeDelete] = useMutation(
     DATA_SOURCE_DELETE_MUTATION
   );
+  const [{ fetching: updatingUrl }, executeUpdate] = useMutation(
+    DATA_SOURCE_UPDATE_MUTATION
+  );
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [editingUrlId, setEditingUrlId] = useState<string | null>(null);
+  const [editingUrlValue, setEditingUrlValue] = useState("");
 
   const sources: DataSourceNode[] =
     data?.dataSourceList?.edges?.map((e: any) => e.node) || [];
@@ -159,6 +165,21 @@ export default function DataSourcesPage() {
       setPollResult(
         `${sourceName}: ${data.eventsFound} found, ${data.eventsCreated} new, ${data.eventsSkipped} skipped`
       );
+      reexecuteQuery({ requestPolicy: "network-only" });
+    }
+  }
+
+  async function handleSaveUrl(sourceId: string) {
+    const decoded = atob(sourceId);
+    const mongoId = decoded.split(":")[1];
+    const result = await executeUpdate({
+      input: { dataSourceId: mongoId, url: editingUrlValue.trim() },
+    });
+    if (result.data?.dataSourceUpdate?.error) {
+      setPollResult(`Update failed: ${result.data.dataSourceUpdate.error}`);
+    } else {
+      setEditingUrlId(null);
+      setEditingUrlValue("");
       reexecuteQuery({ requestPolicy: "network-only" });
     }
   }
@@ -337,10 +358,45 @@ export default function DataSourcesPage() {
                     className={`shrink-0 h-2 w-2 rounded-full ${source.isActive ? "bg-green-500" : "bg-curtn-muted/30"}`}
                   />
                 </div>
-                {source.url && (
-                  <p className="mt-0.5 text-xs text-curtn-muted/60 truncate">
-                    {source.url}
-                  </p>
+                {editingUrlId === source.id ? (
+                  <div className="mt-1 flex items-center gap-1">
+                    <input
+                      value={editingUrlValue}
+                      onChange={(e) => setEditingUrlValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && editingUrlValue.trim()) handleSaveUrl(source.id);
+                        if (e.key === "Escape") { setEditingUrlId(null); setEditingUrlValue(""); }
+                      }}
+                      autoFocus
+                      className="flex-1 rounded border border-curtn-dark bg-curtn-deep px-2 py-1 text-xs text-curtn-cream font-mono focus:border-curtn-coral focus:outline-none"
+                    />
+                    <button
+                      onClick={() => handleSaveUrl(source.id)}
+                      disabled={updatingUrl || !editingUrlValue.trim()}
+                      className="text-xs px-2 py-1 rounded bg-curtn-coral/20 text-curtn-coral disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => { setEditingUrlId(null); setEditingUrlValue(""); }}
+                      className="text-xs px-2 py-1 text-curtn-muted"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-0.5 flex items-center gap-2">
+                    <p className="text-xs text-curtn-muted/60 truncate">
+                      {source.url || <span className="italic">no url</span>}
+                    </p>
+                    <button
+                      onClick={() => { setEditingUrlId(source.id); setEditingUrlValue(source.url || ""); }}
+                      className="shrink-0 text-xs text-curtn-muted/50 hover:text-curtn-coral"
+                      title="Edit URL"
+                    >
+                      edit
+                    </button>
+                  </div>
                 )}
                 {source.lastPolledAt && (
                   <p className="mt-0.5 text-xs text-curtn-muted/40">
