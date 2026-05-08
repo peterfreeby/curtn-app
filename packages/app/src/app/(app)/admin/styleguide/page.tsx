@@ -8,7 +8,7 @@ import { StarRating } from "@/components/StarRating";
 import { Icon, type IconName } from "@/components/icons/Icons";
 import { Avatar } from "@/components/Avatar";
 import { PosterCard } from "@/components/PosterCard";
-import { ReviewCard } from "@/components/ReviewCard";
+import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { BackdropHero } from "@/components/BackdropHero";
 import { PosterStrip } from "@/components/PosterStrip";
 
@@ -452,20 +452,22 @@ export default function StyleGuidePage() {
       <Section title="Review Cards">
         <div className="space-y-3">
           <ReviewCard
-            title="Sleep No More"
-            year="2011"
-            reviewerName="Ada E."
-            rating={4.5}
-            reviewText="The McKittrick Hotel swallowed me whole. Three hours of chasing masked dancers through dark corridors and I've never felt more alive in a theater."
-            likeCount={142}
+            review={{
+              id: "sg-1",
+              rating: 4.5,
+              text: "The McKittrick Hotel swallowed me whole. Three hours of chasing masked dancers through dark corridors and I've never felt more alive in a theater.",
+              createdAt: "2026-03-15T00:00:00.000Z",
+              user: { id: "sg-u1", username: "adae", fullName: "Ada E.", avatarUrl: null },
+            }}
           />
           <ReviewCard
-            title="Hadestown"
-            year="2019"
-            reviewerName="Jordan L."
-            rating={3}
-            reviewText="Beautiful staging but the second act drags. Amber Gray is magnetic though."
-            likeCount={28}
+            review={{
+              id: "sg-2",
+              rating: 3,
+              text: "Beautiful staging but the second act drags. Amber Gray is magnetic though.",
+              createdAt: "2026-03-10T00:00:00.000Z",
+              user: { id: "sg-u2", username: "jordanl", fullName: "Jordan L.", avatarUrl: null },
+            }}
           />
         </div>
       </Section>
