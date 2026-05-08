@@ -168,28 +168,36 @@ export async function runScraper(opts: RunScraperOptions): Promise<RunScraperRes
 
     // Per-event detail enrichment. Each row's _detailUrl (or whatever the
     // config names) gets fetched, the detail template is applied, and fields
-    // are merged with detail-wins precedence. Per-row error tolerance: a
-    // single bad detail page does not abort the run.
+    // are merged. Detail templates can emit N rows per detail page (e.g., one
+    // row per cast member) — those fan out into N rows sharing the listing's
+    // event identity, which the staging helper groups into one PendingImport
+    // with a cast/crew array. Per-row error tolerance: a single bad detail
+    // page does not abort the run.
+    let workingRows: CsvRowInput[] = rows
     if (config.detail && rows.length > 0) {
       const detailPage = await context.newPage()
       try {
-        const detailStats = await runDetailFetches(detailPage, rows, config.detail, config.startUrl)
+        const { rows: enriched, stats: detailStats } = await runDetailFetches(
+          detailPage, rows, config.detail, config.startUrl
+        )
+        workingRows = enriched
         Object.assign(result, detailStats)
+        result.rowsValid = enriched.length
       } finally {
         await detailPage.close()
       }
     }
 
     if (mode === 'dry-run') {
-      result.rows = rows
+      result.rows = workingRows
     } else if (mode === 'direct') {
       result.importResult = await processImportRows(
-        rows,
+        workingRows,
         { userId: opts.userId, dataSourceId: opts.dataSourceId },
         {}
       )
     } else {
-      result.staging = await stageRowsAsPendingImports(rows, {
+      result.staging = await stageRowsAsPendingImports(workingRows, {
         dataSourceId: opts.dataSourceId
       })
     }
@@ -227,55 +235,87 @@ interface DetailStats {
   detailFailed: number
 }
 
-// For each row, follow its detail URL and merge extracted fields. Cache hits
-// short-circuit the network. Per-row try/catch protects 19 good rows from 1
-// bad detail page (timeout, 404, selector rot, etc.).
+// For each listing row, follow its detail URL and merge extracted fields.
+// Detail templates may emit multiple fragments per page (e.g., one per cast
+// member). When that happens, we fan out into N output rows that share the
+// listing's event identity — the staging helper groups them by (title, date)
+// and rolls personName/personHeadshotUrl/personRole into a cast/crew array.
+//
+// Per-row try/catch protects 19 good rows from 1 bad detail page (timeout,
+// 404, selector rot). Cache hits short-circuit the network entirely.
 async function runDetailFetches(
   page: Page,
   rows: CsvRowInput[],
   detailConfig: DetailFetchConfig,
   startUrl: string
-): Promise<DetailStats> {
+): Promise<{ rows: CsvRowInput[]; stats: DetailStats }> {
   const detailExtractor = makeTemplateExtractor(detailConfig.template)
   const stats: DetailStats = { detailFetched: 0, detailCacheHits: 0, detailFailed: 0 }
+  const out: CsvRowInput[] = []
 
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i] as any
-    const detailUrlRaw = row[detailConfig.fromField]
-    if (!detailUrlRaw) continue
+  for (const row of rows) {
+    const detailUrlRaw = (row as any)[detailConfig.fromField]
+    if (!detailUrlRaw) {
+      out.push(row)
+      continue
+    }
     const detailUrl = resolveDetailUrl(String(detailUrlRaw), startUrl)
     const fingerprint = computeFingerprint(row, detailConfig.fingerprint)
 
+    let fragments: Partial<CsvRowInput>[] | null = null
     try {
       const cached = await readDetailCache(detailUrl, fingerprint, {
         maxAgeMs: detailConfig.cacheTtlMs
       })
       if (cached) {
-        Object.assign(row, cached.fields)
+        fragments = cached.fragments
         stats.detailCacheHits++
-        continue
+      } else {
+        await politeNavigate(page, detailUrl, { useCache: false, hydrationDelayMs: 3_000 })
+        fragments = await detailExtractor.extract(page, detailUrl)
+        await writeDetailCache(detailUrl, fingerprint, fragments)
+        stats.detailFetched++
       }
-
-      await politeNavigate(page, detailUrl, { useCache: false, hydrationDelayMs: 3_000 })
-      const fragments = await detailExtractor.extract(page, detailUrl)
-      const detailFields = fragments[0] ?? {}
-      Object.assign(row, detailFields)
-      await writeDetailCache(detailUrl, fingerprint, detailFields)
-      stats.detailFetched++
     } catch (err) {
       stats.detailFailed++
       console.warn(`[runScraper] detail fetch failed (${detailUrl}):`, (err as Error).message)
-      // Continue with listing-only fields for this row
+      out.push(row)
+      continue
+    }
+
+    if (!fragments || fragments.length === 0) {
+      out.push(row)
+      continue
+    }
+
+    // Stamp creditType='cast' for any fragment carrying a personName but no
+    // explicit credit. Detail templates often can't easily set static field
+    // values, so the orchestrator does it.
+    for (const f of fragments) {
+      const fAny = f as any
+      if (fAny.personName && !fAny.creditType) fAny.creditType = 'cast'
+    }
+
+    if (fragments.length === 1) {
+      // Single-row detail: merge into listing row in place
+      Object.assign(row, fragments[0])
+      out.push(row)
+    } else {
+      // Multi-row detail: fan out — each fragment becomes a row with listing
+      // fields as base. The staging helper will group them by (title, date)
+      // and gather personName/personRole/personHeadshotUrl into a cast array.
+      for (const f of fragments) {
+        out.push({ ...row, ...f })
+      }
     }
   }
 
-  // Strip the internal detail-URL field before staging. processImportRows
-  // shouldn't see implementation details of the scraper.
-  for (const row of rows) {
+  // Strip the internal detail-URL field before staging.
+  for (const row of out) {
     delete (row as any)[detailConfig.fromField]
   }
 
-  return stats
+  return { rows: out, stats }
 }
 
 async function recordRunOutcome(

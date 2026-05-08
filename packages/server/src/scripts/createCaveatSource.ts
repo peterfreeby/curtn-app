@@ -110,6 +110,9 @@ const CAVEAT_CONFIG: ScraperDataSourceConfig = {
           label: 'Event detail',
           // The detail page main column has a stable nested structure: the
           // first MuiBox-root.css-0 inside the md-8 grid is the description.
+          // Cast cards (button.MuiCardActionArea-root) live deeper in the
+          // same grid; the nested container fans out one row per cast member,
+          // each carrying the showDescription extracted at this level.
           selector: '.MuiGrid-grid-md-8',
           children: [
             {
@@ -118,6 +121,34 @@ const CAVEAT_CONFIG: ScraperDataSourceConfig = {
               csvField: 'showDescription',
               selector: '.MuiBox-root.css-0',
               transform: 'trim'
+            },
+            {
+              type: 'container',
+              id: 'castMembers',
+              label: 'Cast',
+              // Each performer card is a button containing img + name span +
+              // optional role span. When a show has no PERFORMERS section,
+              // this container matches zero elements and walkNodes falls back
+              // to the parent's single row (no cast fan-out).
+              selector: 'button.MuiCardActionArea-root',
+              children: [
+                {
+                  type: 'field',
+                  id: 'personName',
+                  csvField: 'personName',
+                  // First MuiTypography-body span inside the card = name.
+                  selector: 'span.MuiTypography-body',
+                  transform: 'trim'
+                },
+                {
+                  type: 'field',
+                  id: 'personHeadshotUrl',
+                  csvField: 'personHeadshotUrl',
+                  selector: 'img.MuiCardMedia-img',
+                  attribute: 'src',
+                  transform: 'trim'
+                }
+              ]
             }
           ]
         }

@@ -19,7 +19,7 @@ const DEFAULT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 export interface DetailCacheEntry {
   detailUrl: string
   fingerprint: string
-  fields: Partial<CsvRowInput>
+  fragments: Partial<CsvRowInput>[]   // detail templates can emit N rows (e.g., cast members)
   fetchedAt: string
 }
 
@@ -59,13 +59,13 @@ export async function readDetailCache(
 export async function writeDetailCache(
   detailUrl: string,
   fingerprint: string,
-  fields: Partial<CsvRowInput>
+  fragments: Partial<CsvRowInput>[]
 ): Promise<void> {
   await ensureDir()
   const entry: DetailCacheEntry = {
     detailUrl,
     fingerprint,
-    fields,
+    fragments,
     fetchedAt: new Date().toISOString()
   }
   await fs.writeFile(pathFor(detailUrl, fingerprint), JSON.stringify(entry), 'utf8')
