@@ -39,7 +39,13 @@ function extractFieldValue(
 
   // CSS selector extraction
   if (!field.selector) return undefined
-  const el = context.find(field.selector).first()
+  // ":scope" / ":self" → the container element itself (handy for reading data-*
+  // attributes off a card's wrapper). Cheerio's .find() only walks descendants,
+  // so this special case routes around it.
+  const el =
+    field.selector === ':scope' || field.selector === ':self'
+      ? context
+      : context.find(field.selector).first()
   if (!el.length) return undefined
 
   let value: string

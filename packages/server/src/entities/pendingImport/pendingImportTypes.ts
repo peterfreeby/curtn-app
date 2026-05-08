@@ -11,6 +11,16 @@ import { globalIdField, connectionDefinitions } from 'graphql-relay'
 import { entityRegister } from '../../graphql/entityHelpers'
 import { PendingImportModel } from './pendingImportModel'
 
+const creditEntryType = new GraphQLObjectType({
+  name: 'PendingImportCredit',
+  description: 'A cast or crew entry on a pending import (not yet promoted to a real Person record)',
+  fields: () => ({
+    name: { type: new GraphQLNonNull(GraphQLString), resolve: c => c.name },
+    role: { type: GraphQLString, resolve: c => c.role },
+    headshotUrl: { type: GraphQLString, resolve: c => c.headshotUrl }
+  })
+})
+
 export const pendingImportType = new GraphQLObjectType({
   name: 'PendingImport',
   description: 'An event imported from a feed, awaiting admin review',
@@ -80,6 +90,18 @@ export const pendingImportType = new GraphQLObjectType({
       ticketUrl: {
         type: GraphQLString,
         resolve: pi => pi.ticketUrl
+      },
+      imageUrl: {
+        type: GraphQLString,
+        resolve: pi => pi.imageUrl
+      },
+      cast: {
+        type: new GraphQLList(creditEntryType),
+        resolve: pi => pi.cast || []
+      },
+      crew: {
+        type: new GraphQLList(creditEntryType),
+        resolve: pi => pi.crew || []
       },
       importedAt: {
         type: new GraphQLNonNull(GraphQLString),

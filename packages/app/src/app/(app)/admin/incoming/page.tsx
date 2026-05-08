@@ -12,6 +12,12 @@ import {
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 
+interface CreditEntry {
+  name: string;
+  role: string | null;
+  headshotUrl: string | null;
+}
+
 interface PendingImportNode {
   id: string;
   status: string;
@@ -28,6 +34,9 @@ interface PendingImportNode {
   stageName: string | null;
   companyName: string | null;
   ticketUrl: string | null;
+  imageUrl: string | null;
+  cast: CreditEntry[];
+  crew: CreditEntry[];
   importedAt: string;
   reviewedAt: string | null;
   error: string | null;
@@ -391,6 +400,18 @@ export default function IncomingEventsPage() {
                           </span>
                         )}
                       </div>
+                      {item.cast?.length > 0 && (
+                        <CreditList
+                          label={`Cast (${item.cast.length})`}
+                          entries={item.cast}
+                        />
+                      )}
+                      {item.crew?.length > 0 && (
+                        <CreditList
+                          label={`Crew (${item.crew.length})`}
+                          entries={item.crew}
+                        />
+                      )}
                       <div className="mt-1 flex gap-x-3 text-xs text-curtn-muted/40">
                         <span>via {item.dataSource.name}</span>
                         <span>{timeSince(item.importedAt)}</span>
@@ -431,6 +452,68 @@ export default function IncomingEventsPage() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function CreditList({
+  label,
+  entries,
+}: {
+  label: string;
+  entries: CreditEntry[];
+}) {
+  return (
+    <div className="mt-2">
+      <div className="text-[10px] uppercase tracking-wider text-curtn-muted/60 mb-1">
+        {label}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {entries.map((entry, i) => (
+          <div
+            key={`${entry.name}-${i}`}
+            className="flex items-center gap-1.5 rounded-full bg-curtn-surface-2 pl-0.5 pr-2 py-0.5"
+          >
+            <Avatar name={entry.name} headshotUrl={entry.headshotUrl} />
+            <span className="text-xs text-curtn-cream">{entry.name}</span>
+            {entry.role && entry.role !== "Performer" && (
+              <span className="text-[10px] text-curtn-muted">
+                · {entry.role}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Avatar({
+  name,
+  headshotUrl,
+}: {
+  name: string;
+  headshotUrl: string | null;
+}) {
+  if (headshotUrl) {
+    return (
+      <img
+        src={headshotUrl}
+        alt=""
+        className="h-5 w-5 rounded-full object-cover"
+      />
+    );
+  }
+  const initials = name
+    .split(/\s+/)
+    .map((s) => s[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  return (
+    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-curtn-dark text-[9px] font-medium text-curtn-cream">
+      {initials}
     </div>
   );
 }

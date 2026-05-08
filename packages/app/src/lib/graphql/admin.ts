@@ -212,6 +212,17 @@ export const PENDING_IMPORTS_QUERY = gql`
           stageName
           companyName
           ticketUrl
+          imageUrl
+          cast {
+            name
+            role
+            headshotUrl
+          }
+          crew {
+            name
+            role
+            headshotUrl
+          }
           importedAt
           reviewedAt
           error
