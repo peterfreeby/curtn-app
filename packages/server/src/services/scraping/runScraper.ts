@@ -67,19 +67,32 @@ function pickExtractor(config: ScraperDataSourceConfig): Extractor {
 
 function mergeAndValidate(
   fragments: Partial<CsvRowInput>[],
-  defaults: Partial<CsvRowInput> = {}
-): { rows: CsvRowInput[]; dropped: number } {
+  defaults: Partial<CsvRowInput> = {},
+  filters: { excludeUrlPatterns?: string[]; includeUrlPatterns?: string[] } = {}
+): { rows: CsvRowInput[]; dropped: number; filtered: number } {
   let dropped = 0
+  let filtered = 0
   const rows: CsvRowInput[] = []
+  const exclude = filters.excludeUrlPatterns ?? []
+  const include = filters.includeUrlPatterns ?? []
   for (const f of fragments) {
     const merged: Partial<CsvRowInput> = { ...defaults, ...f }
     if (!merged.title || !merged.title.trim()) {
       dropped++
       continue
     }
+    const url = merged.ticketUrl ?? ''
+    if (exclude.some(p => url.includes(p))) {
+      filtered++
+      continue
+    }
+    if (include.length > 0 && !include.some(p => url.includes(p))) {
+      filtered++
+      continue
+    }
     rows.push(merged as CsvRowInput)
   }
-  return { rows, dropped }
+  return { rows, dropped, filtered }
 }
 
 export async function runScraper(opts: RunScraperOptions): Promise<RunScraperResult> {
@@ -145,7 +158,10 @@ export async function runScraper(opts: RunScraperOptions): Promise<RunScraperRes
     const cap = config.maxItems ?? DEFAULT_MAX_ITEMS
     const capped = fragments.slice(0, cap)
 
-    const { rows, dropped } = mergeAndValidate(capped, config.rowDefaults)
+    const { rows, dropped, filtered } = mergeAndValidate(capped, config.rowDefaults, {
+      excludeUrlPatterns: config.excludeUrlPatterns,
+      includeUrlPatterns: config.includeUrlPatterns
+    })
     const result: RunScraperResult = {
       rowsExtracted: fragments.length,
       rowsValid: rows.length,
@@ -158,6 +174,9 @@ export async function runScraper(opts: RunScraperOptions): Promise<RunScraperRes
 
     if (dropped > 0) {
       console.warn(`[runScraper] dropped ${dropped} rows missing title`)
+    }
+    if (filtered > 0) {
+      console.log(`[runScraper] filtered out ${filtered} rows by URL patterns`)
     }
 
     // Zero rows extracted counts as a soft failure — we may have been blocked

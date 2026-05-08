@@ -17,6 +17,13 @@ export interface ScraperDataSourceConfig {
   waitFor?: string
   maxItems?: number
   detail?: DetailFetchConfig
+  // Drop any extracted row whose ticketUrl contains one of these substrings.
+  // Useful for source-level category exclusion (e.g., BAM lumps film, music,
+  // theater all on the same calendar page; we only want performing arts).
+  excludeUrlPatterns?: string[]
+  // Inverse of excludeUrlPatterns. When set, only rows whose ticketUrl
+  // contains at least one of these substrings pass through.
+  includeUrlPatterns?: string[]
 }
 
 // Optional second-pass extraction: after the listing template produces rows,

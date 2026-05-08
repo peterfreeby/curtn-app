@@ -73,7 +73,18 @@ const BAM_CONFIG: ScraperDataSourceConfig = {
     venueState: 'NY',
     venueZipCode: '11217'
   },
-  maxItems: 100  // BAM has many film showings; cap generously
+  maxItems: 100,
+  // BAM lumps film, music, kids, classes, galas, and community events on the
+  // same /calendar page mixed in with the performing arts we want. Exclude
+  // those category prefixes; theater/dance/talks/opera/performance-art pass.
+  excludeUrlPatterns: [
+    '/film/',
+    '/music/',
+    '/kids/',
+    '/classes/',
+    '/galas/',
+    '/community/'
+  ]
 }
 
 async function main() {
