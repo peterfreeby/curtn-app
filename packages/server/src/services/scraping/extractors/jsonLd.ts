@@ -188,7 +188,7 @@ function* walkNodes(node: any): Generator<any> {
 }
 
 export const jsonLdExtractor: Extractor = {
-  async extract(page) {
+  async extract(page, _sourceUrl) {
     const blobs = await page.$$eval(
       'script[type="application/ld+json"]',
       (nodes) => nodes.map(n => n.textContent || '')

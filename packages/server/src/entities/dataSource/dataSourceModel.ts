@@ -11,6 +11,10 @@ export interface IDataSource {
   associatedRun?: Types.ObjectId
   fetchedUrls?: string[]
   lastPolledAt?: Date
+  lastSuccessAt?: Date
+  consecutiveFailures: number
+  cooldownHours?: number
+  disabledReason?: string
   isActive: boolean
   createdBy: Types.ObjectId
   createdAt: Date
@@ -54,6 +58,17 @@ const dataSourceSchema = new Schema<IDataSource>({
     ref: 'run'
   },
   lastPolledAt: Date,
+  lastSuccessAt: Date,
+  consecutiveFailures: {
+    type: Number,
+    default: 0
+  },
+  cooldownHours: {
+    type: Number
+  },
+  disabledReason: {
+    type: String
+  },
   isActive: {
     type: Boolean,
     default: true

@@ -1,28 +1,26 @@
 import { chromium } from 'playwright'
 import { findJsonLdEvents } from '../services/scraping/extractors/jsonLd'
-
-const USER_AGENT =
-  'CurtnScraper/1.0 (+https://curtn.com; hello@curtn.com) Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+import { politeNavigate, RobotsBlockedError, USER_AGENT } from '../services/scraping/politeNavigate'
 
 interface ProbeReport {
   url: string
   status: number | null
   title: string
+  fromCache: boolean
+  cachedAt?: Date
   jsonLd: { count: number; types: string[] }
   candidateLists: { selector: string; count: number; sampleText: string }[]
   recommendation: 'tier-1-json-ld' | 'tier-2-template' | 'tier-3-code'
   reasoning: string
 }
 
-async function probe(url: string): Promise<ProbeReport> {
+async function probe(url: string, opts: { useCache: boolean }): Promise<ProbeReport> {
   const browser = await chromium.launch({ headless: true })
   try {
     const context = await browser.newContext({ userAgent: USER_AGENT })
     const page = await context.newPage()
-    const response = await page.goto(url, { waitUntil: 'load', timeout: 30_000 })
-    // Give JS frameworks a moment to hydrate without waiting for full network idle
-    await page.waitForTimeout(2000)
-    const status = response?.status() ?? null
+    const nav = await politeNavigate(page, url, { useCache: opts.useCache })
+    const status = nav.status
     const title = await page.title()
 
     const jsonLd = await findJsonLdEvents(page)
@@ -78,6 +76,8 @@ async function probe(url: string): Promise<ProbeReport> {
       url,
       status,
       title,
+      fromCache: nav.fromCache,
+      cachedAt: nav.cachedAt,
       jsonLd,
       candidateLists,
       recommendation,
@@ -89,18 +89,35 @@ async function probe(url: string): Promise<ProbeReport> {
 }
 
 async function main() {
-  const url = process.argv[2]
+  const args = process.argv.slice(2)
+  const useCache = !args.includes('--no-cache')
+  const url = args.find(a => !a.startsWith('--'))
   if (!url) {
-    console.error('Usage: probeUrl.ts <url>')
+    console.error('Usage: probeUrl.ts <url> [--no-cache]')
     process.exit(1)
   }
 
-  const report = await probe(url)
+  let report: ProbeReport
+  try {
+    report = await probe(url, { useCache })
+  } catch (err) {
+    if (err instanceof RobotsBlockedError) {
+      console.error()
+      console.error(`robots.txt blocked the fetch: ${err.reason}`)
+      console.error('This site explicitly opts out of automated access. Skip it or contact the venue first.')
+      process.exit(2)
+    }
+    throw err
+  }
 
   console.log()
   console.log(`URL: ${report.url}`)
   console.log(`HTTP: ${report.status}`)
   console.log(`Title: ${report.title}`)
+  if (report.fromCache && report.cachedAt) {
+    const ageMin = Math.floor((Date.now() - report.cachedAt.getTime()) / 60_000)
+    console.log(`(served from cache, ${ageMin}m old — pass --no-cache to refetch)`)
+  }
   console.log()
   console.log(`JSON-LD events: ${report.jsonLd.count}${report.jsonLd.types.length ? ` [${report.jsonLd.types.join(', ')}]` : ''}`)
   console.log()
