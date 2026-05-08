@@ -55,10 +55,34 @@ const CAVEAT_CONFIG: ScraperDataSourceConfig = {
               transform: 'time'
             },
             {
+              // Listing description is truncated; detail-fetch overrides it.
               type: 'field',
               id: 'showDescription',
               csvField: 'showDescription',
               selector: '.MuiTypography-body:not(.MuiLink-root)',
+              transform: 'trim'
+            },
+            {
+              // Poster URL is in CSS background-image on MuiCardMedia. The
+              // regex captures whatever is inside url("...") — quotes optional.
+              type: 'field',
+              id: 'poster',
+              csvField: 'showImageUrl',
+              selector: '.MuiCardMedia-root',
+              attribute: 'style',
+              // Quote-anchored: capture everything between the quotes inside
+              // url("..."). Avoids truncating on legal '(' or ')' in filenames.
+              regex: 'url\\(["\']([^"\']+)["\']\\)',
+              transform: 'trim'
+            },
+            {
+              // Card outer link → detail page URL. Captured into a magic field
+              // the orchestrator picks up; stripped before staging.
+              type: 'field',
+              id: 'detailUrl',
+              csvField: '_detailUrl',
+              selector: 'a.MuiCardActionArea-root',
+              attribute: 'href',
               transform: 'trim'
             }
           ]
@@ -73,7 +97,33 @@ const CAVEAT_CONFIG: ScraperDataSourceConfig = {
     venueState: 'NY',
     venueZipCode: '10002'
   },
-  maxItems: 50
+  maxItems: 50,
+  detail: {
+    fromField: '_detailUrl',
+    fingerprint: ['title', 'date'],
+    template: {
+      version: 2,
+      nodes: [
+        {
+          type: 'container',
+          id: 'detail',
+          label: 'Event detail',
+          // The detail page main column has a stable nested structure: the
+          // first MuiBox-root.css-0 inside the md-8 grid is the description.
+          selector: '.MuiGrid-grid-md-8',
+          children: [
+            {
+              type: 'field',
+              id: 'fullDescription',
+              csvField: 'showDescription',
+              selector: '.MuiBox-root.css-0',
+              transform: 'trim'
+            }
+          ]
+        }
+      ]
+    }
+  }
 }
 
 async function main() {

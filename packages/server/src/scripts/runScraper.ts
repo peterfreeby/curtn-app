@@ -82,6 +82,9 @@ async function main() {
     console.log()
     console.log(`Rows extracted: ${result.rowsExtracted}`)
     console.log(`Rows valid:     ${result.rowsValid}`)
+    if (result.detailFetched + result.detailCacheHits + result.detailFailed > 0) {
+      console.log(`Detail fetched: ${result.detailFetched} (cache hits: ${result.detailCacheHits}, failed: ${result.detailFailed})`)
+    }
 
     if (result.staging) {
       console.log(`Staged:         ${result.staging.staged}`)

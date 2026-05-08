@@ -1,12 +1,13 @@
-import { chromium, type Browser } from 'playwright'
+import { chromium, type Browser, type Page } from 'playwright'
 import { DataSourceModel } from '../../entities/dataSource/dataSourceModel'
 import { processImportRows, type CsvRowInput, type ImportResult } from '../importEngine'
 import { stageRowsAsPendingImports, type StageResult } from '../pendingImport/stage'
+import { computeFingerprint, readDetailCache, writeDetailCache } from './detailCache'
 import { jsonLdExtractor } from './extractors/jsonLd'
 import { makeTemplateExtractor } from './extractors/template'
 import { politeNavigate, RobotsBlockedError, USER_AGENT } from './politeNavigate'
 import { getScraper } from './registry'
-import type { ScraperDataSourceConfig, Extractor } from './types'
+import type { DetailFetchConfig, ScraperDataSourceConfig, Extractor } from './types'
 
 const NAV_TIMEOUT_MS = 30_000
 const DEFAULT_MAX_ITEMS = 500
@@ -28,6 +29,9 @@ export interface RunScraperResult {
   rowsValid: number
   mode: RunMode
   fromCache: boolean
+  detailFetched: number        // detail pages newly fetched this run
+  detailCacheHits: number      // detail pages served from cache
+  detailFailed: number         // detail pages that errored (row keeps listing fields)
   staging?: StageResult        // populated when mode === 'pending'
   importResult?: ImportResult  // populated when mode === 'direct'
   rows?: CsvRowInput[]         // populated when mode === 'dry-run'
@@ -146,7 +150,10 @@ export async function runScraper(opts: RunScraperOptions): Promise<RunScraperRes
       rowsExtracted: fragments.length,
       rowsValid: rows.length,
       mode,
-      fromCache
+      fromCache,
+      detailFetched: 0,
+      detailCacheHits: 0,
+      detailFailed: 0
     }
 
     if (dropped > 0) {
@@ -157,6 +164,20 @@ export async function runScraper(opts: RunScraperOptions): Promise<RunScraperRes
     // or the selector may have rotted. Track it for the circuit breaker.
     if (rows.length === 0) {
       extractionFailed = true
+    }
+
+    // Per-event detail enrichment. Each row's _detailUrl (or whatever the
+    // config names) gets fetched, the detail template is applied, and fields
+    // are merged with detail-wins precedence. Per-row error tolerance: a
+    // single bad detail page does not abort the run.
+    if (config.detail && rows.length > 0) {
+      const detailPage = await context.newPage()
+      try {
+        const detailStats = await runDetailFetches(detailPage, rows, config.detail, config.startUrl)
+        Object.assign(result, detailStats)
+      } finally {
+        await detailPage.close()
+      }
     }
 
     if (mode === 'dry-run') {
@@ -188,6 +209,73 @@ export async function runScraper(opts: RunScraperOptions): Promise<RunScraperRes
       )
     }
   }
+}
+
+// Resolve a possibly-relative URL against the source's startUrl. Handles
+// "/events/foo" → "https://caveat.nyc/events/foo" without breaking absolute URLs.
+function resolveDetailUrl(maybeRelative: string, startUrl: string): string {
+  try {
+    return new URL(maybeRelative, startUrl).toString()
+  } catch {
+    return maybeRelative
+  }
+}
+
+interface DetailStats {
+  detailFetched: number
+  detailCacheHits: number
+  detailFailed: number
+}
+
+// For each row, follow its detail URL and merge extracted fields. Cache hits
+// short-circuit the network. Per-row try/catch protects 19 good rows from 1
+// bad detail page (timeout, 404, selector rot, etc.).
+async function runDetailFetches(
+  page: Page,
+  rows: CsvRowInput[],
+  detailConfig: DetailFetchConfig,
+  startUrl: string
+): Promise<DetailStats> {
+  const detailExtractor = makeTemplateExtractor(detailConfig.template)
+  const stats: DetailStats = { detailFetched: 0, detailCacheHits: 0, detailFailed: 0 }
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i] as any
+    const detailUrlRaw = row[detailConfig.fromField]
+    if (!detailUrlRaw) continue
+    const detailUrl = resolveDetailUrl(String(detailUrlRaw), startUrl)
+    const fingerprint = computeFingerprint(row, detailConfig.fingerprint)
+
+    try {
+      const cached = await readDetailCache(detailUrl, fingerprint, {
+        maxAgeMs: detailConfig.cacheTtlMs
+      })
+      if (cached) {
+        Object.assign(row, cached.fields)
+        stats.detailCacheHits++
+        continue
+      }
+
+      await politeNavigate(page, detailUrl, { useCache: false, hydrationDelayMs: 3_000 })
+      const fragments = await detailExtractor.extract(page, detailUrl)
+      const detailFields = fragments[0] ?? {}
+      Object.assign(row, detailFields)
+      await writeDetailCache(detailUrl, fingerprint, detailFields)
+      stats.detailFetched++
+    } catch (err) {
+      stats.detailFailed++
+      console.warn(`[runScraper] detail fetch failed (${detailUrl}):`, (err as Error).message)
+      // Continue with listing-only fields for this row
+    }
+  }
+
+  // Strip the internal detail-URL field before staging. processImportRows
+  // shouldn't see implementation details of the scraper.
+  for (const row of rows) {
+    delete (row as any)[detailConfig.fromField]
+  }
+
+  return stats
 }
 
 async function recordRunOutcome(

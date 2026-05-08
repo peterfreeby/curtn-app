@@ -16,6 +16,18 @@ export interface ScraperDataSourceConfig {
   rowDefaults?: Partial<CsvRowInput>
   waitFor?: string
   maxItems?: number
+  detail?: DetailFetchConfig
+}
+
+// Optional second-pass extraction: after the listing template produces rows,
+// the orchestrator can follow a per-row URL and merge fields from the detail
+// page (e.g., full descriptions, additional images, cast). Detail fields take
+// precedence over listing fields on conflict.
+export interface DetailFetchConfig {
+  fromField: string                 // listing template captures the URL into this field
+  template: AnyParsingTemplate      // applied to the detail page response
+  cacheTtlMs?: number               // default: 7 days
+  fingerprint?: string[]            // listing fields hashed into the cache key (default: ['title', 'date'])
 }
 
 export interface Extractor {
