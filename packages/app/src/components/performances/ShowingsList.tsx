@@ -70,16 +70,18 @@ export function ShowingsList({ showings, label, runId, onAdd }: ShowingsListProp
                     <span className="badge badge-muted ml-2">Sold Out</span>
                   )}
                   {!isSoldOut && showing.ticketUrl && (
-                    <a
-                      href={showing.ticketUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 ml-2 text-curtn-coral hover:underline"
-                      onClick={(e) => e.stopPropagation()}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.open(showing.ticketUrl!, "_blank", "noopener,noreferrer");
+                      }}
+                      className="inline-flex items-center gap-1 ml-2 text-curtn-coral hover:underline cursor-pointer"
                     >
                       <Icon name="ticket" size={12} />
                       Tickets
-                    </a>
+                    </button>
                   )}
                 </div>
               </div>

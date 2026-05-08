@@ -1,7 +1,8 @@
 import "../src/app/globals.css";
+import type { Preview } from "@storybook/react";
+import { withProviders } from "./decorators";
 
-/** @type { import('@storybook/nextjs-vite').Preview } */
-const preview = {
+const preview: Preview = {
   parameters: {
     backgrounds: {
       default: "curtn-deep",
@@ -16,7 +17,17 @@ const preview = {
         date: /Date$/i,
       },
     },
+    options: {
+      storySort: {
+        order: ["Atoms", "Molecules", "Organisms", "Forms"],
+      },
+    },
+    nextjs: {
+      appDirectory: true,
+      navigation: { pathname: "/" },
+    },
   },
+  decorators: [withProviders],
 };
 
 export default preview;

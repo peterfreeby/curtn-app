@@ -20,7 +20,7 @@ export function NavLink({
   inactiveClassName = "text-curtn-muted hover:text-curtn-cream border-b-2 border-transparent",
   ...rest
 }: NavLinkProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const isActive = pathname === href || pathname.startsWith(href + "/");
 
   return (

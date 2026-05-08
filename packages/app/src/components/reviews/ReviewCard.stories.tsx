@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { ReviewCard } from "./ReviewCard";
 
 const meta: Meta<typeof ReviewCard> = {
-  title: "Reviews/ReviewCard",
+  title: "Organisms/ReviewCard",
   component: ReviewCard,
   decorators: [(Story) => <div className="max-w-lg"><Story /></div>],
 };

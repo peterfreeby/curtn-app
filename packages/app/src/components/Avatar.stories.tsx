@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Avatar } from "./Avatar";
 
 const meta: Meta<typeof Avatar> = {
-  title: "Core/Avatar",
+  title: "Atoms/Avatar",
   component: Avatar,
   argTypes: {
     size: { control: "select", options: ["sm", "md", "lg", "xl"] },

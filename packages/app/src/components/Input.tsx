@@ -25,7 +25,7 @@ export function Input({ label, className = "", id, ...props }: InputProps) {
         className={`
           bg-transparent border-b border-curtn-dark
           text-curtn-cream placeholder:text-curtn-dark
-          py-[var(--spacing-1)] text-sm outline-none
+          py-[var(--spacing-1)] text-base outline-none
           focus:border-curtn-coral transition-colors duration-200
           ${className}
         `}

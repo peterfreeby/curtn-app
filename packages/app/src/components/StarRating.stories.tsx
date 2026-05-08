@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { StarRating } from "./StarRating";
 
 const meta: Meta<typeof StarRating> = {
-  title: "Core/StarRating",
+  title: "Atoms/StarRating",
   component: StarRating,
   argTypes: {
     value: { control: { type: "range", min: 0, max: 5, step: 0.5 } },
