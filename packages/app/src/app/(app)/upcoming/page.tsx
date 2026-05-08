@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, Suspense } from "react";
 import { useQuery } from "urql";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -26,7 +26,7 @@ const VenueOnlyMap = dynamic(
   { ssr: false, loading: () => <div className="absolute inset-0 bg-curtn-deep" /> }
 );
 
-export default function UpcomingPage() {
+function UpcomingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [view, setView] = useState<"map" | "list">("map");
@@ -276,5 +276,13 @@ export default function UpcomingPage() {
       )}
 
     </div>
+  );
+}
+
+export default function UpcomingPage() {
+  return (
+    <Suspense fallback={<div className="fixed inset-0 bg-curtn-deep" />}>
+      <UpcomingPageContent />
+    </Suspense>
   );
 }

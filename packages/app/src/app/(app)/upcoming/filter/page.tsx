@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/icons/Icons";
 import {
@@ -9,7 +10,7 @@ import {
   type DateFilter,
 } from "@/lib/mapFilters";
 
-export default function MapFilterPage() {
+function FilterList() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const current = searchParams.get("current") ?? "all";
@@ -51,5 +52,13 @@ export default function MapFilterPage() {
         ))}
       </div>
     </div>
+  );
+}
+
+export default function MapFilterPage() {
+  return (
+    <Suspense fallback={<div className="bg-curtn-deep min-h-dvh" />}>
+      <FilterList />
+    </Suspense>
   );
 }
