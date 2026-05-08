@@ -33,8 +33,7 @@ const personSchema = new Schema<IPerson>({
   wikidataId: String,
   userId: {
     type: Schema.Types.ObjectId,
-    ref: 'user',
-    default: null
+    ref: 'user'
   },
   submittedBy: {
     type: Schema.Types.ObjectId,
@@ -49,7 +48,17 @@ personSchema.index({ name: 'text', bio: 'text' })
 personSchema.index({ slug: 1 }, { unique: true })
 personSchema.index({ name: 1 })
 personSchema.index({ name: 1, _id: 1 }) // cursor pagination
-personSchema.index({ userId: 1 }, { unique: true, sparse: true })
+// partialFilterExpression is more robust than `sparse` here: sparse skips docs
+// where the field doesn't exist, but if any code ever sets userId: null
+// explicitly, sparse still indexes it and we collide. Filtering on $exists +
+// $type catches both null and missing.
+personSchema.index(
+  { userId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { userId: { $type: 'objectId' } }
+  }
+)
 
 personSchema.pre('save', function(next) {
   if (this.isModified('name') && !this.slug) {
