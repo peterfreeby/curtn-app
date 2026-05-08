@@ -27,7 +27,9 @@ export function VenueOnlyMap({ venues, className = "" }: VenueOnlyMapProps) {
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
     const map = L.map(mapRef.current, { zoomControl: false }).setView([40.7580, -73.9855], 13);
-    L.control.zoom({ position: "bottomright" }).addTo(map);
+    if (window.matchMedia("(min-width: 768px)").matches) {
+      L.control.zoom({ position: "bottomright" }).addTo(map);
+    }
     L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
       maxZoom: 19,

@@ -1,13 +1,20 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "urql";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { useRouter, useSearchParams } from "next/navigation";
 import { BROWSE_PERFORMANCES_QUERY, MAP_PERFORMANCES_QUERY } from "@/lib/graphql/performances";
 import { VENUE_MAP_QUERY } from "@/lib/graphql/venues";
 import { Icon } from "@/components/icons/Icons";
 import { formatShowTime } from "@/lib/format";
+import {
+  DATE_FILTERS,
+  getActiveFilter,
+  getDateRange,
+  type DateFilter,
+} from "@/lib/mapFilters";
 
 const PerformanceMap = dynamic(
   () => import("@/components/map/PerformanceMap").then((m) => m.PerformanceMap),
@@ -19,54 +26,25 @@ const VenueOnlyMap = dynamic(
   { ssr: false, loading: () => <div className="absolute inset-0 bg-curtn-deep" /> }
 );
 
-type DateFilter = "all" | "today" | "weekend" | "week" | "next-week";
-
-const DATE_FILTERS: { key: DateFilter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "today", label: "Tonight" },
-  { key: "weekend", label: "This Weekend" },
-  { key: "week", label: "This Week" },
-  { key: "next-week", label: "Next Week" },
-];
-
-function getDateRange(filter: DateFilter): { start: Date; end: Date } | null {
-  if (filter === "all") return null;
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const dayOfWeek = today.getDay();
-
-  switch (filter) {
-    case "today": {
-      const end = new Date(today);
-      end.setDate(end.getDate() + 1);
-      return { start: today, end };
-    }
-    case "weekend": {
-      const saturday = new Date(today);
-      saturday.setDate(saturday.getDate() + (6 - dayOfWeek));
-      const monday = new Date(saturday);
-      monday.setDate(monday.getDate() + 2);
-      return { start: dayOfWeek >= 5 ? today : saturday, end: monday };
-    }
-    case "week": {
-      const endOfWeek = new Date(today);
-      endOfWeek.setDate(endOfWeek.getDate() + (7 - dayOfWeek));
-      return { start: today, end: endOfWeek };
-    }
-    case "next-week": {
-      const nextMonday = new Date(today);
-      nextMonday.setDate(nextMonday.getDate() + (8 - dayOfWeek));
-      const nextSunday = new Date(nextMonday);
-      nextSunday.setDate(nextSunday.getDate() + 7);
-      return { start: nextMonday, end: nextSunday };
-    }
-  }
-}
-
 export default function UpcomingPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [view, setView] = useState<"map" | "list">("map");
-  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [listExpanded, setListExpanded] = useState(false);
+
+  const dateFilter = (searchParams.get("filter") as DateFilter | null) ?? "all";
+  const activeFilter = getActiveFilter(dateFilter);
+
+  const setDateFilter = useCallback(
+    (next: DateFilter) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next === "all") params.delete("filter");
+      else params.set("filter", next);
+      const qs = params.toString();
+      router.replace(qs ? `/upcoming?${qs}` : "/upcoming", { scroll: false });
+    },
+    [router, searchParams]
+  );
 
   // Phase 1: lightweight venue pins (fast)
   const [{ data: venueData }] = useQuery({
@@ -134,7 +112,7 @@ export default function UpcomingPage() {
   }, [performances]);
 
   return (
-    <div className="fixed inset-0 top-[env(safe-area-inset-top)] md:top-16 bottom-16 md:bottom-0 overflow-hidden">
+    <div className="fixed inset-0 md:top-16 md:bottom-0 overflow-hidden">
       {/* Full-canvas map — show venue pins immediately, enrich when performance data loads */}
       {view === "map" && (
         <div className="absolute inset-0">
@@ -146,9 +124,26 @@ export default function UpcomingPage() {
         </div>
       )}
 
+      {/* Top fade — map bleeds behind status bar + MobileTopBar; gradient keeps wordmark/avatar legible */}
+      <div
+        className="md:hidden absolute top-0 left-0 right-0 z-[500] pointer-events-none bg-gradient-to-b from-curtn-deep via-curtn-deep/85 to-transparent"
+        style={{ height: "calc(env(safe-area-inset-top) + 4.5rem)" }}
+      />
+      {/* Bottom fade — map bleeds behind floating dock */}
+      <div
+        className="md:hidden absolute bottom-0 left-0 right-0 z-[500] pointer-events-none bg-gradient-to-t from-curtn-deep via-curtn-deep/85 to-transparent"
+        style={{ height: "calc(env(safe-area-inset-bottom) + 5rem)" }}
+      />
+
       {/* List view background */}
       {view === "list" && (
-        <div className="absolute inset-0 overflow-y-auto bg-curtn-deep px-6 py-20">
+        <div
+          className="absolute inset-0 overflow-y-auto bg-curtn-deep px-6 md:py-20"
+          style={{
+            paddingTop: "calc(env(safe-area-inset-top) + 5rem)",
+            paddingBottom: "calc(env(safe-area-inset-bottom) + 6rem)",
+          }}
+        >
           <div className="max-w-[var(--content-width)] mx-auto space-y-6">
             {groupedByDate.length === 0 && (
               <div className="empty-state">
@@ -215,18 +210,21 @@ export default function UpcomingPage() {
         </div>
       )}
 
-      {/* Floating UI controls */}
-      <div className="absolute top-4 left-4 right-4 z-[1000] pointer-events-none">
+      {/* Floating UI controls — sit BELOW MobileTopBar (wordmark + avatar) on mobile */}
+      <div
+        className="absolute left-4 right-4 z-[1000] pointer-events-none top-[calc(env(safe-area-inset-top)+3.5rem)] md:top-4"
+      >
         <div className="flex items-start justify-between gap-3">
           {/* Left: title + filters */}
           <div className="pointer-events-auto space-y-2">
             <h1 className="text-lg font-bold text-curtn-cream drop-shadow-md">
-              Upcoming
+              {activeFilter.titleLabel}
               <span className="ml-2 text-xs font-normal text-curtn-muted">
                 {view === "map" ? filteredMapPerformances.length : performances.length}
               </span>
             </h1>
-            <div className="flex gap-1.5 flex-wrap">
+            {/* Chips: foregrounded on desktop. On mobile, filter is opened via the floating-bar funnel button. */}
+            <div className="hidden md:flex gap-1.5 flex-wrap">
               {DATE_FILTERS.map((f) => (
                 <button
                   key={f.key}
@@ -244,8 +242,8 @@ export default function UpcomingPage() {
             </div>
           </div>
 
-          {/* Right: view toggle */}
-          <div className="pointer-events-auto flex rounded-sm border border-curtn-dark/50 overflow-hidden text-xs backdrop-blur-sm bg-curtn-deep/80">
+          {/* Right: view toggle (desktop only — mobile is map-only on this tab) */}
+          <div className="hidden md:flex pointer-events-auto rounded-sm border border-curtn-dark/50 overflow-hidden text-xs backdrop-blur-sm bg-curtn-deep/80">
             <button
               type="button"
               onClick={() => setView("map")}
@@ -276,6 +274,7 @@ export default function UpcomingPage() {
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-curtn-muted/30 border-t-curtn-coral" />
         </div>
       )}
+
     </div>
   );
 }

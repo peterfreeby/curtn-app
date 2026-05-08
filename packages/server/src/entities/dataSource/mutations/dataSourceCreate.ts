@@ -60,7 +60,7 @@ export const dataSourceCreate = mutationWithClientMutationId({
     if (!adminUser?.isAdmin) return { error: 'Admin access required' }
 
     try {
-      const validTypes = ['manual', 'csv', 'rss', 'ical', 'api', 'web', 'url']
+      const validTypes = ['manual', 'csv', 'rss', 'ical', 'api', 'web', 'url', 'scraper']
       if (!validTypes.includes(input.type)) {
         return { error: `Invalid type "${input.type}". Must be one of: ${validTypes.join(', ')}` }
       }

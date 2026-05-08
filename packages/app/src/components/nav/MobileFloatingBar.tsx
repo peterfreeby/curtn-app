@@ -324,6 +324,34 @@ export function MobileFloatingBar() {
                 <button type="button" onClick={handleSearch} className={iconBtnMuted} aria-label="Search">
                   <Icon name="magnifying-glass" size={20} />
                 </button>
+                {pathname === "/upcoming" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const params = new URLSearchParams(window.location.search);
+                      const current = params.get("filter") ?? "all";
+                      navigateTo(`/upcoming/filter?current=${current}`);
+                    }}
+                    className={iconBtnMuted}
+                    aria-label="Filter map"
+                  >
+                    <Icon name="funnel-simple" size={20} />
+                  </button>
+                )}
+                {pathname === "/upcoming/filter" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const params = new URLSearchParams(window.location.search);
+                      const current = params.get("current");
+                      navigateTo(current && current !== "all" ? `/upcoming?filter=${current}` : "/upcoming");
+                    }}
+                    className={iconBtnMuted}
+                    aria-label="Close filter"
+                  >
+                    <Icon name="plus" weight="regular" size={20} className="rotate-45" />
+                  </button>
+                )}
               </StateLayer>
 
               {/* EXPANDED */}

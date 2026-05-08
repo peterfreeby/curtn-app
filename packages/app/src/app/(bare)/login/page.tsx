@@ -24,7 +24,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (firebaseUser && user?.hasProfile) {
-      router.push("/feed");
+      router.push("/browse");
     }
   }, [firebaseUser, user, router]);
 

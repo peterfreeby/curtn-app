@@ -63,7 +63,7 @@ export default function OnboardingPage() {
         setError(result.error);
       } else if (result?.user) {
         await refreshUser();
-        router.push("/feed");
+        router.push("/browse");
       }
     } catch {
       setError("Something went wrong. Try again.");
