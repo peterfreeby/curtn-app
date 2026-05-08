@@ -12,14 +12,15 @@ import type { ScraperDataSourceConfig } from '../services/scraping/types'
 // Usage:
 //   npx ts-node createBamCategorySource.ts theater
 //   npx ts-node createBamCategorySource.ts dance
-//   npx ts-node createBamCategorySource.ts opera
-//   npx ts-node createBamCategorySource.ts talks
-//   npx ts-node createBamCategorySource.ts performance-art
 //
-// Each invocation creates (or updates) one DataSource pointing at /<category>.
+// Other URLs we tried (/opera, /talks, /performance-art) don't actually
+// filter — they fall back to a catch-all catalog mixing films, sponsor
+// content, member-events, festivals, etc. Only theater + dance have real
+// per-category landing pages on bam.org as of 2026-05-08. If BAM ever
+// adds /opera and /talks proper, expand this set.
 
 const SUPPORTED_CATEGORIES = new Set([
-  'theater', 'dance', 'opera', 'talks', 'performance-art'
+  'theater', 'dance'
 ])
 
 function makeConfig(category: string): ScraperDataSourceConfig {

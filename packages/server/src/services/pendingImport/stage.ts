@@ -58,11 +58,30 @@ export async function stageRowsAsPendingImports(
 
     if (opts.dedupe !== false) {
       const date = parseDate(head.date)
-      const existing = await PendingImportModel.findOne({
-        dataSource: opts.dataSourceId,
-        title: head.title.trim(),
-        ...(date ? { date } : {})
-      })
+      const titleTrim = head.title.trim()
+      const venueTrim = head.venueName?.trim()
+
+      // Cross-source dedup: per the data-overlap policy, multiple sources
+      // reporting the same event is cross-validation, not a problem. If a
+      // PendingImport with the same (title, date, venue) already exists in
+      // ANY source, skip silently — first source wins. The match is
+      // case-insensitive on title and venue so "BAM" and "Bam" don't
+      // duplicate. Future work: merge complementary fields from the new
+      // source onto the existing record.
+      const titleRegex = new RegExp(
+        `^${titleTrim.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+        'i'
+      )
+      const query: Record<string, unknown> = { title: titleRegex }
+      if (date) query.date = date
+      if (venueTrim) {
+        query.venueName = new RegExp(
+          `^${venueTrim.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+          'i'
+        )
+      }
+
+      const existing = await PendingImportModel.findOne(query)
       if (existing) {
         skipped++
         continue
