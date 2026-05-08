@@ -90,10 +90,13 @@ async function probe(url: string, opts: { useCache: boolean }): Promise<ProbeRep
 
 async function main() {
   const args = process.argv.slice(2)
-  const useCache = !args.includes('--no-cache')
+  const useCache = args.includes('--cache')
   const url = args.find(a => !a.startsWith('--'))
   if (!url) {
-    console.error('Usage: probeUrl.ts <url> [--no-cache]')
+    console.error('Usage: probeUrl.ts <url> [--cache]')
+    console.error('       --cache: read+write disk cache (default: off, since')
+    console.error('                rendered HTML cached from SPAs misbehaves')
+    console.error('                when fed back to Playwright via setContent)')
     process.exit(1)
   }
 

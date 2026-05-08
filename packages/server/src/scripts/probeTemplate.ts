@@ -425,16 +425,17 @@ async function main() {
   const { positional, flags } = parseArgs(process.argv.slice(2))
   const url = positional[0]
   if (!url) {
-    console.error('Usage: probeTemplate.ts <url> [--container <selector>] [--auto] [--no-cache]')
+    console.error('Usage: probeTemplate.ts <url> [--container <selector>] [--auto] [--cache]')
     console.error('       --container: inspect this selector and generate a template')
     console.error('       --auto:      pick the top-ranked container automatically')
-    console.error('       --no-cache:  bypass disk cache and refetch')
+    console.error('       --cache:     read+write disk cache (default: off — SPAs')
+    console.error('                    re-execute scripts on setContent and break)')
     process.exit(1)
   }
 
   const containerArg = typeof flags.container === 'string' ? flags.container : undefined
   const auto = Boolean(flags.auto)
-  const useCache = !flags['no-cache']
+  const useCache = Boolean(flags.cache)
   const probeOpts = { useCache }
 
   const runProbe = async (sel?: string) => {

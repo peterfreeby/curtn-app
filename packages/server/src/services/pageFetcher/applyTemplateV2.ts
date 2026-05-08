@@ -76,8 +76,18 @@ function extractFieldValue(
         break
       case 'date':
       case 'datetime': {
+        const hasYear = /\b(19|20)\d{2}\b/.test(value)
         const parsed = new Date(value)
         if (!isNaN(parsed.getTime())) {
+          if (!hasYear) {
+            // Caveat ("FRI, MAY 8") and many calendar pages omit the year.
+            // V8's Date defaults to 2001 in that case. Infer current year;
+            // if the resulting date is >30d in the past, roll to next year.
+            const now = new Date()
+            parsed.setFullYear(now.getFullYear())
+            const daysAgo = (now.getTime() - parsed.getTime()) / 86_400_000
+            if (daysAgo > 30) parsed.setFullYear(now.getFullYear() + 1)
+          }
           value = parsed.toISOString()
         }
         break
