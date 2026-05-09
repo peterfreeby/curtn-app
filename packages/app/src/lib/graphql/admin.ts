@@ -300,6 +300,17 @@ export const AUTO_VALIDATE_MUTATION = gql`
   }
 `;
 
+export const APPROVE_ALL_MUTATION = gql`
+  mutation ApproveAllPendingImports($input: approveAllPendingImportsInput!) {
+    approveAllPendingImports(input: $input) {
+      approvedCount
+      errorCount
+      firstErrors
+      error
+    }
+  }
+`;
+
 // --- Wikidata Import ---
 
 export const WIKIDATA_SEARCH_MUTATION = gql`

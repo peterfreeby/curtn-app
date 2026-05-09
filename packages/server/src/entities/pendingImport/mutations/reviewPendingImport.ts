@@ -315,6 +315,54 @@ export const editPendingImport = mutationWithClientMutationId({
   }
 })
 
+export const approveAllPendingImports = mutationWithClientMutationId({
+  name: 'approveAllPendingImports',
+  description: 'Approve every pending import matching the optional filter (no age requirement)',
+  inputFields: {
+    dataSourceId: { type: GraphQLString }
+  },
+  outputFields: {
+    approvedCount: { type: GraphQLInt, resolve: r => r.approvedCount },
+    errorCount: { type: GraphQLInt, resolve: r => r.errorCount },
+    firstErrors: { type: new GraphQLList(GraphQLString), resolve: r => r.firstErrors },
+    ...errorField
+  },
+  mutateAndGetPayload: async ({ dataSourceId }, ctx) => {
+    if (!ctx.user) return { error: 'Unauthorized' }
+    const adminUser = await UserModel.findById(ctx.user.id)
+    if (!adminUser?.isAdmin) return { error: 'Admin access required' }
+
+    const query: Record<string, unknown> = { status: 'pending' }
+    if (dataSourceId) query.dataSource = dataSourceId
+    const items = await PendingImportModel.find(query)
+
+    let approved = 0
+    let errors = 0
+    const firstErrors: string[] = []
+
+    for (const pi of items) {
+      try {
+        await promoteToRecords(pi, ctx.user.id)
+        pi.status = 'approved'
+        pi.reviewedAt = new Date()
+        pi.reviewedBy = ctx.user.id
+        pi.error = undefined
+        await pi.save()
+        approved++
+      } catch (err: any) {
+        pi.error = err.message
+        await pi.save()
+        errors++
+        if (firstErrors.length < 3) {
+          firstErrors.push(`${pi.title}: ${err.message}`)
+        }
+      }
+    }
+
+    return { approvedCount: approved, errorCount: errors, firstErrors }
+  }
+})
+
 export const autoValidatePendingImports = mutationWithClientMutationId({
   name: 'autoValidatePendingImports',
   description: 'Auto-approve pending imports older than 1 day',

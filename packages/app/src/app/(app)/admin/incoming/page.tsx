@@ -8,6 +8,7 @@ import {
   REJECT_PENDING_IMPORT_MUTATION,
   EDIT_PENDING_IMPORT_MUTATION,
   AUTO_VALIDATE_MUTATION,
+  APPROVE_ALL_MUTATION,
 } from "@/lib/graphql/admin";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
@@ -64,6 +65,9 @@ export default function IncomingEventsPage() {
   const [, executeEdit] = useMutation(EDIT_PENDING_IMPORT_MUTATION);
   const [{ fetching: validating }, executeAutoValidate] = useMutation(
     AUTO_VALIDATE_MUTATION
+  );
+  const [{ fetching: approvingAll }, executeApproveAll] = useMutation(
+    APPROVE_ALL_MUTATION
   );
 
   const items: PendingImportNode[] =
@@ -147,6 +151,35 @@ export default function IncomingEventsPage() {
     }
   }
 
+  async function handleApproveAll() {
+    const pendingCount = items.filter((i) => i.status === "pending").length;
+    if (pendingCount === 0) {
+      setMessage("No pending items to approve.");
+      return;
+    }
+    if (
+      !window.confirm(
+        `Approve all ${pendingCount} pending items? This creates Show / Run / Performance records and can't be undone in bulk.`
+      )
+    ) {
+      return;
+    }
+    setMessage(null);
+    const result = await executeApproveAll({ input: {} });
+    const d = result.data?.approveAllPendingImports;
+    if (d?.error) {
+      setMessage(d.error);
+    } else if (d) {
+      const errorTail = d.firstErrors?.length
+        ? ` First errors: ${d.firstErrors.join(" | ")}`
+        : "";
+      setMessage(
+        `Approved ${d.approvedCount}, ${d.errorCount} errors.${errorTail}`
+      );
+      reexecuteQuery({ requestPolicy: "network-only" });
+    }
+  }
+
   function formatDate(iso: string | null): string {
     if (!iso) return "\u2014";
     return new Date(iso).toLocaleDateString("en-US", {
@@ -177,13 +210,22 @@ export default function IncomingEventsPage() {
             auto-approve.
           </p>
         </div>
-        <Button
-          variant="secondary"
-          onClick={handleAutoValidate}
-          disabled={validating}
-        >
-          {validating ? "Validating..." : "Auto-Validate"}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            onClick={handleAutoValidate}
+            disabled={validating || approvingAll}
+          >
+            {validating ? "Validating..." : "Auto-Validate"}
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleApproveAll}
+            disabled={validating || approvingAll}
+          >
+            {approvingAll ? "Approving..." : "Approve All"}
+          </Button>
+        </div>
       </div>
 
       {message && (
