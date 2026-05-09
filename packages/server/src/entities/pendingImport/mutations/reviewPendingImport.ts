@@ -131,7 +131,7 @@ async function promoteToRecords(pi: any, userId: string) {
       await new PerformanceModel({
         run: run._id,
         date: pi.date,
-        time: pi.time || '',
+        ...(pi.time?.trim() && { time: pi.time.trim() }),
         venueId: venueIds[0],
         ticketUrl: pi.ticketUrl || '',
         ...(pi.performanceDescription?.trim() && {

@@ -3,7 +3,7 @@ import mongoose, { Schema, Types } from 'mongoose'
 export interface IPerformance {
   run: Types.ObjectId
   date: Date
-  time: string
+  time?: string
   venueId: Types.ObjectId
   ticketUrl?: string
   eventbriteId?: string
@@ -34,8 +34,10 @@ const performanceSchema = new Schema<IPerformance>({
     required: true
   },
   time: {
+    // Optional — multi-day theater runs scraped from a calendar page often
+    // don't expose per-day showtimes on the listing. The Performance still
+    // gets created with a date; admin can fill the time later.
     type: String,
-    required: true,
     trim: true
   },
   venueId: {
