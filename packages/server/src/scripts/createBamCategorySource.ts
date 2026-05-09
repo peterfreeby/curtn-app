@@ -70,6 +70,16 @@ function makeConfig(category: string): ScraperDataSourceConfig {
                 transform: 'date'
               },
               {
+                // BAM date text reads "Oct 22—Oct 26, 2025" — capture the end
+                // date including year so the date transform can parse it.
+                type: 'field',
+                id: 'runEnd',
+                csvField: 'runEndDate',
+                selector: '.bam-block-2x2-date',
+                regex: '—\\s*([A-Za-z]+\\s+\\d+,\\s*\\d{4})',
+                transform: 'date'
+              },
+              {
                 // Genre badge — "Theater", "Dance | Theater", etc. The first
                 // entry before any pipe is the primary genre.
                 type: 'field',
@@ -115,7 +125,8 @@ function makeConfig(category: string): ScraperDataSourceConfig {
       venueState: 'NY',
       venueZipCode: '11217'
     },
-    maxItems: 50
+    maxItems: 50,
+    fanOutByDateRange: true
   }
 }
 

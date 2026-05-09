@@ -24,6 +24,13 @@ export interface ScraperDataSourceConfig {
   // Inverse of excludeUrlPatterns. When set, only rows whose ticketUrl
   // contains at least one of these substrings pass through.
   includeUrlPatterns?: string[]
+  // For sources that list multi-day runs without per-day rows (BAM theater /
+  // dance). When true, any row with both runStartDate and runEndDate gets
+  // expanded into one row per day in the range. Each fanned row keeps the
+  // run's metadata but its `date` is set to the specific day. Time stays
+  // empty — admin can fill in if needed, or the data flows through to a
+  // Performance with no time (Performance.time is optional).
+  fanOutByDateRange?: boolean
 }
 
 // Optional second-pass extraction: after the listing template produces rows,

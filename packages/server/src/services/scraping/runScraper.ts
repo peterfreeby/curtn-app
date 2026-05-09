@@ -179,6 +179,19 @@ export async function runScraper(opts: RunScraperOptions): Promise<RunScraperRes
       console.log(`[runScraper] filtered out ${filtered} rows by URL patterns`)
     }
 
+    // Multi-day run fan-out. For sources like BAM /theater that list each
+    // production once with a date range ("Oct 22—Oct 26"), expand into one
+    // row per day. The Run gets startDate / endDate from the original data;
+    // each Performance lands on its own day.
+    let fannedRows = rows
+    if (config.fanOutByDateRange) {
+      fannedRows = expandRowsByDateRange(rows)
+      const added = fannedRows.length - rows.length
+      if (added > 0) {
+        console.log(`[runScraper] fan-out by date range: ${rows.length} → ${fannedRows.length} rows`)
+      }
+    }
+
     // Zero rows extracted counts as a soft failure — we may have been blocked
     // or the selector may have rotted. Track it for the circuit breaker.
     if (rows.length === 0) {
@@ -192,12 +205,12 @@ export async function runScraper(opts: RunScraperOptions): Promise<RunScraperRes
     // event identity, which the staging helper groups into one PendingImport
     // with a cast/crew array. Per-row error tolerance: a single bad detail
     // page does not abort the run.
-    let workingRows: CsvRowInput[] = rows
-    if (config.detail && rows.length > 0) {
+    let workingRows: CsvRowInput[] = fannedRows
+    if (config.detail && fannedRows.length > 0) {
       const detailPage = await context.newPage()
       try {
         const { rows: enriched, stats: detailStats } = await runDetailFetches(
-          detailPage, rows, config.detail, config.startUrl
+          detailPage, fannedRows, config.detail, config.startUrl
         )
         workingRows = enriched
         Object.assign(result, detailStats)
@@ -205,6 +218,8 @@ export async function runScraper(opts: RunScraperOptions): Promise<RunScraperRes
       } finally {
         await detailPage.close()
       }
+    } else {
+      result.rowsValid = fannedRows.length
     }
 
     if (mode === 'dry-run') {
@@ -236,6 +251,41 @@ export async function runScraper(opts: RunScraperOptions): Promise<RunScraperRes
       )
     }
   }
+}
+
+// For sources that list multi-day runs as a single card with start+end dates,
+// expand each row into N rows (one per day). Each fanned row keeps the run's
+// metadata; only `date` changes. Skipped when a row has no end date or the
+// range is invalid; non-multi-day rows pass through unchanged.
+const ONE_DAY_MS = 24 * 60 * 60 * 1000
+const MAX_FAN_OUT_DAYS = 60 // safety cap; nothing legit runs longer than ~2 months
+
+function expandRowsByDateRange(rows: CsvRowInput[]): CsvRowInput[] {
+  const out: CsvRowInput[] = []
+  for (const row of rows) {
+    const startStr = (row as any).runStartDate
+    const endStr = (row as any).runEndDate
+    if (!startStr || !endStr) {
+      out.push(row)
+      continue
+    }
+    const start = new Date(startStr)
+    const end = new Date(endStr)
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+      out.push(row)
+      continue
+    }
+    const days = Math.floor((end.getTime() - start.getTime()) / ONE_DAY_MS) + 1
+    if (days <= 1 || days > MAX_FAN_OUT_DAYS) {
+      out.push(row)
+      continue
+    }
+    for (let i = 0; i < days; i++) {
+      const d = new Date(start.getTime() + i * ONE_DAY_MS)
+      out.push({ ...row, date: d.toISOString() })
+    }
+  }
+  return out
 }
 
 // Resolve a possibly-relative URL against the source's startUrl. Handles
