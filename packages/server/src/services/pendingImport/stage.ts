@@ -1,4 +1,5 @@
 import { PendingImportModel } from '../../entities/pendingImport/pendingImportModel'
+import { PERFORMANCE_TYPES } from '../../entities/show/showModel'
 import type { CsvRowInput } from '../importEngine'
 
 export interface StageOptions {
@@ -23,9 +24,27 @@ function parseDuration(s?: string): number | undefined {
   return isNaN(n) || n < 0 ? undefined : n
 }
 
+// Aliases for incoming labels that don't match the Show enum directly.
+// Keep this small — when a venue uses a clearly distinct category that maps
+// poorly to existing types, prefer adding to PERFORMANCE_TYPES instead.
+const TYPE_ALIASES: Record<string, string> = {
+  'spoken word': 'spoken-word',
+  'talks': 'spoken-word',
+  'talk': 'spoken-word',
+  'performance art': 'experimental',
+  'visual art': 'experimental',
+  'visual arts': 'experimental'
+}
+
+const KNOWN_TYPES: Set<string> = new Set(PERFORMANCE_TYPES)
+
 function parseTypes(s?: string): string[] | undefined {
   if (!s) return undefined
-  const types = s.split(',').map(t => t.trim()).filter(Boolean)
+  const types = s
+    .split(',')
+    .map(t => t.trim().toLowerCase())
+    .map(t => TYPE_ALIASES[t] ?? t)
+    .filter(t => KNOWN_TYPES.has(t))
   return types.length ? types : undefined
 }
 

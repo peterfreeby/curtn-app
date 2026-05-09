@@ -1,5 +1,29 @@
 import mongoose, { Schema, Types } from 'mongoose'
 
+// Canonical performance type list. Keep in sync with the parseTypes
+// normalizer in services/pendingImport/stage.ts. Values are lowercase by
+// convention; the importer normalizes incoming "Dance" / "Theater" etc.
+export const PERFORMANCE_TYPES = [
+  'theater',
+  'play',
+  'musical',
+  'music',
+  'dance',
+  'opera',
+  'comedy',
+  'improv',
+  'spoken-word',
+  'cabaret',
+  'experimental',
+  'immersive',
+  'drag',
+  'burlesque',
+  'happening',
+  'other'
+] as const
+
+export type PerformanceType = (typeof PERFORMANCE_TYPES)[number]
+
 export interface IShow {
   title: string
   description: string
@@ -29,7 +53,7 @@ const showSchema = new Schema<IShow>({
   },
   performanceTypes: [{
     type: String,
-    enum: ['theater', 'play', 'musical', 'dance', 'comedy', 'improv', 'spoken-word', 'cabaret', 'experimental', 'immersive', 'drag', 'burlesque', 'happening', 'other']
+    enum: PERFORMANCE_TYPES
   }],
   duration: {
     type: Number,
