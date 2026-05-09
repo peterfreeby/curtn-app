@@ -228,6 +228,7 @@ function BrowseItemCard({ item, listType }: { item: any; listType: string }) {
 function ShowsBrowser() {
   const [after, setAfter] = useState<string | null>(null);
   const [prevEdges, setPrevEdges] = useState<any[]>([]);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const [result] = useQuery({
     query: SHOW_LIST_QUERY,
@@ -243,32 +244,35 @@ function ShowsBrowser() {
   const allEdges = after === null ? currentEdges : [...prevEdges, ...currentEdges];
   const shows = allEdges.map((e: any) => e.node);
 
-  function handleLoadMore() {
-    if (pageInfo?.endCursor) {
-      setPrevEdges(allEdges);
-      setAfter(pageInfo.endCursor);
-    }
-  }
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    if (result.fetching) return;
+    if (!pageInfo?.hasNextPage || !pageInfo.endCursor) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setPrevEdges(allEdges);
+          setAfter(pageInfo.endCursor!);
+        }
+      },
+      { rootMargin: "600px" }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [result.fetching, pageInfo?.hasNextPage, pageInfo?.endCursor, allEdges]);
 
   return (
     <>
       <ShowGrid shows={shows} loading={result.fetching && after === null} />
 
-      {!result.fetching && pageInfo?.hasNextPage && (
-        <div className="mt-6 flex justify-center">
-          <button
-            type="button"
-            onClick={handleLoadMore}
-            className="border border-curtn-dark px-6 py-2.5 text-sm text-curtn-muted transition-colors hover:border-curtn-muted/50 hover:text-curtn-cream"
-          >
-            Load more
-          </button>
-        </div>
-      )}
-
-      {result.fetching && after !== null && (
-        <div className="mt-6 flex justify-center">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-curtn-muted/30 border-t-curtn-coral" />
+      {pageInfo?.hasNextPage && (
+        <div ref={sentinelRef} className="mt-6 flex justify-center" aria-hidden>
+          {result.fetching && after !== null && (
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-curtn-muted/30 border-t-curtn-coral" />
+          )}
         </div>
       )}
     </>

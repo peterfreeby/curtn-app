@@ -1,6 +1,30 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { WiredPosterCard } from "@/components/WiredPosterCard";
+
+// Locked column counts per viewport — does not change with content size.
+function useColumnCount(): number {
+  const [cols, setCols] = useState(4);
+  useEffect(() => {
+    const compute = () => {
+      if (window.matchMedia("(min-width: 1024px)").matches) return 4;
+      if (window.matchMedia("(min-width: 768px)").matches) return 4;
+      if (window.matchMedia("(min-width: 640px)").matches) return 3;
+      return 2;
+    };
+    const update = () => setCols(compute());
+    update();
+    const mqs = [
+      window.matchMedia("(min-width: 1024px)"),
+      window.matchMedia("(min-width: 768px)"),
+      window.matchMedia("(min-width: 640px)"),
+    ];
+    mqs.forEach((mq) => mq.addEventListener("change", update));
+    return () => mqs.forEach((mq) => mq.removeEventListener("change", update));
+  }, []);
+  return cols;
+}
 
 interface RunNode {
   id: string;
@@ -45,12 +69,37 @@ function buildRunLabel(run: RunNode, showTitle: string): string {
   return parts.length > 0 ? parts.join(" · ") : showTitle;
 }
 
+// Varied aspect ratios for skeleton placeholders so the masonry feels real
+// before the images load.
+const SKELETON_ASPECTS = [
+  "aspect-[1/1.58]",
+  "aspect-[2/3]",
+  "aspect-[3/4]",
+  "aspect-[1/1.4]",
+  "aspect-[4/5]",
+  "aspect-[1/1.7]",
+  "aspect-[1/1.2]",
+];
+
 export function ShowGrid({ shows, loading }: ShowGridProps) {
+  const colCount = useColumnCount();
+
   if (loading) {
+    const skeletonColumns: number[][] = Array.from({ length: colCount }, () => []);
+    Array.from({ length: 12 }).forEach((_, i) => {
+      skeletonColumns[i % colCount].push(i);
+    });
     return (
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-[var(--spacing-2)]">
-        {Array.from({ length: 12 }).map((_, i) => (
-          <div key={i} className="aspect-[2/3] dog-ear bg-curtn-dark/30 animate-pulse" />
+      <div className="flex gap-[var(--spacing-2)] items-start">
+        {skeletonColumns.map((col, ci) => (
+          <div key={ci} className="flex-1 min-w-0 flex flex-col gap-[var(--spacing-2)]">
+            {col.map((i) => (
+              <div
+                key={i}
+                className={`${SKELETON_ASPECTS[i % SKELETON_ASPECTS.length]} bg-curtn-dark/30 animate-pulse`}
+              />
+            ))}
+          </div>
         ))}
       </div>
     );
@@ -73,33 +122,46 @@ export function ShowGrid({ shows, loading }: ShowGridProps) {
     return true;
   });
 
-  return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-[var(--spacing-2)]">
-      {uniqueShows.map((show) => {
-        const runEdges = show.runs?.edges ?? [];
-        const firstRun = runEdges[0]?.node;
-        const singleRunId = runEdges.length === 1 ? firstRun?.id : undefined;
-        const runs = runEdges.map((e) => ({
-          id: e.node.id,
-          label: buildRunLabel(e.node, show.title),
-        }));
+  // Round-robin shows into a fixed number of columns. Order is preserved
+  // across re-renders so newly fetched pages don't reshuffle existing items.
+  const columns: ShowNode[][] = Array.from({ length: colCount }, () => []);
+  uniqueShows.forEach((show, i) => {
+    columns[i % colCount].push(show);
+  });
 
-        return (
-          <WiredPosterCard
-            key={show.id}
-            showId={show.id}
-            imageUrl={show.posterUrl || show.imageUrl}
-            title={show.title}
-            subtitle={firstRun?.productionCompany?.name ?? undefined}
-            href={`/performances/${show.id}`}
-            size="md"
-            className="!w-full"
-            runId={singleRunId}
-            runs={runs.length > 1 ? runs : undefined}
-            isOnWatchlist={show.isOnMyWatchlist}
-          />
-        );
-      })}
+  return (
+    <div className="flex gap-[var(--spacing-2)] items-start">
+      {columns.map((col, ci) => (
+        <div key={ci} className="flex-1 min-w-0 flex flex-col gap-[var(--spacing-2)]">
+          {col.map((show) => {
+            const runEdges = show.runs?.edges ?? [];
+            const firstRun = runEdges[0]?.node;
+            const singleRunId = runEdges.length === 1 ? firstRun?.id : undefined;
+            const runs = runEdges.map((e) => ({
+              id: e.node.id,
+              label: buildRunLabel(e.node, show.title),
+            }));
+
+            return (
+              <WiredPosterCard
+                key={show.id}
+                showId={show.id}
+                imageUrl={show.posterUrl || show.imageUrl}
+                title={show.title}
+                subtitle={firstRun?.productionCompany?.name ?? undefined}
+                href={`/performances/${show.id}`}
+                size="md"
+                className="!w-full"
+                runId={singleRunId}
+                runs={runs.length > 1 ? runs : undefined}
+                isOnWatchlist={show.isOnMyWatchlist}
+                naturalAspect
+              />
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }
+

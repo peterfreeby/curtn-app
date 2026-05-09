@@ -114,6 +114,9 @@ interface PosterCardProps {
   actions?: PosterAction[];
   size?: "sm" | "md" | "lg";
   className?: string;
+  /** When true, the card sizes to the image's natural aspect ratio
+   *  instead of the default 1/1.58. Used for masonry layouts. */
+  naturalAspect?: boolean;
 }
 
 const sizeClasses = {
@@ -136,6 +139,7 @@ export function PosterCard({
   actions,
   size = "md",
   className = "",
+  naturalAspect = false,
 }: PosterCardProps) {
   const [imgFailed, setImgFailed] = useState(false);
   const hasImage = !!imageUrl && !imgFailed;
@@ -144,18 +148,27 @@ export function PosterCard({
   const resolvedActions = actions ?? defaultActions;
   const { canvasRef } = useDuotone(hasImage ? imageUrl : null);
 
+  // In natural-aspect mode the image dictates height; fall back to the
+  // standard poster ratio when there's no image (TextPoster) or it failed.
+  const useNatural = naturalAspect && hasImage;
+  const wrapperAspect = useNatural ? "" : "aspect-[1/1.58]";
+
   return (
     <div className={`${sizeClasses[size]} ${className}`}>
       <Wrapper
         {...wrapperProps}
-        className="group relative block aspect-[1/1.58] overflow-hidden bg-curtn-surface border border-curtn-dark/30"
+        className={`group relative block ${wrapperAspect} overflow-hidden bg-curtn-surface border border-curtn-dark/30`}
       >
         {hasImage ? (
           <>
             <img
               src={imageUrl}
               alt={title}
-              className="h-full w-full object-cover"
+              className={
+                useNatural
+                  ? "block w-full h-auto"
+                  : "h-full w-full object-cover"
+              }
               onError={() => setImgFailed(true)}
             />
             {/* Duotone canvas overlay — fades in on hover */}

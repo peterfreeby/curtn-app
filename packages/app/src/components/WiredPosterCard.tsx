@@ -31,6 +31,8 @@ interface WiredPosterCardProps {
   isOnWatchlist?: boolean;
   /** Ticket URL (only for single-run/single-perf shows) */
   ticketUrl?: string | null;
+  /** When true, the poster sizes to the image's natural aspect ratio. */
+  naturalAspect?: boolean;
 }
 
 export function WiredPosterCard({
@@ -45,6 +47,7 @@ export function WiredPosterCard({
   runs,
   isOnWatchlist: initialWatchlist = false,
   ticketUrl,
+  naturalAspect = false,
 }: WiredPosterCardProps) {
   const router = useRouter();
   const { user } = useAuth();
@@ -138,6 +141,7 @@ export function WiredPosterCard({
         size={size}
         className={className}
         actions={actions}
+        naturalAspect={naturalAspect}
       />
 
       {/* Run picker popup */}
