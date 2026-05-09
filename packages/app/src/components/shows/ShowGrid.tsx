@@ -8,10 +8,10 @@ function useColumnCount(): number {
   const [cols, setCols] = useState(4);
   useEffect(() => {
     const compute = () => {
-      if (window.matchMedia("(min-width: 1024px)").matches) return 4;
-      if (window.matchMedia("(min-width: 768px)").matches) return 4;
-      if (window.matchMedia("(min-width: 640px)").matches) return 3;
-      return 2;
+      if (window.matchMedia("(min-width: 1024px)").matches) return 5;
+      if (window.matchMedia("(min-width: 768px)").matches) return 5;
+      if (window.matchMedia("(min-width: 640px)").matches) return 4;
+      return 3;
     };
     const update = () => setCols(compute());
     update();
