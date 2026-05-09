@@ -10,7 +10,6 @@ import {
   AUTO_VALIDATE_MUTATION,
   APPROVE_ALL_MUTATION,
 } from "@/lib/graphql/admin";
-import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 
 interface CreditEntry {
@@ -45,12 +44,19 @@ interface PendingImportNode {
 }
 
 type StatusFilter = "pending" | "approved" | "rejected" | "all";
+type RowAction = "approve" | "reject";
 
 export default function IncomingEventsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFields, setEditFields] = useState<Record<string, string>>({});
-  const [message, setMessage] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Per-row in-flight tracking. id → action being performed
+  const [rowBusy, setRowBusy] = useState<Record<string, RowAction>>({});
+  // Per-row error messages set by the latest action on that row
+  const [rowError, setRowError] = useState<Record<string, string>>({});
+  // Top-level message reserved for bulk operations only
+  const [bulkMessage, setBulkMessage] = useState<string | null>(null);
 
   const [{ data, fetching }, reexecuteQuery] = useQuery({
     query: PENDING_IMPORTS_QUERY,
@@ -71,32 +77,64 @@ export default function IncomingEventsPage() {
   );
 
   const items: PendingImportNode[] =
-    data?.pendingImports?.edges?.map((e: any) => e.node) || [];
+    data?.pendingImports?.edges?.map((e: { node: PendingImportNode }) => e.node) || [];
+  const pendingItems = items.filter((i) => i.status === "pending");
+  const selectableIds = pendingItems.map((i) => i.id);
+  const allSelected =
+    selectableIds.length > 0 &&
+    selectableIds.every((id) => selected.has(id));
+  const partiallySelected = selected.size > 0 && !allSelected;
 
   function decodeGlobalId(globalId: string): string {
-    const decoded = atob(globalId);
-    return decoded.split(":")[1];
+    return atob(globalId).split(":")[1];
+  }
+
+  function setBusy(id: string, action: RowAction | null) {
+    setRowBusy((prev) => {
+      const next = { ...prev };
+      if (action === null) delete next[id];
+      else next[id] = action;
+      return next;
+    });
+  }
+
+  function setError(id: string, message: string | null) {
+    setRowError((prev) => {
+      const next = { ...prev };
+      if (message === null) delete next[id];
+      else next[id] = message;
+      return next;
+    });
   }
 
   async function handleApprove(item: PendingImportNode) {
-    setMessage(null);
+    setBusy(item.id, "approve");
+    setError(item.id, null);
     const result = await executeApprove({
       input: { pendingImportId: decodeGlobalId(item.id) },
     });
+    setBusy(item.id, null);
     if (result.data?.approvePendingImport?.error) {
-      setMessage(result.data.approvePendingImport.error);
+      setError(item.id, result.data.approvePendingImport.error);
     } else {
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
       reexecuteQuery({ requestPolicy: "network-only" });
     }
   }
 
   async function handleReject(item: PendingImportNode) {
-    setMessage(null);
+    setBusy(item.id, "reject");
+    setError(item.id, null);
     const result = await executeReject({
       input: { pendingImportId: decodeGlobalId(item.id) },
     });
+    setBusy(item.id, null);
     if (result.data?.rejectPendingImport?.error) {
-      setMessage(result.data.rejectPendingImport.error);
+      setError(item.id, result.data.rejectPendingImport.error);
     } else {
       reexecuteQuery({ requestPolicy: "network-only" });
     }
@@ -121,16 +159,17 @@ export default function IncomingEventsPage() {
 
   async function handleSaveEdit() {
     if (!editingId) return;
-    setMessage(null);
+    const id = editingId;
+    setError(id, null);
     const result = await executeEdit({
       input: {
-        pendingImportId: decodeGlobalId(editingId),
+        pendingImportId: decodeGlobalId(id),
         ...editFields,
         date: editFields.date ? new Date(editFields.date).toISOString() : undefined,
       },
     });
     if (result.data?.editPendingImport?.error) {
-      setMessage(result.data.editPendingImport.error);
+      setError(id, result.data.editPendingImport.error);
     } else {
       setEditingId(null);
       reexecuteQuery({ requestPolicy: "network-only" });
@@ -138,54 +177,80 @@ export default function IncomingEventsPage() {
   }
 
   async function handleAutoValidate() {
-    setMessage(null);
+    setBulkMessage(null);
     const result = await executeAutoValidate({ input: {} });
     const d = result.data?.autoValidatePendingImports;
     if (d?.error) {
-      setMessage(d.error);
+      setBulkMessage(d.error);
     } else if (d) {
-      setMessage(
+      setBulkMessage(
         `Auto-validated: ${d.approvedCount} approved, ${d.errorCount} errors`
       );
       reexecuteQuery({ requestPolicy: "network-only" });
     }
   }
 
-  async function handleApproveAll() {
-    const pendingCount = items.filter((i) => i.status === "pending").length;
-    if (pendingCount === 0) {
-      setMessage("No pending items to approve.");
+  async function handleBulkApprove(targetIds?: string[]) {
+    const ids = targetIds ?? Array.from(selected);
+    const usingSelection = ids.length > 0;
+    const count = usingSelection ? ids.length : pendingItems.length;
+    if (count === 0) {
+      setBulkMessage("No pending items to approve.");
       return;
     }
+    const verb = usingSelection ? `${count} selected` : `all ${count}`;
     if (
       !window.confirm(
-        `Approve all ${pendingCount} pending items? This creates Show / Run / Performance records and can't be undone in bulk.`
+        `Approve ${verb} pending items? This creates Show / Run / Performance records and can't be undone in bulk.`
       )
     ) {
       return;
     }
-    setMessage(null);
-    const result = await executeApproveAll({ input: {} });
+    setBulkMessage(null);
+    const decodedIds = usingSelection
+      ? ids.map((id) => decodeGlobalId(id))
+      : undefined;
+    const result = await executeApproveAll({
+      input: decodedIds ? { pendingImportIds: decodedIds } : {},
+    });
     const d = result.data?.approveAllPendingImports;
     if (d?.error) {
-      setMessage(d.error);
+      setBulkMessage(d.error);
     } else if (d) {
       const errorTail = d.firstErrors?.length
         ? ` First errors: ${d.firstErrors.join(" | ")}`
         : "";
-      setMessage(
+      setBulkMessage(
         `Approved ${d.approvedCount}, ${d.errorCount} errors.${errorTail}`
       );
+      setSelected(new Set());
       reexecuteQuery({ requestPolicy: "network-only" });
     }
   }
 
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (allSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(selectableIds));
+    }
+  }
+
   function formatDate(iso: string | null): string {
-    if (!iso) return "\u2014";
+    if (!iso) return "—";
     return new Date(iso).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
-      year: "numeric",
+      year: "2-digit",
     });
   }
 
@@ -199,18 +264,24 @@ export default function IncomingEventsPage() {
   }
 
   return (
-    <div className="px-6 py-8 max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="px-6 py-8 max-w-7xl mx-auto space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-curtn-cream">
-            Incoming Events
-          </h1>
+          <h1 className="text-xl font-bold text-curtn-cream">Incoming Events</h1>
           <p className="mt-1 text-sm text-curtn-muted">
-            Review events imported from feeds. Items older than 1 day
-            auto-approve.
+            Review events imported from feeds. Items older than 1 day auto-approve.
           </p>
         </div>
         <div className="flex gap-2">
+          {selected.size > 0 && (
+            <Button
+              variant="primary"
+              onClick={() => handleBulkApprove()}
+              disabled={validating || approvingAll}
+            >
+              {approvingAll ? "Approving..." : `Approve ${selected.size} Selected`}
+            </Button>
+          )}
           <Button
             variant="secondary"
             onClick={handleAutoValidate}
@@ -219,313 +290,392 @@ export default function IncomingEventsPage() {
             {validating ? "Validating..." : "Auto-Validate"}
           </Button>
           <Button
-            variant="primary"
-            onClick={handleApproveAll}
-            disabled={validating || approvingAll}
+            variant="secondary"
+            onClick={() => handleBulkApprove(selectableIds)}
+            disabled={validating || approvingAll || pendingItems.length === 0}
           >
             {approvingAll ? "Approving..." : "Approve All"}
           </Button>
         </div>
       </div>
 
-      {message && (
-        <div className="rounded-lg border border-curtn-dark bg-curtn-surface px-4 py-3 text-sm text-curtn-cream">
-          {message}
+      {bulkMessage && (
+        <div className="border border-curtn-dark bg-curtn-surface px-4 py-3 text-sm text-curtn-cream">
+          {bulkMessage}
         </div>
       )}
 
       {/* Status filter tabs */}
-      <div className="flex gap-1 rounded-lg bg-curtn-surface p-1">
-        {(["pending", "approved", "rejected", "all"] as StatusFilter[]).map(
-          (s) => (
-            <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                statusFilter === s
-                  ? "bg-curtn-deep text-curtn-cream"
-                  : "text-curtn-muted hover:text-curtn-cream"
-              }`}
-            >
-              {s.charAt(0).toUpperCase() + s.slice(1)}
-            </button>
-          )
-        )}
+      <div className="flex gap-1 bg-curtn-surface p-1">
+        {(["pending", "approved", "rejected", "all"] as StatusFilter[]).map((s) => (
+          <button
+            key={s}
+            onClick={() => {
+              setStatusFilter(s);
+              setSelected(new Set());
+            }}
+            className={`px-3 py-1.5 text-xs uppercase tracking-wider transition ${
+              statusFilter === s
+                ? "bg-curtn-coral text-curtn-deep"
+                : "text-curtn-muted hover:text-curtn-cream"
+            }`}
+          >
+            {s} {s === statusFilter && items.length > 0 && `(${items.length})`}
+          </button>
+        ))}
       </div>
 
-      {/* Items */}
       {fetching && !data ? (
         <p className="text-sm text-curtn-muted">Loading...</p>
       ) : items.length === 0 ? (
-        <Card>
-          <p className="text-sm text-curtn-muted text-center py-8">
+        <div className="border border-curtn-dark bg-curtn-surface px-4 py-12 text-center">
+          <p className="text-sm text-curtn-muted">
             {statusFilter === "pending"
               ? "No pending events. Poll a data source to import new events."
               : "No events match this filter."}
           </p>
-        </Card>
+        </div>
       ) : (
-        <div className="space-y-3">
-          {items.map((item) => (
-            <Card key={item.id} className="space-y-3">
-              {editingId === item.id ? (
-                /* Edit mode */
-                <div className="space-y-3">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <label className="block text-xs text-curtn-muted mb-1">
-                        Show Title
-                      </label>
-                      <input
-                        value={editFields.title}
-                        onChange={(e) =>
-                          setEditFields((f) => ({
-                            ...f,
-                            title: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-curtn-muted mb-1">
-                        Run Title
-                      </label>
-                      <input
-                        value={editFields.runTitle}
-                        onChange={(e) =>
-                          setEditFields((f) => ({
-                            ...f,
-                            runTitle: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-curtn-muted mb-1">
-                        Venue
-                      </label>
-                      <input
-                        value={editFields.venueName}
-                        onChange={(e) =>
-                          setEditFields((f) => ({
-                            ...f,
-                            venueName: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-curtn-muted mb-1">
-                        Stage
-                      </label>
-                      <input
-                        value={editFields.stageName}
-                        onChange={(e) =>
-                          setEditFields((f) => ({
-                            ...f,
-                            stageName: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-curtn-muted mb-1">
-                        Company
-                      </label>
-                      <input
-                        value={editFields.companyName}
-                        onChange={(e) =>
-                          setEditFields((f) => ({
-                            ...f,
-                            companyName: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-curtn-muted mb-1">
-                        Date
-                      </label>
-                      <input
-                        type="date"
-                        value={editFields.date}
-                        onChange={(e) =>
-                          setEditFields((f) => ({
-                            ...f,
-                            date: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-curtn-muted mb-1">
-                        Time
-                      </label>
-                      <input
-                        value={editFields.time}
-                        onChange={(e) =>
-                          setEditFields((f) => ({
-                            ...f,
-                            time: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-curtn-muted mb-1">
-                        Ticket URL
-                      </label>
-                      <input
-                        value={editFields.ticketUrl}
-                        onChange={(e) =>
-                          setEditFields((f) => ({
-                            ...f,
-                            ticketUrl: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-lg border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="primary" onClick={handleSaveEdit}>
-                      Save
-                    </Button>
-                    <Button
-                      variant="tertiary"
-                      onClick={() => setEditingId(null)}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                /* View mode */
-                <>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-medium text-curtn-cream truncate">
-                          {item.title}
-                        </h3>
-                        <span
-                          className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
-                            item.status === "pending"
-                              ? "bg-yellow-500/20 text-yellow-400"
-                              : item.status === "approved"
-                                ? "bg-green-500/20 text-green-400"
-                                : "bg-curtn-red/20 text-curtn-red"
-                          }`}
-                        >
-                          {item.status}
-                        </span>
-                      </div>
-                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-curtn-muted">
-                        {item.venueName && <span>{item.venueName}</span>}
-                        {item.stageName && (
-                          <span className="text-curtn-muted/60">
-                            {item.stageName}
-                          </span>
-                        )}
-                        {item.companyName && <span>{item.companyName}</span>}
-                        {item.date && (
-                          <span>
-                            {formatDate(item.date)}
-                            {item.time ? ` ${item.time}` : ""}
-                          </span>
-                        )}
-                      </div>
-                      {item.cast?.length > 0 && (
-                        <CreditList
-                          label={`Cast (${item.cast.length})`}
-                          entries={item.cast}
-                        />
-                      )}
-                      {item.crew?.length > 0 && (
-                        <CreditList
-                          label={`Crew (${item.crew.length})`}
-                          entries={item.crew}
-                        />
-                      )}
-                      <div className="mt-1 flex gap-x-3 text-xs text-curtn-muted/40">
-                        <span>via {item.dataSource.name}</span>
-                        <span>{timeSince(item.importedAt)}</span>
-                      </div>
-                      {item.error && (
-                        <p className="mt-1 text-xs text-curtn-red">
-                          {item.error}
-                        </p>
-                      )}
-                    </div>
-
-                    {item.status === "pending" && (
-                      <div className="flex shrink-0 gap-1.5">
-                        <Button
-                          variant="tertiary"
-                          onClick={() => startEditing(item)}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="tertiary"
-                          onClick={() => handleReject(item)}
-                        >
-                          Reject
-                        </Button>
-                        <Button
-                          variant="primary"
-                          onClick={() => handleApprove(item)}
-                        >
-                          Approve
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </Card>
-          ))}
+        <div className="border border-curtn-dark overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-curtn-surface text-curtn-muted">
+              <tr className="text-left">
+                <th className="w-10 px-3 py-2">
+                  {statusFilter === "pending" && (
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = partiallySelected;
+                      }}
+                      onChange={toggleSelectAll}
+                      className="cursor-pointer accent-curtn-coral"
+                      aria-label="Select all"
+                    />
+                  )}
+                </th>
+                <th className="w-14 px-2 py-2"></th>
+                <th className="px-3 py-2 text-xs uppercase tracking-wider">Title</th>
+                <th className="px-3 py-2 text-xs uppercase tracking-wider">Venue / Date</th>
+                <th className="px-3 py-2 text-xs uppercase tracking-wider">Cast</th>
+                <th className="px-3 py-2 text-xs uppercase tracking-wider">Source</th>
+                <th className="px-3 py-2 text-xs uppercase tracking-wider">Status</th>
+                <th className="w-12 px-2 py-2"></th>
+                <th className="px-3 py-2 text-right text-xs uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => {
+                const busy = rowBusy[item.id];
+                const error = rowError[item.id];
+                const isEditing = editingId === item.id;
+                const canSelect = item.status === "pending";
+                const isSelected = selected.has(item.id);
+                return (
+                  <RowGroup
+                    key={item.id}
+                    item={item}
+                    busy={busy}
+                    error={error}
+                    isEditing={isEditing}
+                    canSelect={canSelect}
+                    isSelected={isSelected}
+                    editFields={editFields}
+                    onToggle={() => toggleSelect(item.id)}
+                    onApprove={() => handleApprove(item)}
+                    onReject={() => handleReject(item)}
+                    onEdit={() => startEditing(item)}
+                    onCancelEdit={() => setEditingId(null)}
+                    onSaveEdit={handleSaveEdit}
+                    onEditChange={(field, value) =>
+                      setEditFields((f) => ({ ...f, [field]: value }))
+                    }
+                    formatDate={formatDate}
+                    timeSince={timeSince}
+                  />
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
   );
 }
 
-function CreditList({
-  label,
-  entries,
-}: {
-  label: string;
-  entries: CreditEntry[];
+function RowGroup(props: {
+  item: PendingImportNode;
+  busy: RowAction | undefined;
+  error: string | undefined;
+  isEditing: boolean;
+  canSelect: boolean;
+  isSelected: boolean;
+  editFields: Record<string, string>;
+  onToggle: () => void;
+  onApprove: () => void;
+  onReject: () => void;
+  onEdit: () => void;
+  onCancelEdit: () => void;
+  onSaveEdit: () => void;
+  onEditChange: (field: string, value: string) => void;
+  formatDate: (iso: string | null) => string;
+  timeSince: (iso: string) => string;
 }) {
+  const {
+    item,
+    busy,
+    error,
+    isEditing,
+    canSelect,
+    isSelected,
+    editFields,
+    onToggle,
+    onApprove,
+    onReject,
+    onEdit,
+    onCancelEdit,
+    onSaveEdit,
+    onEditChange,
+    formatDate,
+    timeSince,
+  } = props;
+
   return (
-    <div className="mt-2">
-      <div className="text-[10px] uppercase tracking-wider text-curtn-muted/60 mb-1">
-        {label}
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        {entries.map((entry, i) => (
-          <div
-            key={`${entry.name}-${i}`}
-            className="flex items-center gap-1.5 rounded-full bg-curtn-surface-2 pl-0.5 pr-2 py-0.5"
-          >
-            <Avatar name={entry.name} headshotUrl={entry.headshotUrl} />
-            <span className="text-xs text-curtn-cream">{entry.name}</span>
-            {entry.role && entry.role !== "Performer" && (
-              <span className="text-[10px] text-curtn-muted">
-                · {entry.role}
-              </span>
-            )}
+    <>
+      <tr className="border-t border-curtn-dark hover:bg-curtn-surface/30">
+        <td className="px-3 py-3 align-top">
+          {canSelect && (
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={onToggle}
+              className="cursor-pointer accent-curtn-coral"
+              aria-label={`Select ${item.title}`}
+            />
+          )}
+        </td>
+        <td className="px-2 py-2 align-top">
+          {item.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={item.imageUrl}
+              alt=""
+              className="h-12 w-12 object-cover bg-curtn-surface-2"
+            />
+          ) : (
+            <div className="h-12 w-12 bg-curtn-surface-2 flex items-center justify-center text-curtn-muted/40 text-[10px]">
+              no img
+            </div>
+          )}
+        </td>
+        <td className="px-3 py-3 align-top">
+          <div className="font-medium text-curtn-cream">{item.title}</div>
+          {item.runTitle && item.runTitle !== item.title && (
+            <div className="text-xs text-curtn-muted/80">{item.runTitle}</div>
+          )}
+          {item.showDescription && (
+            <div
+              className="mt-1 text-xs text-curtn-muted line-clamp-2 max-w-md"
+              title={item.showDescription}
+            >
+              {item.showDescription}
+            </div>
+          )}
+        </td>
+        <td className="px-3 py-3 align-top">
+          {item.venueName && (
+            <div className="text-curtn-cream">{item.venueName}</div>
+          )}
+          {item.stageName && (
+            <div className="text-xs text-curtn-muted/70">{item.stageName}</div>
+          )}
+          <div className="text-xs text-curtn-muted">
+            {formatDate(item.date)}
+            {item.time ? ` · ${item.time}` : ""}
           </div>
-        ))}
-      </div>
+        </td>
+        <td className="px-3 py-3 align-top">
+          {item.cast.length > 0 ? (
+            <div className="flex items-center gap-1">
+              <AvatarStack entries={item.cast} max={4} />
+              <span className="text-xs text-curtn-muted">
+                {item.cast.length}
+              </span>
+            </div>
+          ) : (
+            <span className="text-xs text-curtn-muted/40">—</span>
+          )}
+        </td>
+        <td className="px-3 py-3 align-top text-xs text-curtn-muted">
+          <div className="text-curtn-muted/80">{item.dataSource.name}</div>
+          <div className="text-curtn-muted/40">{timeSince(item.importedAt)}</div>
+        </td>
+        <td className="px-3 py-3 align-top">
+          <StatusPill status={item.status} />
+        </td>
+        <td className="px-2 py-3 align-top">
+          {item.ticketUrl && (
+            <a
+              href={item.ticketUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-curtn-muted hover:text-curtn-coral text-xs"
+              title={item.ticketUrl}
+              aria-label="Open source page"
+            >
+              ↗
+            </a>
+          )}
+        </td>
+        <td className="px-3 py-3 align-top">
+          {item.status === "pending" ? (
+            <div className="flex justify-end gap-1.5">
+              <Button
+                variant="tertiary"
+                onClick={onEdit}
+                disabled={Boolean(busy)}
+              >
+                Edit
+              </Button>
+              <Button
+                variant="tertiary"
+                onClick={onReject}
+                disabled={Boolean(busy)}
+              >
+                {busy === "reject" ? "..." : "Reject"}
+              </Button>
+              <Button
+                variant="primary"
+                onClick={onApprove}
+                disabled={Boolean(busy)}
+              >
+                {busy === "approve" ? "..." : "Approve"}
+              </Button>
+            </div>
+          ) : (
+            <div className="text-right text-xs text-curtn-muted/40">—</div>
+          )}
+        </td>
+      </tr>
+      {error && (
+        <tr className="border-t border-curtn-red/40 bg-curtn-red/5">
+          <td colSpan={9} className="px-3 py-2 text-xs text-curtn-red">
+            {error}
+          </td>
+        </tr>
+      )}
+      {item.error && !error && (
+        <tr className="border-t border-curtn-red/40 bg-curtn-red/5">
+          <td colSpan={9} className="px-3 py-2 text-xs text-curtn-red">
+            Last attempt: {item.error}
+          </td>
+        </tr>
+      )}
+      {isEditing && (
+        <EditDrawer
+          item={item}
+          fields={editFields}
+          onChange={onEditChange}
+          onCancel={onCancelEdit}
+          onSave={onSaveEdit}
+        />
+      )}
+    </>
+  );
+}
+
+function EditDrawer({
+  item,
+  fields,
+  onChange,
+  onCancel,
+  onSave,
+}: {
+  item: PendingImportNode;
+  fields: Record<string, string>;
+  onChange: (field: string, value: string) => void;
+  onCancel: () => void;
+  onSave: () => void;
+}) {
+  const fieldDefs: Array<{ key: string; label: string; type?: string }> = [
+    { key: "title", label: "Show Title" },
+    { key: "runTitle", label: "Run Title" },
+    { key: "venueName", label: "Venue" },
+    { key: "stageName", label: "Stage" },
+    { key: "companyName", label: "Company" },
+    { key: "date", label: "Date", type: "date" },
+    { key: "time", label: "Time" },
+    { key: "ticketUrl", label: "Ticket URL" },
+  ];
+  return (
+    <tr className="border-t border-curtn-dark bg-curtn-surface/40">
+      <td colSpan={9} className="px-4 py-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {fieldDefs.map((f) => (
+            <div key={f.key}>
+              <label className="block text-[10px] uppercase tracking-wider text-curtn-muted mb-1">
+                {f.label}
+              </label>
+              <input
+                type={f.type || "text"}
+                value={fields[f.key] || ""}
+                onChange={(e) => onChange(f.key, e.target.value)}
+                className="w-full border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
+              />
+            </div>
+          ))}
+          <div className="sm:col-span-2">
+            <label className="block text-[10px] uppercase tracking-wider text-curtn-muted mb-1">
+              Show Description
+            </label>
+            <textarea
+              value={fields.showDescription || ""}
+              onChange={(e) => onChange("showDescription", e.target.value)}
+              rows={3}
+              className="w-full border border-curtn-dark bg-curtn-deep px-3 py-2 text-sm text-curtn-cream focus:border-curtn-coral focus:outline-none"
+            />
+          </div>
+        </div>
+        <div className="mt-3 flex justify-end gap-2">
+          <Button variant="tertiary" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={onSave}>
+            Save
+          </Button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function StatusPill({ status }: { status: string }) {
+  const className =
+    status === "pending"
+      ? "bg-yellow-500/20 text-yellow-400"
+      : status === "approved"
+        ? "bg-green-500/20 text-green-400"
+        : "bg-curtn-red/20 text-curtn-red";
+  return (
+    <span
+      className={`inline-block px-2 py-0.5 text-[10px] uppercase tracking-wider ${className}`}
+    >
+      {status}
+    </span>
+  );
+}
+
+function AvatarStack({ entries, max }: { entries: CreditEntry[]; max: number }) {
+  const visible = entries.slice(0, max);
+  return (
+    <div className="flex -space-x-1">
+      {visible.map((entry, i) => (
+        <div key={`${entry.name}-${i}`} className="ring-1 ring-curtn-deep">
+          <Avatar name={entry.name} headshotUrl={entry.headshotUrl} />
+        </div>
+      ))}
     </div>
   );
 }
@@ -538,11 +688,12 @@ function Avatar({
   headshotUrl: string | null;
 }) {
   if (headshotUrl) {
+    // eslint-disable-next-line @next/next/no-img-element
     return (
       <img
         src={headshotUrl}
         alt=""
-        className="h-5 w-5 rounded-full object-cover"
+        className="h-6 w-6 rounded-full object-cover"
       />
     );
   }
@@ -554,7 +705,7 @@ function Avatar({
     .join("")
     .toUpperCase();
   return (
-    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-curtn-dark text-[9px] font-medium text-curtn-cream">
+    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-curtn-dark text-[9px] font-medium text-curtn-cream">
       {initials}
     </div>
   );

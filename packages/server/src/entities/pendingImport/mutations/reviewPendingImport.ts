@@ -319,7 +319,8 @@ export const approveAllPendingImports = mutationWithClientMutationId({
   name: 'approveAllPendingImports',
   description: 'Approve every pending import matching the optional filter (no age requirement)',
   inputFields: {
-    dataSourceId: { type: GraphQLString }
+    dataSourceId: { type: GraphQLString },
+    pendingImportIds: { type: new GraphQLList(GraphQLString) }
   },
   outputFields: {
     approvedCount: { type: GraphQLInt, resolve: r => r.approvedCount },
@@ -327,13 +328,16 @@ export const approveAllPendingImports = mutationWithClientMutationId({
     firstErrors: { type: new GraphQLList(GraphQLString), resolve: r => r.firstErrors },
     ...errorField
   },
-  mutateAndGetPayload: async ({ dataSourceId }, ctx) => {
+  mutateAndGetPayload: async ({ dataSourceId, pendingImportIds }, ctx) => {
     if (!ctx.user) return { error: 'Unauthorized' }
     const adminUser = await UserModel.findById(ctx.user.id)
     if (!adminUser?.isAdmin) return { error: 'Admin access required' }
 
     const query: Record<string, unknown> = { status: 'pending' }
     if (dataSourceId) query.dataSource = dataSourceId
+    if (pendingImportIds && pendingImportIds.length > 0) {
+      query._id = { $in: pendingImportIds }
+    }
     const items = await PendingImportModel.find(query)
 
     let approved = 0
