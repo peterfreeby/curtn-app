@@ -21,6 +21,8 @@ interface DataSourceNode {
   config: string | null;
   isActive: boolean;
   lastPolledAt: string | null;
+  healthStatus: string | null;
+  healthReason: string | null;
   createdAt: string;
 }
 
@@ -354,6 +356,14 @@ export default function DataSourcesPage() {
                       {hasTemplate(source.config) ? 'template' : 'no template'}
                     </span>
                   )}
+                  {source.healthStatus === 'needs-attention' && (
+                    <span
+                      className="shrink-0 rounded-full bg-amber-900/40 px-2 py-0.5 text-xs text-amber-300"
+                      title={source.healthReason || 'Template fields not populating reliably'}
+                    >
+                      needs attention
+                    </span>
+                  )}
                   <span
                     className={`shrink-0 h-2 w-2 rounded-full ${source.isActive ? "bg-green-500" : "bg-curtn-muted/30"}`}
                   />
@@ -401,6 +411,11 @@ export default function DataSourcesPage() {
                 {source.lastPolledAt && (
                   <p className="mt-0.5 text-xs text-curtn-muted/40">
                     Last polled: {new Date(source.lastPolledAt).toLocaleString()}
+                  </p>
+                )}
+                {source.healthStatus === 'needs-attention' && source.healthReason && (
+                  <p className="mt-0.5 text-xs text-amber-300/80">
+                    {source.healthReason}
                   </p>
                 )}
               </div>

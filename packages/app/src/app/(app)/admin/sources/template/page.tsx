@@ -67,6 +67,7 @@ export default function TemplateBuilderPage() {
   const [previewTexts, setPreviewTexts] = useState<Record<string, string>>({})
   const [useJsonLd, setUseJsonLd] = useState(false)
   const [jsonLdDetected, setJsonLdDetected] = useState(false)
+  const [jsonLdAutofilling, setJsonLdAutofilling] = useState(false)
   const [testResults, setTestResults] = useState<FlatRow[] | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [configLoaded, setConfigLoaded] = useState(false)
@@ -238,6 +239,70 @@ export default function TemplateBuilderPage() {
       ...(useJsonLd && { useJsonLd: true }),
     }
   }
+
+  // Enable JSON-LD extraction AND populate the tree with the fields that came back,
+  // so the admin can see what was auto-mapped instead of staring at an empty sidebar.
+  const handleUseJsonLd = useCallback(async () => {
+    if (!sampleUrl.trim()) return
+    setJsonLdAutofilling(true)
+    setMessage(null)
+    try {
+      const result = await testTemplate({
+        input: {
+          url: sampleUrl.trim(),
+          template: JSON.stringify({ version: 2, nodes: [], useJsonLd: true })
+        }
+      })
+      const data = result.data?.testParsingTemplate
+      if (data?.error) {
+        setMessage({ type: 'error', text: data.error })
+        return
+      }
+      const rows: FlatRow[] = data?.flatRows ? JSON.parse(data.flatRows) : []
+
+      // Collect every csvField that came back across all rows
+      const detectedFields = new Set<string>()
+      for (const row of rows) {
+        for (const [key, value] of Object.entries(row)) {
+          if (value !== undefined && value !== null && String(value).trim() !== '') {
+            detectedFields.add(key)
+          }
+        }
+      }
+
+      const existingFields = new Set<string>()
+      function collectExisting(tree: TemplateNodeUI[]) {
+        for (const node of tree) {
+          if (node.type === 'field') existingFields.add(node.csvField)
+          else if (node.type === 'container') collectExisting(node.children)
+        }
+      }
+      collectExisting(nodes)
+
+      const newFieldNodes: TemplateNodeUI[] = []
+      for (const csvField of detectedFields) {
+        if (existingFields.has(csvField)) continue
+        newFieldNodes.push({
+          type: 'field',
+          id: generateId(),
+          csvField,
+        })
+      }
+
+      setNodes(prev => [...prev, ...newFieldNodes])
+      setUseJsonLd(true)
+      setMessage({
+        type: 'success',
+        text: newFieldNodes.length > 0
+          ? `JSON-LD enabled — auto-added ${newFieldNodes.length} field${newFieldNodes.length === 1 ? '' : 's'}: ${[...detectedFields].join(', ')}`
+          : 'JSON-LD enabled'
+      })
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to read JSON-LD from page' })
+    } finally {
+      setJsonLdAutofilling(false)
+    }
+  }, [sampleUrl, nodes, testTemplate])
 
   // Load page
   const loadPage = useCallback(async () => {
@@ -437,14 +502,16 @@ export default function TemplateBuilderPage() {
         <div className="flex items-center justify-between bg-curtn-coral/10 border border-curtn-coral/30 rounded px-4 py-3">
           <div>
             <p className="text-sm font-medium text-curtn-cream">Structured event data detected</p>
-            <p className="text-xs text-curtn-muted">JSON-LD schema.org data available — auto-extract without manual selectors.</p>
+            <p className="text-xs text-curtn-muted">JSON-LD schema.org data available — auto-extract and pre-fill the template.</p>
           </div>
-          <Button variant="primary" size="sm" onClick={() => setUseJsonLd(true)}>Use It</Button>
+          <Button variant="primary" size="sm" onClick={handleUseJsonLd} disabled={jsonLdAutofilling}>
+            {jsonLdAutofilling ? 'Reading...' : 'Use It'}
+          </Button>
         </div>
       )}
       {useJsonLd && (
         <div className="flex items-center justify-between bg-green-900/20 border border-green-700/30 rounded px-4 py-3">
-          <p className="text-sm text-green-400">JSON-LD extraction enabled. CSS selectors below are fallbacks.</p>
+          <p className="text-sm text-green-400">JSON-LD extraction enabled. CSS selectors below act as fallbacks.</p>
           <Button variant="tertiary" size="sm" onClick={() => setUseJsonLd(false)}>Disable</Button>
         </div>
       )}

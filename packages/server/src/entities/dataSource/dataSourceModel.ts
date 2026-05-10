@@ -15,6 +15,12 @@ export interface IDataSource {
   consecutiveFailures: number
   cooldownHours?: number
   disabledReason?: string
+  // Rolling history of (filled fields / expected fields) per successful poll.
+  // When the trailing average drops below 0.5 with enough samples, the source
+  // is flagged needs-attention — usually a site redesign breaking selectors.
+  fillRateSamples?: number[]
+  healthStatus?: 'healthy' | 'needs-attention'
+  healthReason?: string
   isActive: boolean
   createdBy: Types.ObjectId
   createdAt: Date
@@ -67,6 +73,17 @@ const dataSourceSchema = new Schema<IDataSource>({
     type: Number
   },
   disabledReason: {
+    type: String
+  },
+  fillRateSamples: {
+    type: [Number],
+    default: undefined
+  },
+  healthStatus: {
+    type: String,
+    enum: ['healthy', 'needs-attention']
+  },
+  healthReason: {
     type: String
   },
   isActive: {

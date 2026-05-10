@@ -26,7 +26,7 @@ export function DesktopNav() {
           Browse
         </NavLink>
         <NavLink href="/upcoming" className="text-[12px] font-display font-semibold uppercase tracking-[0.5px]">
-          Upcoming
+          Map
         </NavLink>
         <NavLink href="/lists" className="text-[12px] font-display font-semibold uppercase tracking-[0.5px]">
           Lists

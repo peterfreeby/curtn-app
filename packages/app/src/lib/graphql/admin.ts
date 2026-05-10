@@ -70,6 +70,8 @@ export const DATA_SOURCE_LIST_QUERY = gql`
           config
           isActive
           lastPolledAt
+          healthStatus
+          healthReason
           createdAt
           associatedVenue
           associatedCompany

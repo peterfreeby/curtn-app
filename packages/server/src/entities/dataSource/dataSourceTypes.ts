@@ -56,6 +56,16 @@ export const dataSourceType = new GraphQLObjectType({
       type: GraphQLString,
       resolve: ds => ds.lastPolledAt?.toISOString()
     },
+    healthStatus: {
+      type: GraphQLString,
+      description: "'healthy' or 'needs-attention' based on recent template fill rates",
+      resolve: ds => ds.healthStatus || null
+    },
+    healthReason: {
+      type: GraphQLString,
+      description: 'Explanation when healthStatus is needs-attention',
+      resolve: ds => ds.healthReason || null
+    },
     isActive: {
       type: new GraphQLNonNull(GraphQLBoolean),
       resolve: ds => ds.isActive

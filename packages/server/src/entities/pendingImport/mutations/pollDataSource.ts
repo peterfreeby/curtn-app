@@ -7,6 +7,7 @@ import { PendingImportModel } from '../pendingImportModel'
 import { parseFeed, parseRssFeed, CleanupRules } from '../../../services/feedParser/parseFeed'
 import { ParsedEvent } from '../../../services/feedParser/shared'
 import { fetchPage, applyTemplate, ParsingTemplate } from '../../../services/pageFetcher'
+import { recordFillRate, computeFillRate } from '../../../services/pageFetcher/health'
 
 const MAX_PAGE_FETCHES_PER_POLL = 10
 const FETCH_DELAY_MS = 1000
@@ -152,6 +153,7 @@ export const pollDataSource = mutationWithClientMutationId({
         let totalCreated = 0
         let totalSkipped = 0
         let pagesFetched = 0
+        const allExtractedEvents: ParsedEvent[] = []
 
         for (const item of newItems) {
           if (pagesFetched >= MAX_PAGE_FETCHES_PER_POLL) break
@@ -166,6 +168,7 @@ export const pollDataSource = mutationWithClientMutationId({
             const events = applyTemplate(html, template, pageUrl)
 
             totalFound += events.length
+            allExtractedEvents.push(...events)
             const { created, skipped } = await createPendingImports(events, ds._id, rules, presets)
             totalCreated += created
             totalSkipped += skipped
@@ -186,6 +189,14 @@ export const pollDataSource = mutationWithClientMutationId({
           ds.fetchedUrls = ds.fetchedUrls.slice(-MAX_FETCHED_URLS)
         }
 
+        const fillRate = computeFillRate({ templateV1: template, v1Events: allExtractedEvents })
+        if (fillRate !== null) {
+          const health = recordFillRate(ds.fillRateSamples, fillRate)
+          ds.fillRateSamples = health.fillRateSamples
+          ds.healthStatus = health.healthStatus
+          ds.healthReason = health.healthReason
+        }
+
         ds.lastPolledAt = new Date()
         await ds.save()
 
@@ -203,6 +214,14 @@ export const pollDataSource = mutationWithClientMutationId({
           const events = applyTemplate(html, template, ds.url)
 
           const { created, skipped } = await createPendingImports(events, ds._id, rules, presets)
+
+          const fillRate = computeFillRate({ templateV1: template, v1Events: events })
+          if (fillRate !== null) {
+            const health = recordFillRate(ds.fillRateSamples, fillRate)
+            ds.fillRateSamples = health.fillRateSamples
+            ds.healthStatus = health.healthStatus
+            ds.healthReason = health.healthReason
+          }
 
           ds.lastPolledAt = new Date()
           await ds.save()
