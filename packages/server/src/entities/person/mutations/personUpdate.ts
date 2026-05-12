@@ -1,4 +1,4 @@
-import { GraphQLNonNull, GraphQLString } from 'graphql'
+import { GraphQLBoolean, GraphQLNonNull, GraphQLString } from 'graphql'
 import { mutationWithClientMutationId } from 'graphql-relay'
 import { personType } from '../personTypes'
 import { PersonModel } from '../personModel'
@@ -6,6 +6,8 @@ import { errorField } from '../../../graphql/errorField'
 import { canPerform } from '../../../permissions/canPerform'
 import { bumpForUnit } from '../../../services/claims/bumpClaimantActivity'
 import { writeAuditLog } from '../../../services/auditLog/writeAuditLog'
+import { createProposal } from '../../proposal/mutations/createProposal'
+import { computeUpdateDiff } from '../../../services/proposalDiff/computeUpdateDiff'
 
 export const personUpdate = mutationWithClientMutationId({
   name: 'personUpdate',
@@ -41,6 +43,14 @@ export const personUpdate = mutationWithClientMutationId({
       type: personType,
       resolve: response => response.person
     },
+    queued: {
+      type: GraphQLBoolean,
+      resolve: response => !!response.queued
+    },
+    proposalId: {
+      type: GraphQLString,
+      resolve: response => response.proposalId ?? null
+    },
     ...errorField
   },
   mutateAndGetPayload: async (input, ctx) => {
@@ -51,7 +61,7 @@ export const personUpdate = mutationWithClientMutationId({
       kind: 'Person',
       id: input.personId
     })
-    if (decision.mode !== 'auto-publish') {
+    if (decision.mode === 'denied') {
       return { error: decision.reason || 'Permission denied' }
     }
 
@@ -83,6 +93,18 @@ export const personUpdate = mutationWithClientMutationId({
 
       if (Object.keys(updates).length === 0) {
         return { person }
+      }
+
+      if (decision.mode === 'queue') {
+        const diff = computeUpdateDiff(person.toObject(), updates)
+        if (Object.keys(diff).length === 0) return { person }
+        const result = await createProposal({
+          target: { kind: 'Person', id: person._id },
+          proposer: { kind: 'User', userId: ctx.user.id, label: ctx.user.username },
+          diff,
+          submissionVersion: person.updatedAt,
+        })
+        return { queued: true, proposalId: result.proposalId, person }
       }
 
       const oldDoc = person.toObject()

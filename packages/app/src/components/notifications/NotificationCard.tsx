@@ -15,7 +15,12 @@ export type NotificationKind =
   | "transfer_accepted"
   | "transfer_declined"
   | "pre_expire_warning"
-  | "claim_expired";
+  | "claim_expired"
+  | "proposal_received"
+  | "proposal_approved"
+  | "proposal_declined"
+  | "proposal_timeout_warning"
+  | "proposal_timeout_auto_approved";
 
 export interface NotificationData {
   id: string;
@@ -29,6 +34,13 @@ const KIND_PATH_PREFIX: Record<string, string> = {
   venue: "/venues",
   productionCompany: "/companies",
   person: "/people",
+};
+
+// Phase 4 proposal kinds use the PascalCase target.kind from GraphQL.
+const PROPOSAL_TARGET_PATH_PREFIX: Record<string, string> = {
+  Venue: "/venues",
+  ProductionCompany: "/companies",
+  Person: "/people",
 };
 
 function timeSince(iso: string): string {
@@ -135,6 +147,70 @@ function renderBody(notification: NotificationData) {
         <p className="text-sm text-curtn-cream">
           Your claim on <span className="font-medium">{ctx.targetName ?? "a unit"}</span> has expired
           due to inactivity. It's been returned to the unclaimed pool.
+        </p>
+      );
+    }
+
+    case "proposal_received": {
+      const slug = ctx.targetSlug as string | undefined;
+      const path = ctx.targetKind && slug && PROPOSAL_TARGET_PATH_PREFIX[ctx.targetKind]
+        ? `${PROPOSAL_TARGET_PATH_PREFIX[ctx.targetKind]}/${slug}`
+        : null;
+      const author = ctx.proposerKind === "Scraper"
+        ? (ctx.proposerLabel ?? "Curtn scraper")
+        : (ctx.proposerLabel ? `@${ctx.proposerLabel}` : "Someone");
+      const isImport = !!ctx.isImport;
+      return (
+        <p className="text-sm text-curtn-cream">
+          <span className="font-medium">{author}</span> proposed {isImport ? "a new import" : "an edit"} to{" "}
+          {path ? (
+            <Link href={path} className="text-curtn-coral hover:underline font-medium">
+              {ctx.targetName ?? "a unit"}
+            </Link>
+          ) : (
+            <span className="font-medium">{ctx.targetName ?? "a unit"}</span>
+          )}
+          .{" "}
+          <Link href="/dashboard" className="text-curtn-coral hover:underline">Review →</Link>
+        </p>
+      );
+    }
+
+    case "proposal_approved": {
+      return (
+        <p className="text-sm text-curtn-cream">
+          Your proposed edit was approved.
+          {ctx.targetName ? <> Applied to <span className="font-medium">{ctx.targetName}</span>.</> : null}
+        </p>
+      );
+    }
+
+    case "proposal_declined": {
+      return (
+        <p className="text-sm text-curtn-cream">
+          Your proposed edit was declined.
+          {ctx.declineReason ? (
+            <span className="block mt-1 text-xs text-curtn-muted italic">Reason: {ctx.declineReason}</span>
+          ) : null}
+        </p>
+      );
+    }
+
+    case "proposal_timeout_warning": {
+      return (
+        <p className="text-sm text-curtn-cream">
+          A joint proposal on <span className="font-medium">{ctx.targetName ?? "a performance"}</span>{" "}
+          is waiting on your response. It will auto-approve in 4 more days if you don't act.{" "}
+          <Link href="/dashboard" className="text-curtn-coral hover:underline">Review →</Link>
+        </p>
+      );
+    }
+
+    case "proposal_timeout_auto_approved": {
+      return (
+        <p className="text-sm text-curtn-cream">
+          A joint proposal was auto-approved after 14 days without a second response.
+          {ctx.targetName ? <> Applied to <span className="font-medium">{ctx.targetName}</span>.</> : null}
         </p>
       );
     }

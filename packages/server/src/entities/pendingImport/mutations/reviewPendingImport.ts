@@ -13,12 +13,15 @@ import { PersonModel } from '../../person/personModel'
 import { CreditModel } from '../../credit/creditModel'
 import { ensureDefaultStage } from '../../stage/ensureDefaultStage'
 import { StageModel } from '../../stage/stageModel'
+import { DataSourceModel } from '../../dataSource/dataSourceModel'
+import { ProposalModel } from '../../proposal/proposalModel'
+import { createNotification } from '../../../services/notifications/createNotification'
 
 /**
  * Promotes a pending import into real Show/Run/Performance records.
  * Same find-or-create chain as CSV import.
  */
-async function promoteToRecords(pi: any, userId: string) {
+export async function promoteToRecords(pi: any, userId: string) {
   // 1. Find or create Show
   const titleRegex = new RegExp(`^${pi.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')
   let show = await ShowModel.findOne({ title: titleRegex })
@@ -191,6 +194,21 @@ async function promoteToRecords(pi: any, userId: string) {
   await createCredits(pi.crew, 'crew', 'Crew')
 }
 
+// Phase 4 bridge — returns the claimed Venue (if any) that this PendingImport
+// would land in. We only check the venue side for now — if the venue is
+// claimed-passive or claimed-synced, route through a Proposal instead of
+// applying directly.
+async function findClaimedVenueTarget(pi: any): Promise<{ id: any; name: string; slug?: string } | null> {
+  if (!pi.venueName?.trim()) return null
+  const venueSlug = pi.venueName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  const venue: any = await VenueModel.findOne({ slug: venueSlug }).select('_id name slug claimState claimedBy').lean()
+  if (!venue) return null
+  if (venue.claimState === 'claimed-passive' || venue.claimState === 'claimed-synced') {
+    return { id: venue._id, name: venue.name, slug: venue.slug }
+  }
+  return null
+}
+
 export const approvePendingImport = mutationWithClientMutationId({
   name: 'approvePendingImport',
   description: 'Approve a pending import and promote it to real records',
@@ -202,6 +220,15 @@ export const approvePendingImport = mutationWithClientMutationId({
       type: pendingImportType,
       resolve: r => r.pendingImport
     },
+    queued: {
+      type: GraphQLBoolean,
+      description: 'True when the PI was routed to a claimant Proposal instead of being promoted directly (Phase 4 scraper bridge).',
+      resolve: r => !!r.queued,
+    },
+    proposalId: {
+      type: GraphQLString,
+      resolve: r => r.proposalId ?? null,
+    },
     ...errorField
   },
   mutateAndGetPayload: async ({ pendingImportId }, ctx) => {
@@ -212,6 +239,65 @@ export const approvePendingImport = mutationWithClientMutationId({
     const pi = await PendingImportModel.findById(pendingImportId)
     if (!pi) return { error: 'Pending import not found' }
     if (pi.status !== 'pending') return { error: `Already ${pi.status}` }
+
+    // Phase 4 scraper bridge — if this PI would land in a claimed venue, route
+    // it through the proposal queue instead of writing directly.
+    const claimedVenue = await findClaimedVenueTarget(pi)
+    if (claimedVenue) {
+      const dataSource = pi.dataSource ? await DataSourceModel.findById(pi.dataSource).select('name url').lean() : null
+      const label = dataSource ? `Curtn (${dataSource.url || dataSource.name})` : 'Curtn (scraper)'
+
+      // We store a synthetic diff describing the import. Approval triggers
+      // promoteToRecords; we don't apply it via the generic applyProposalDiff.
+      const proposal = await ProposalModel.create({
+        target: { kind: 'Venue', id: claimedVenue.id },
+        proposer: {
+          kind: 'Scraper',
+          dataSourceId: pi.dataSource,
+          label,
+        },
+        diff: {
+          _pendingImport: {
+            new: {
+              title: pi.title,
+              date: pi.date,
+              time: pi.time,
+              stageName: pi.stageName,
+              companyName: pi.companyName,
+              ticketUrl: pi.ticketUrl,
+            }
+          }
+        },
+        submissionVersion: pi.updatedAt,
+        status: 'pending',
+        isJointStewardship: false,
+        approvals: [],
+        conflictsWithProposalIds: [],
+        pendingImportId: pi._id,
+      })
+
+      // Notify the venue claimant
+      const venueDoc: any = await VenueModel.findById(claimedVenue.id).select('claimedBy').lean()
+      if (venueDoc?.claimedBy) {
+        await createNotification({
+          recipient: venueDoc.claimedBy,
+          kind: 'proposal_received',
+          context: {
+            proposalId: proposal._id.toString(),
+            targetKind: 'Venue',
+            targetId: claimedVenue.id.toString(),
+            targetName: claimedVenue.name,
+            targetSlug: claimedVenue.slug,
+            proposerLabel: label,
+            proposerKind: 'Scraper',
+            isImport: true,
+          },
+        })
+      }
+
+      // PI stays pending — only the proposal acceptance promotes it.
+      return { pendingImport: pi, queued: true, proposalId: proposal._id.toString() }
+    }
 
     try {
       await promoteToRecords(pi, ctx.user.id)

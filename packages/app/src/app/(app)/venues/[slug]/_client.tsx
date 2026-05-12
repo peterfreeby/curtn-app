@@ -12,6 +12,7 @@ import { InlineEditor } from "@/components/admin/InlineEditor";
 import { EntityDataSourcesPanel } from "@/components/admin/EntityDataSourcesPanel";
 import { ClaimCTA } from "@/components/claim/ClaimCTA";
 import { EditHistory } from "@/components/auditLog/EditHistory";
+import { PendingProposalsStrip } from "@/components/proposals/PendingProposalsStrip";
 import { useAuth } from "@/lib/auth/useAuth";
 
 function decodeId(globalId: string): string {
@@ -76,6 +77,12 @@ export default function VenueDetailPage() {
         slug={venue.slug}
         name={venue.name}
         claimState={venue.claimState}
+      />
+
+      <PendingProposalsStrip
+        targetKind="Venue"
+        targetId={decodeId(venue.id)}
+        isClaimant={!!user && !!venue.claimedBy?.id && decodeId(venue.claimedBy.id) === user.id}
       />
 
       <AddToListButton itemId={venue.id} listType="venues" />

@@ -2,9 +2,11 @@ import { GraphQLNonNull, GraphQLString, GraphQLBoolean } from 'graphql'
 import { mutationWithClientMutationId } from 'graphql-relay'
 import { performanceType } from '../performanceTypes'
 import { PerformanceModel } from '../performanceModel'
-import { UserModel } from '../../user/userModel'
 import { errorField } from '../../../graphql/errorField'
 import { writeAuditLog } from '../../../services/auditLog/writeAuditLog'
+import { canPerform } from '../../../permissions/canPerform'
+import { createProposal } from '../../proposal/mutations/createProposal'
+import { computeUpdateDiff } from '../../../services/proposalDiff/computeUpdateDiff'
 
 export const performanceUpdate = mutationWithClientMutationId({
   name: 'performanceUpdate',
@@ -56,13 +58,26 @@ export const performanceUpdate = mutationWithClientMutationId({
       type: performanceType,
       resolve: response => response.performance
     },
+    queued: {
+      type: GraphQLBoolean,
+      resolve: response => !!response.queued
+    },
+    proposalId: {
+      type: GraphQLString,
+      resolve: response => response.proposalId ?? null
+    },
     ...errorField
   },
   mutateAndGetPayload: async (input, ctx) => {
     if (!ctx.user) return { error: 'Unauthorized' }
 
-    const adminUser = await UserModel.findById(ctx.user.id)
-    if (!adminUser?.isAdmin) return { error: 'Admin access required' }
+    const decision = await canPerform(ctx.user.id, 'performance.edit_date_time', {
+      kind: 'Performance',
+      id: input.performanceId,
+    })
+    if (decision.mode === 'denied') {
+      return { error: decision.reason || 'Permission denied' }
+    }
 
     try {
       const performance = await PerformanceModel.findById(input.performanceId)
@@ -91,6 +106,19 @@ export const performanceUpdate = mutationWithClientMutationId({
         return { performance }
       }
 
+      if (decision.mode === 'queue') {
+        const diff = computeUpdateDiff(performance.toObject(), updates)
+        if (Object.keys(diff).length === 0) return { performance }
+        const result = await createProposal({
+          target: { kind: 'Performance', id: performance._id },
+          proposer: { kind: 'User', userId: ctx.user.id, label: ctx.user.username },
+          diff,
+          submissionVersion: (performance as any).updatedAt,
+          isJointStewardship: !!decision.isJointStewardship,
+        })
+        return { queued: true, proposalId: result.proposalId, performance }
+      }
+
       const oldDoc = performance.toObject()
       const updated = await PerformanceModel.findByIdAndUpdate(input.performanceId, updates, { new: true })
       if (updated) {
@@ -99,7 +127,7 @@ export const performanceUpdate = mutationWithClientMutationId({
           author: { kind: 'User', userId: ctx.user.id },
           oldDoc,
           newDoc: updated.toObject(),
-          approvalSource: 'admin-override',
+          approvalSource: 'direct-publish',
         })
       }
       return { performance: updated }

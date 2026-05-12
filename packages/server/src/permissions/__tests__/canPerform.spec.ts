@@ -8,10 +8,10 @@ import { RunModel } from '../../entities/run/runModel'
 import { ShowModel } from '../../entities/show/showModel'
 import { PerformanceModel } from '../../entities/performance/performanceModel'
 
-// Phase 1 canPerform tests. Covers admin, claimant, denied, action mismatch, and
-// Performance joint-stewardship resolution (Phase 1: either claimant auto-publishes).
+// canPerform tests. Covers admin, claimant, denied, action mismatch, queue
+// routing (Phase 4) and Performance joint-stewardship resolution.
 
-describe('canPerform (Phase 1)', () => {
+describe('canPerform', () => {
   let adminUser: any
   let regularUser: any
   let claimantUser: any
@@ -90,18 +90,17 @@ describe('canPerform (Phase 1)', () => {
     })
   })
 
-  describe('denied (Phase 1: queueing not yet supported)', () => {
+  describe('denied / queue routing', () => {
     it('regular user denied on unclaimed venue', async () => {
       const venue = await makeVenue({ submittedBy: adminUser._id })
       const decision = await canPerform(regularUser._id.toString(), 'venue.edit_description', { kind: 'Venue', id: venue._id })
       expect(decision.mode).toBe('denied')
-      expect(decision.reason).toMatch(/queue/i)
     })
 
-    it('non-claimant denied on claimed venue', async () => {
+    it('non-claimant routes to queue on claimed venue (Phase 4)', async () => {
       const venue = await makeVenue({ submittedBy: adminUser._id, claimedBy: claimantUser._id, claimState: 'claimed-passive' })
       const decision = await canPerform(otherUser._id.toString(), 'venue.edit_description', { kind: 'Venue', id: venue._id })
-      expect(decision.mode).toBe('denied')
+      expect(decision.mode).toBe('queue')
     })
 
     it('denies on missing venue', async () => {
@@ -179,16 +178,20 @@ describe('canPerform (Phase 1)', () => {
       expect(decision.mode).toBe('auto-publish')
     })
 
-    it('non-claimant denied on Performance when both sides claimed by others', async () => {
+    it('non-claimant routes to joint queue on Performance when both sides claimed (Phase 4)', async () => {
+      const otherClaimantUser = await new UserModel({ firebaseUid: 'oc-uid', phoneNumber: '+15550000005', username: 'oc' }).save()
       const { performance } = await setupPerformance({
         venueClaimant: claimantUser._id,
-        companyClaimant: claimantUser._id,
+        companyClaimant: otherClaimantUser._id,
       })
       const decision = await canPerform(otherUser._id.toString(), 'performance.edit_date_time', {
         kind: 'Performance',
         id: performance._id,
       })
-      expect(decision.mode).toBe('denied')
+      expect(decision.mode).toBe('queue')
+      expect(decision.isJointStewardship).toBe(true)
+      expect(decision.jointClaimants?.venueClaimantId).toBe(claimantUser._id.toString())
+      expect(decision.jointClaimants?.companyClaimantId).toBe(otherClaimantUser._id.toString())
     })
 
     it('admin auto-publishes on Performance regardless', async () => {

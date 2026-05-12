@@ -25,6 +25,7 @@ import { notificationMutations } from '../entities/notification/mutations/notifi
 import { claimTransferMutations } from '../entities/claimTransfer/mutations/claimTransfer'
 import { auditLogMutations } from '../entities/auditLog/mutations/auditLog'
 import { removalRequestMutations } from '../entities/removalRequest/mutations/removalRequest'
+import { proposalMutations } from '../entities/proposal/mutations/proposal'
 
 export const mutation = new GraphQLObjectType({
   name: 'Mutation',
@@ -52,6 +53,7 @@ export const mutation = new GraphQLObjectType({
     ...notificationMutations,
     ...claimTransferMutations,
     ...auditLogMutations,
-    ...removalRequestMutations
+    ...removalRequestMutations,
+    ...proposalMutations
   }
 })

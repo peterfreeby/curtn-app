@@ -6,6 +6,8 @@ import { errorField } from '../../../graphql/errorField'
 import { canPerform } from '../../../permissions/canPerform'
 import { bumpForUnit } from '../../../services/claims/bumpClaimantActivity'
 import { writeAuditLog } from '../../../services/auditLog/writeAuditLog'
+import { createProposal } from '../../proposal/mutations/createProposal'
+import { computeUpdateDiff } from '../../../services/proposalDiff/computeUpdateDiff'
 
 export const venueUpdate = mutationWithClientMutationId({
   name: 'venueUpdate',
@@ -81,6 +83,16 @@ export const venueUpdate = mutationWithClientMutationId({
       type: venueType,
       resolve: response => response.venue
     },
+    queued: {
+      type: GraphQLBoolean,
+      description: 'True when the edit was queued as a Proposal instead of applied directly (Phase 4).',
+      resolve: response => !!response.queued
+    },
+    proposalId: {
+      type: GraphQLString,
+      description: 'ID of the Proposal created when queued.',
+      resolve: response => response.proposalId ?? null
+    },
     ...errorField
   },
   mutateAndGetPayload: async (input, ctx) => {
@@ -91,7 +103,7 @@ export const venueUpdate = mutationWithClientMutationId({
       kind: 'Venue',
       id: input.venueId
     })
-    if (decision.mode !== 'auto-publish') {
+    if (decision.mode === 'denied') {
       return { error: decision.reason || 'Permission denied' }
     }
 
@@ -127,6 +139,18 @@ export const venueUpdate = mutationWithClientMutationId({
 
       if (Object.keys(updates).length === 0) {
         return { venue }
+      }
+
+      if (decision.mode === 'queue') {
+        const diff = computeUpdateDiff(venue.toObject(), updates)
+        if (Object.keys(diff).length === 0) return { venue }
+        const result = await createProposal({
+          target: { kind: 'Venue', id: venue._id },
+          proposer: { kind: 'User', userId: ctx.user.id, label: ctx.user.username },
+          diff,
+          submissionVersion: venue.updatedAt,
+        })
+        return { queued: true, proposalId: result.proposalId, venue }
       }
 
       const oldDoc = venue.toObject()

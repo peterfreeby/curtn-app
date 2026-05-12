@@ -10,6 +10,7 @@ import { Icon } from "@/components/icons/Icons";
 import { EntityDataSourcesPanel } from "@/components/admin/EntityDataSourcesPanel";
 import { ClaimCTA } from "@/components/claim/ClaimCTA";
 import { EditHistory } from "@/components/auditLog/EditHistory";
+import { PendingProposalsStrip } from "@/components/proposals/PendingProposalsStrip";
 import { useAuth } from "@/lib/auth/useAuth";
 
 function decodeId(globalId: string): string {
@@ -72,6 +73,12 @@ export default function CompanyDetailPage() {
         slug={company.slug}
         name={company.name}
         claimState={company.claimState}
+      />
+
+      <PendingProposalsStrip
+        targetKind="ProductionCompany"
+        targetId={decodeId(company.id)}
+        isClaimant={!!user && !!company.claimedBy?.id && decodeId(company.claimedBy.id) === user.id}
       />
 
       {isAdmin && (

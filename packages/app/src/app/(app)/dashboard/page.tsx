@@ -7,11 +7,13 @@ import {
   MY_CLAIMS_QUERY,
   MY_CLAIM_REQUESTS_QUERY,
   MY_PENDING_TRANSFERS_QUERY,
+  MY_PENDING_PROPOSALS_QUERY,
   INITIATE_TRANSFER_MUTATION,
   RESPOND_TO_TRANSFER_MUTATION,
   PING_DASHBOARD_ACTIVITY_MUTATION,
 } from "@/lib/graphql/dashboard";
 import { useAuth } from "@/lib/auth/useAuth";
+import { ProposalCard, ProposalCardData } from "@/components/proposals/ProposalCard";
 
 // Claimant dashboard (Phase 2). Shows pending transfer requests, units I steward,
 // and a history of my claim requests.
@@ -76,6 +78,12 @@ function decodeId(globalId: string): string {
   return atob(globalId).split(":")[1];
 }
 
+// Same as decodeId; named to make the intent obvious where it's used for
+// conflict-set membership checks against raw ObjectId strings.
+function decodeIdRaw(globalId: string): string {
+  try { return atob(globalId).split(":")[1]; } catch { return globalId; }
+}
+
 function timeSince(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -119,6 +127,24 @@ export default function DashboardPage() {
     pause: !user,
   });
 
+  // Phase 4 — proposal queue. Polled every 30 seconds while the page is focused.
+  const [{ data: proposalsData, fetching: proposalsFetching }, refetchProposals] = useQuery({
+    query: MY_PENDING_PROPOSALS_QUERY,
+    pause: !user,
+    requestPolicy: "cache-and-network",
+  });
+
+  useEffect(() => {
+    if (!user) return;
+    let mounted = true;
+    const interval = setInterval(() => {
+      if (!mounted) return;
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      refetchProposals({ requestPolicy: "network-only" });
+    }, 30_000);
+    return () => { mounted = false; clearInterval(interval); };
+  }, [user?.id, refetchProposals]);
+
   const [{ fetching: initiatingTransfer }, executeInitiate] = useMutation(INITIATE_TRANSFER_MUTATION);
   const [{ fetching: respondingTransfer }, executeRespond] = useMutation(RESPOND_TO_TRANSFER_MUTATION);
   const [, executePing] = useMutation(PING_DASHBOARD_ACTIVITY_MUTATION);
@@ -148,6 +174,16 @@ export default function DashboardPage() {
   const pendingRequests = requests.filter((r) => r.status === "pending");
   const resolvedRequests = requests.filter((r) => r.status !== "pending");
   const pendingTransfers: MyPendingTransfer[] = transfersData?.myPendingTransfers ?? [];
+  const pendingProposals: ProposalCardData[] = proposalsData?.myPendingProposals ?? [];
+
+  // Group conflicting proposals together at the top of the queue.
+  const conflictedIds = new Set(
+    pendingProposals.flatMap((p) => p.conflictsWithProposalIds ?? [])
+  );
+  const conflicting = pendingProposals.filter((p) =>
+    conflictedIds.has(decodeIdRaw(p.id)) || (p.conflictsWithProposalIds ?? []).length > 0
+  );
+  const nonConflicting = pendingProposals.filter((p) => !conflicting.includes(p));
 
   const loading = claimsFetching || requestsFetching || transfersFetching;
 
@@ -219,6 +255,37 @@ export default function DashboardPage() {
         <div className="flex justify-center py-8">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-curtn-muted/30 border-t-curtn-coral" />
         </div>
+      )}
+
+      {/* Pending edits (Phase 4) */}
+      {!loading && pendingProposals.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-xs uppercase tracking-widest text-curtn-coral">Pending edits</h2>
+          {conflicting.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-[11px] uppercase tracking-widest text-yellow-300/80">Conflicts — pick one</p>
+              {conflicting.map((p) => (
+                <ProposalCard
+                  key={p.id}
+                  proposal={p}
+                  highlightConflict
+                  onActionDone={() => refetchProposals({ requestPolicy: "network-only" })}
+                />
+              ))}
+            </div>
+          )}
+          {nonConflicting.length > 0 && (
+            <div className="space-y-3">
+              {nonConflicting.map((p) => (
+                <ProposalCard
+                  key={p.id}
+                  proposal={p}
+                  onActionDone={() => refetchProposals({ requestPolicy: "network-only" })}
+                />
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {/* Pending received transfers */}

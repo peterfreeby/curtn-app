@@ -75,6 +75,86 @@ export const MY_CLAIMS_QUERY = gql`
   }
 `;
 
+// Phase 4 — Proposal queue.
+
+export const MY_PENDING_PROPOSALS_QUERY = gql`
+  query MyPendingProposals($authorType: String, $targetKind: String, $sinceDays: Int) {
+    myPendingProposals(authorType: $authorType, targetKind: $targetKind, sinceDays: $sinceDays) {
+      id
+      diffJson
+      submissionVersion
+      status
+      isJointStewardship
+      firstApprovalAt
+      conflictsWithProposalIds
+      createdAt
+      target {
+        kind
+        targetId
+        name
+        slug
+      }
+      proposer {
+        kind
+        label
+        user {
+          id
+          username
+          fullName
+        }
+      }
+      approvals {
+        userId
+        role
+        approvedAt
+      }
+    }
+  }
+`;
+
+export const PENDING_PROPOSALS_FOR_TARGET_QUERY = gql`
+  query PendingProposalsForTarget($targetKind: String!, $targetId: String!) {
+    pendingProposalsForTarget(targetKind: $targetKind, targetId: $targetId) {
+      id
+      diffJson
+      isJointStewardship
+      firstApprovalAt
+      conflictsWithProposalIds
+      createdAt
+      target { kind targetId name slug }
+      proposer {
+        kind
+        label
+        user { id username fullName }
+      }
+      approvals { userId role approvedAt }
+    }
+  }
+`;
+
+export const APPROVE_PROPOSAL_MUTATION = gql`
+  mutation ApproveProposal($input: approveProposalInput!) {
+    approveProposal(input: $input) {
+      proposal {
+        id
+        status
+        approvals { userId role approvedAt }
+      }
+      applied
+      error
+    }
+  }
+`;
+
+export const DECLINE_PROPOSAL_MUTATION = gql`
+  mutation DeclineProposal($input: declineProposalInput!) {
+    declineProposal(input: $input) {
+      proposal { id status }
+      error
+    }
+  }
+`;
+
 export const MY_CLAIM_REQUESTS_QUERY = gql`
   query MyClaimRequests {
     myClaimRequests {

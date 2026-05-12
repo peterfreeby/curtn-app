@@ -14,6 +14,11 @@ export type NotificationKind =
   | 'transfer_declined'
   | 'pre_expire_warning'
   | 'claim_expired'
+  | 'proposal_received'
+  | 'proposal_approved'
+  | 'proposal_declined'
+  | 'proposal_timeout_warning'
+  | 'proposal_timeout_auto_approved'
 
 export interface INotification {
   recipient: Types.ObjectId
@@ -41,6 +46,11 @@ const notificationSchema = new Schema<INotification>({
       'transfer_declined',
       'pre_expire_warning',
       'claim_expired',
+      'proposal_received',
+      'proposal_approved',
+      'proposal_declined',
+      'proposal_timeout_warning',
+      'proposal_timeout_auto_approved',
     ]
   },
   context: {

@@ -1,4 +1,4 @@
-import { GraphQLNonNull, GraphQLString } from 'graphql'
+import { GraphQLBoolean, GraphQLNonNull, GraphQLString } from 'graphql'
 import { mutationWithClientMutationId } from 'graphql-relay'
 import { productionCompanyType } from '../productionCompanyTypes'
 import { ProductionCompanyModel } from '../productionCompanyModel'
@@ -6,6 +6,8 @@ import { errorField } from '../../../graphql/errorField'
 import { canPerform } from '../../../permissions/canPerform'
 import { bumpForUnit } from '../../../services/claims/bumpClaimantActivity'
 import { writeAuditLog } from '../../../services/auditLog/writeAuditLog'
+import { createProposal } from '../../proposal/mutations/createProposal'
+import { computeUpdateDiff } from '../../../services/proposalDiff/computeUpdateDiff'
 
 export const productionCompanyUpdate = mutationWithClientMutationId({
   name: 'productionCompanyUpdate',
@@ -41,6 +43,14 @@ export const productionCompanyUpdate = mutationWithClientMutationId({
       type: productionCompanyType,
       resolve: response => response.productionCompany
     },
+    queued: {
+      type: GraphQLBoolean,
+      resolve: response => !!response.queued
+    },
+    proposalId: {
+      type: GraphQLString,
+      resolve: response => response.proposalId ?? null
+    },
     ...errorField
   },
   mutateAndGetPayload: async (input, ctx) => {
@@ -51,7 +61,7 @@ export const productionCompanyUpdate = mutationWithClientMutationId({
       kind: 'ProductionCompany',
       id: input.productionCompanyId
     })
-    if (decision.mode !== 'auto-publish') {
+    if (decision.mode === 'denied') {
       return { error: decision.reason || 'Permission denied' }
     }
 
@@ -82,6 +92,18 @@ export const productionCompanyUpdate = mutationWithClientMutationId({
 
       if (Object.keys(updates).length === 0) {
         return { productionCompany: company }
+      }
+
+      if (decision.mode === 'queue') {
+        const diff = computeUpdateDiff(company.toObject(), updates)
+        if (Object.keys(diff).length === 0) return { productionCompany: company }
+        const result = await createProposal({
+          target: { kind: 'ProductionCompany', id: company._id },
+          proposer: { kind: 'User', userId: ctx.user.id, label: ctx.user.username },
+          diff,
+          submissionVersion: company.updatedAt,
+        })
+        return { queued: true, proposalId: result.proposalId, productionCompany: company }
       }
 
       const oldDoc = company.toObject()

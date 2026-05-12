@@ -9,9 +9,11 @@ import { RunModel } from '../entities/run/runModel'
 
 // Central permission gate for every edit on a claimable unit.
 //
-// Phase 1 scope: admin and claimant auto-publish; everything else denied.
-// Future phases extend this function (without changing the signature):
-//   - Phase 4: returns mode: 'queue' for proposals instead of denying
+// Phase 1: admin and claimant auto-publish; everything else denied.
+// Phase 4 (live): non-claimant on a claimed record routes to the proposal
+//                 queue via `mode: 'queue'`. Performance routes to a joint-
+//                 stewardship queue when both venue + company claimants exist.
+// Future phases:
 //   - Phase 5: trusted editor + 1-hop cascade checks
 //   - Phase 7: anti-abuse layers (rate limits, autoconfirmed gate, blocks)
 
@@ -28,6 +30,12 @@ export interface CanPerformDecision {
   allowed: boolean
   mode: CanPerformMode
   reason?: string
+  // Phase 4 — populated when mode is 'queue' on Performance with two distinct claimants.
+  isJointStewardship?: boolean
+  jointClaimants?: {
+    venueClaimantId?: string
+    companyClaimantId?: string
+  }
 }
 
 export async function canPerform(
@@ -46,17 +54,23 @@ export async function canPerform(
   const user = await UserModel.findById(userId).select('isAdmin').lean()
   if (user?.isAdmin) return autoPublish()
 
-  // Performance: joint stewardship resolves to the venue claimant + run's productionCompany claimant.
-  // Phase 1 lets either claimant auto-publish. Phase 4 introduces unanimous-with-timeout.
+  // Performance: resolves to the venue claimant + run's productionCompany claimant.
   if (unitRef.kind === 'Performance') {
     return await canPerformOnPerformance(userId, unitRef.id)
   }
 
-  // Venue / ProductionCompany / Person: claimant auto-publishes.
+  // Venue / ProductionCompany / Person.
   const claimedBy = await fetchClaimedBy(unitRef.kind, unitRef.id)
-  if (claimedBy && claimedBy.toString() === userId) return autoPublish()
 
-  return denied('Queueing not yet supported (Phase 4)')
+  // Unclaimed unit: only admins direct-publish in Phase 1. Phase 4 still routes
+  // non-admin edits on unclaimed records to denied until the "anyone can edit
+  // unclaimed records" mechanic ships in a later phase.
+  if (!claimedBy) return denied('Only admin can edit unclaimed records (Phase 1 scope)')
+
+  if (claimedBy.toString() === userId) return autoPublish()
+
+  // Non-claimant on a claimed record → queue (Phase 4).
+  return queue()
 }
 
 async function canPerformOnPerformance(
@@ -71,14 +85,39 @@ async function canPerformOnPerformance(
 
   const [venue, company] = await Promise.all([
     VenueModel.findById(performance.venueId).select('claimedBy').lean(),
-    ProductionCompanyModel.findById(run.productionCompany).select('claimedBy').lean(),
+    run.productionCompany
+      ? ProductionCompanyModel.findById(run.productionCompany).select('claimedBy').lean()
+      : Promise.resolve(null),
   ])
 
-  const isVenueClaimant = venue?.claimedBy?.toString() === userId
-  const isCompanyClaimant = company?.claimedBy?.toString() === userId
+  const venueClaimantId = venue?.claimedBy?.toString() ?? undefined
+  const companyClaimantId = company?.claimedBy?.toString() ?? undefined
 
+  const isVenueClaimant = !!venueClaimantId && venueClaimantId === userId
+  const isCompanyClaimant = !!companyClaimantId && companyClaimantId === userId
+
+  // Neither side claimed → denied (matches Phase 1 unclaimed-record behavior).
+  if (!venueClaimantId && !companyClaimantId) {
+    return denied('Only admin can edit unclaimed records (Phase 1 scope)')
+  }
+
+  // Phase 4: if the editor is one of the claimants, auto-publish (still
+  // unanimous because the other side gets notified via proposal? — no:
+  // claimants editing their own units bypass the queue per scoping doc.
+  // Joint-mode only triggers when a non-claimant submits an edit).
   if (isVenueClaimant || isCompanyClaimant) return autoPublish()
-  return denied('Queueing not yet supported (Phase 4)')
+
+  // Non-claimant editing a Performance: queue. Mark joint if both sides have
+  // claimants; single-side joint still uses queue mode (the lone claimant
+  // approves alone).
+  const isJoint = !!venueClaimantId && !!companyClaimantId
+  return queue({
+    isJointStewardship: isJoint,
+    jointClaimants: {
+      venueClaimantId,
+      companyClaimantId,
+    },
+  })
 }
 
 async function fetchClaimedBy(
@@ -102,6 +141,10 @@ async function fetchClaimedBy(
 
 function autoPublish(): CanPerformDecision {
   return { allowed: true, mode: 'auto-publish' }
+}
+
+function queue(extra: Pick<CanPerformDecision, 'isJointStewardship' | 'jointClaimants'> = {}): CanPerformDecision {
+  return { allowed: true, mode: 'queue', ...extra }
 }
 
 function denied(reason: string): CanPerformDecision {

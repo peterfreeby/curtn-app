@@ -8,6 +8,7 @@ import { PersonCredits } from "@/components/people/PersonCredits";
 import { ClaimPersonButton } from "@/components/people/ClaimPersonButton";
 import { AddToListButton } from "@/components/lists/AddToListButton";
 import { EditHistory } from "@/components/auditLog/EditHistory";
+import { PendingProposalsStrip } from "@/components/proposals/PendingProposalsStrip";
 import { useAuth } from "@/lib/auth/useAuth";
 
 function decodeId(globalId: string): string {
@@ -71,6 +72,12 @@ export default function PersonDetailPage() {
           onClaimed={() => reexecute({ requestPolicy: "network-only" })}
         />
       </div>
+
+      <PendingProposalsStrip
+        targetKind="Person"
+        targetId={decodeId(person.id)}
+        isClaimant={!!user && !!person.claimedBy?.id && decodeId(person.claimedBy.id) === user.id}
+      />
 
       <PersonCredits
         castCredits={person.castCredits ?? []}

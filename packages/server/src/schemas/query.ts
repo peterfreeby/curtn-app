@@ -22,6 +22,7 @@ import { notificationQueries } from '../entities/notification/queries/queries'
 import { claimTransferQueries } from '../entities/claimTransfer/queries/queries'
 import { auditLogQueries } from '../entities/auditLog/queries/queries'
 import { removalRequestQueries } from '../entities/removalRequest/queries/queries'
+import { proposalQueries } from '../entities/proposal/queries/queries'
 import { nodeField, nodesField } from '../graphql/nodeInterface'
 
 export const query = new GraphQLObjectType({
@@ -51,6 +52,7 @@ export const query = new GraphQLObjectType({
     ...claimTransferQueries,
     ...auditLogQueries,
     ...removalRequestQueries,
+    ...proposalQueries,
     node: nodeField,
     nodes: nodesField
   })
