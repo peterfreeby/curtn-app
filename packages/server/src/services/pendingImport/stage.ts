@@ -1,4 +1,6 @@
 import { PendingImportModel } from '../../entities/pendingImport/pendingImportModel'
+import { ShadowImportModel } from '../../entities/shadowImport/shadowImportModel'
+import { VenueModel } from '../../entities/venue/venueModel'
 import { PERFORMANCE_TYPES } from '../../entities/show/showModel'
 import type { CsvRowInput } from '../importEngine'
 
@@ -10,6 +12,19 @@ export interface StageOptions {
 export interface StageResult {
   staged: number
   skipped: number
+  shadowed: number
+}
+
+// Phase 6 — when a scraped event lands in a venue that's claimed-synced
+// healthy, the claimant's feed is authoritative. Write to ShadowImport so the
+// data is preserved without polluting the public record. The shadow log
+// becomes informative if the feed later goes stale and reverts.
+async function venueIsClaimedSyncedHealthy(venueName: string | undefined): Promise<boolean> {
+  if (!venueName?.trim()) return false
+  const venueSlug = venueName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  const venue = await VenueModel.findOne({ slug: venueSlug }).select('claimState syncHealth').lean()
+  if (!venue) return false
+  return venue.claimState === 'claimed-synced' && venue.syncHealth === 'healthy'
 }
 
 function parseDate(s?: string): Date | undefined {
@@ -67,6 +82,7 @@ export async function stageRowsAsPendingImports(
   const groups = groupRowsByEvent(rows)
   let staged = 0
   let skipped = 0
+  let shadowed = 0
 
   for (const group of groups) {
     const head = group[0]
@@ -75,7 +91,9 @@ export async function stageRowsAsPendingImports(
       continue
     }
 
-    if (opts.dedupe !== false) {
+    const goesToShadow = await venueIsClaimedSyncedHealthy(head.venueName)
+
+    if (opts.dedupe !== false && !goesToShadow) {
       const date = parseDate(head.date)
       const titleTrim = head.title.trim()
       const venueTrim = head.venueName?.trim()
@@ -121,9 +139,8 @@ export async function stageRowsAsPendingImports(
       else cast.push(entry)
     }
 
-    await new PendingImportModel({
+    const payload = {
       dataSource: opts.dataSourceId,
-      status: 'pending',
       title: head.title.trim(),
       runTitle: head.runTitle?.trim() || undefined,
       showDescription: head.showDescription?.trim() || undefined,
@@ -146,9 +163,22 @@ export async function stageRowsAsPendingImports(
       // directly instead of using the subset-fields path in promoteToRecords.
       rawData: { csvRows: group },
       importedAt: new Date()
-    }).save()
-    staged++
+    }
+
+    if (goesToShadow) {
+      await new ShadowImportModel({
+        ...payload,
+        purpose: 'shadow',
+      }).save()
+      shadowed++
+    } else {
+      await new PendingImportModel({
+        ...payload,
+        status: 'pending',
+      }).save()
+      staged++
+    }
   }
 
-  return { staged, skipped }
+  return { staged, skipped, shadowed }
 }

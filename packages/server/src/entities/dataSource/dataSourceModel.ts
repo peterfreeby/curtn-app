@@ -3,6 +3,10 @@ import mongoose, { Schema, Types } from 'mongoose'
 export interface IDataSource {
   name: string
   type: 'manual' | 'csv' | 'rss' | 'ical' | 'api' | 'web' | 'url' | 'scraper'
+  // Phase 6 — 'scraper' = admin-managed, drives PendingImport / ShadowImport.
+  // 'claimant-sync' = claimant-owned, drives runSync directly against the
+  // claimed record and routes conflicts to the Phase 4 proposal queue.
+  purpose: 'scraper' | 'claimant-sync'
   url?: string
   config: Record<string, any>
   associatedVenue?: Types.ObjectId
@@ -37,6 +41,13 @@ const dataSourceSchema = new Schema<IDataSource>({
     type: String,
     required: true,
     enum: ['manual', 'csv', 'rss', 'ical', 'api', 'web', 'url', 'scraper']
+  },
+  purpose: {
+    type: String,
+    enum: ['scraper', 'claimant-sync'],
+    default: 'scraper',
+    index: true,
+    required: true
   },
   url: {
     type: String,

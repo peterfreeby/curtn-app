@@ -24,7 +24,13 @@ export type NotificationKind =
   | "proposal_timeout_auto_approved"
   | "trust_granted"
   | "trust_revoked"
-  | "reciprocity_offered";
+  | "reciprocity_offered"
+  | "sync_connected"
+  | "sync_conflict_detected"
+  | "sync_stale_alert"
+  | "sync_recovered"
+  | "sync_reverted_to_passive"
+  | "sync_disconnected";
 
 export interface NotificationData {
   id: string;
@@ -254,6 +260,78 @@ function renderBody(notification: NotificationData) {
     case "reciprocity_offered":
       // Rendered by the dedicated card below — surfaces an Accept button.
       return null;
+
+    case "sync_connected": {
+      const slug = ctx.targetSlug as string | undefined;
+      const path = slug ? `/venues/${slug}` : null;
+      return (
+        <p className="text-sm text-curtn-cream">
+          Sync source connected to{" "}
+          {path ? (
+            <Link href={path} className="text-curtn-coral hover:underline font-medium">
+              {ctx.targetName ?? "your venue"}
+            </Link>
+          ) : (
+            <span className="font-medium">{ctx.targetName ?? "your venue"}</span>
+          )}
+          . Curtn will pull updates from your {ctx.feedType?.toUpperCase?.() ?? "feed"} automatically.
+        </p>
+      );
+    }
+
+    case "sync_conflict_detected": {
+      return (
+        <p className="text-sm text-curtn-cream">
+          Your sync feed proposed a change to <span className="font-medium">{ctx.field ?? "a field"}</span> that
+          conflicts with a manual edit.{" "}
+          <Link href="/dashboard" className="text-curtn-coral hover:underline">Review →</Link>
+        </p>
+      );
+    }
+
+    case "sync_stale_alert": {
+      const slug = ctx.targetSlug as string | undefined;
+      const path = slug ? `/venues/${slug}` : null;
+      return (
+        <p className="text-sm text-curtn-cream">
+          Your sync feed on{" "}
+          {path ? (
+            <Link href={path} className="text-curtn-coral hover:underline font-medium">
+              {ctx.targetName ?? "your venue"}
+            </Link>
+          ) : (
+            <span className="font-medium">{ctx.targetName ?? "your venue"}</span>
+          )}{" "}
+          hasn't published in 3 weeks. Fix the feed, switch sources, or have us take over.
+        </p>
+      );
+    }
+
+    case "sync_recovered": {
+      return (
+        <p className="text-sm text-curtn-cream">
+          Your sync feed on <span className="font-medium">{ctx.targetName ?? "your venue"}</span> is publishing again. Healthy.
+        </p>
+      );
+    }
+
+    case "sync_reverted_to_passive": {
+      return (
+        <p className="text-sm text-curtn-cream">
+          Your sync feed on <span className="font-medium">{ctx.targetName ?? "your venue"}</span> was silent for 6 weeks. We've
+          turned sync off and resumed scraper publishing. Reconnect a feed anytime from{" "}
+          <Link href="/dashboard" className="text-curtn-coral hover:underline">your dashboard</Link>.
+        </p>
+      );
+    }
+
+    case "sync_disconnected": {
+      return (
+        <p className="text-sm text-curtn-cream">
+          You disconnected sync from <span className="font-medium">{ctx.targetName ?? "your venue"}</span>. The unit is back to passive.
+        </p>
+      );
+    }
 
     default:
       return <p className="text-sm text-curtn-muted">Notification: {notification.kind}</p>;

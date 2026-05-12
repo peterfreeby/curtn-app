@@ -5,5 +5,20 @@ import { csvImport } from './csvImport'
 import { wikidataSearch, wikidataImport } from './wikidataImport'
 import { testParsingTemplate } from './testParsingTemplate'
 import { scrapeUrl } from './scrapeUrl'
+import { createClaimantSync } from './createClaimantSync'
+import { disconnectClaimantSync } from './disconnectClaimantSync'
+import { testSyncSource } from './testSyncSource'
 
-export const dataSourceMutations = { dataSourceCreate, dataSourceUpdate, dataSourceDelete, csvImport, wikidataSearch, wikidataImport, testParsingTemplate, scrapeUrl }
+export const dataSourceMutations = {
+  dataSourceCreate,
+  dataSourceUpdate,
+  dataSourceDelete,
+  csvImport,
+  wikidataSearch,
+  wikidataImport,
+  testParsingTemplate,
+  scrapeUrl,
+  createClaimantSync,
+  disconnectClaimantSync,
+  testSyncSource,
+}

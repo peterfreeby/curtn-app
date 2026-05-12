@@ -1,0 +1,19 @@
+name: Sync Runner Tick
+
+on:
+  schedule:
+    # Every 10 minutes. RSS feeds run on a 30m cooldown, iCal on 1h; the cron
+    # only fires runs that are actually due, so this is safe to over-poll.
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit sync-runner worker
+        run: |
+          curl -fsS \
+            --max-time 65 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/sync-runner"

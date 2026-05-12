@@ -22,6 +22,12 @@ export type NotificationKind =
   | 'trust_granted'
   | 'trust_revoked'
   | 'reciprocity_offered'
+  | 'sync_connected'
+  | 'sync_conflict_detected'
+  | 'sync_stale_alert'
+  | 'sync_recovered'
+  | 'sync_reverted_to_passive'
+  | 'sync_disconnected'
 
 export interface INotification {
   recipient: Types.ObjectId
@@ -57,6 +63,12 @@ const notificationSchema = new Schema<INotification>({
       'trust_granted',
       'trust_revoked',
       'reciprocity_offered',
+      'sync_connected',
+      'sync_conflict_detected',
+      'sync_stale_alert',
+      'sync_recovered',
+      'sync_reverted_to_passive',
+      'sync_disconnected',
     ]
   },
   context: {
