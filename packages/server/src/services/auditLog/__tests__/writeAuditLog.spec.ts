@@ -207,7 +207,6 @@ describe('writeAuditLog + edit-history mutations (Phase 3)', () => {
         null,
         { targetKind: 'Venue', targetId: venue._id.toString(), first: 10 },
         { user: { id: otherUser._id.toString() } },
-        null as any,
       )
       const publicRow = publicResult.edges.find((e: any) => e.node._id.toString() === entry!._id.toString())
       expect(publicRow).toBeTruthy()
@@ -219,7 +218,6 @@ describe('writeAuditLog + edit-history mutations (Phase 3)', () => {
         null,
         { targetKind: 'Venue', targetId: venue._id.toString(), first: 10 },
         { user: { id: adminUser._id.toString() } },
-        null as any,
       )
       const adminRow = adminResult.edges.find((e: any) => e.node._id.toString() === entry!._id.toString())
       expect(adminRow.node.diff.description).toBeDefined()
