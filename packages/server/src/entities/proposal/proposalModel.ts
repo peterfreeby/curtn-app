@@ -16,7 +16,7 @@ export type ProposalTargetKind =
   | 'Performance'
   | 'Stage'
 
-export type ProposalProposerKind = 'User' | 'Scraper'
+export type ProposalProposerKind = 'User' | 'Scraper' | 'SyncFeed'
 
 export type ProposalStatus =
   | 'pending'
@@ -98,7 +98,7 @@ const proposalSchema = new Schema<IProposal>({
   proposer: {
     kind: {
       type: String,
-      enum: ['User', 'Scraper'],
+      enum: ['User', 'Scraper', 'SyncFeed'],
       required: true,
     },
     userId: { type: Schema.Types.ObjectId, ref: 'user', default: null },

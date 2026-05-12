@@ -23,6 +23,15 @@ export const dataSourceType = new GraphQLObjectType({
       type: new GraphQLNonNull(GraphQLString),
       resolve: ds => ds.type
     },
+    purpose: {
+      type: new GraphQLNonNull(GraphQLString),
+      description: "'scraper' or 'claimant-sync'",
+      resolve: ds => ds.purpose ?? 'scraper'
+    },
+    lastSuccessAt: {
+      type: GraphQLString,
+      resolve: ds => ds.lastSuccessAt?.toISOString()
+    },
     url: {
       type: GraphQLString,
       resolve: ds => ds.url

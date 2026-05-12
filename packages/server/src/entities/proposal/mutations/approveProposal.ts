@@ -119,10 +119,17 @@ export async function applyProposalDiff(
   const updated = await Model.findByIdAndUpdate(proposal.target.id, updates, { new: true })
   if (!updated) return { ok: false, error: 'Target update returned null' }
 
+  // Map Proposal proposer.kind → AuditLog author.kind. The two enums share
+  // 'User' and 'Scraper'; Phase 6 adds 'SyncFeed' to both.
+  const auditAuthorKind: 'User' | 'Scraper' | 'SyncFeed' =
+    proposal.proposer.kind === 'Scraper' ? 'Scraper'
+      : proposal.proposer.kind === 'SyncFeed' ? 'SyncFeed'
+      : 'User'
+
   await writeAuditLog({
     target: { kind: proposal.target.kind, id: updated._id },
     author: {
-      kind: proposal.proposer.kind === 'Scraper' ? 'Scraper' : 'User',
+      kind: auditAuthorKind,
       userId: proposal.proposer.userId ?? null,
       dataSourceId: proposal.proposer.dataSourceId ?? null,
       label: proposal.proposer.label,

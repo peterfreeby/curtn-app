@@ -1,0 +1,19 @@
+name: Sync Health Check
+
+on:
+  schedule:
+    # Daily at 10:00 UTC. Stale + revert thresholds are 3 + 6 weeks — daily
+    # is plenty of resolution.
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit sync-health-check worker
+        run: |
+          curl -fsS \
+            --max-time 65 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/sync-health-check"

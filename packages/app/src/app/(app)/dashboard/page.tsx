@@ -12,8 +12,13 @@ import {
   RESPOND_TO_TRANSFER_MUTATION,
   PING_DASHBOARD_ACTIVITY_MUTATION,
 } from "@/lib/graphql/dashboard";
+import {
+  MY_CLAIMANT_SYNCS_QUERY,
+  DISCONNECT_CLAIMANT_SYNC_MUTATION,
+} from "@/lib/graphql/sync";
 import { useAuth } from "@/lib/auth/useAuth";
 import { ProposalCard, ProposalCardData } from "@/components/proposals/ProposalCard";
+import { ConnectSyncSourceModal } from "@/components/sync/ConnectSyncSourceModal";
 
 // Claimant dashboard (Phase 2). Shows pending transfer requests, units I steward,
 // and a history of my claim requests.
@@ -106,6 +111,20 @@ function resolveTarget(req: MyClaimRequest) {
   return null;
 }
 
+interface ClaimantSync {
+  id: string;
+  name: string;
+  type: string;
+  purpose: string;
+  url: string | null;
+  isActive: boolean;
+  lastPolledAt: string | null;
+  lastSuccessAt: string | null;
+  healthStatus: string | null;
+  associatedVenue: string | null;
+  createdAt: string;
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const [transferFormFor, setTransferFormFor] = useState<MyClaim | null>(null);
@@ -113,6 +132,7 @@ export default function DashboardPage() {
   const [transferMessage, setTransferMessage] = useState("");
   const [transferError, setTransferError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [syncModalFor, setSyncModalFor] = useState<MyClaim | null>(null);
 
   const [{ data: claimsData, fetching: claimsFetching }, refetchClaims] = useQuery({
     query: MY_CLAIMS_QUERY,
@@ -148,6 +168,11 @@ export default function DashboardPage() {
   const [{ fetching: initiatingTransfer }, executeInitiate] = useMutation(INITIATE_TRANSFER_MUTATION);
   const [{ fetching: respondingTransfer }, executeRespond] = useMutation(RESPOND_TO_TRANSFER_MUTATION);
   const [, executePing] = useMutation(PING_DASHBOARD_ACTIVITY_MUTATION);
+  const [{ data: syncsData }, refetchSyncs] = useQuery({
+    query: MY_CLAIMANT_SYNCS_QUERY,
+    pause: !user,
+  });
+  const [, executeDisconnectSync] = useMutation(DISCONNECT_CLAIMANT_SYNC_MUTATION);
 
   // Bump activity timestamp on all my claimed units when the dashboard mounts —
   // this is the "dashboard login" signal for the auto-expire cron (Task 17).
@@ -175,6 +200,24 @@ export default function DashboardPage() {
   const resolvedRequests = requests.filter((r) => r.status !== "pending");
   const pendingTransfers: MyPendingTransfer[] = transfersData?.myPendingTransfers ?? [];
   const pendingProposals: ProposalCardData[] = proposalsData?.myPendingProposals ?? [];
+  const claimantSyncs: ClaimantSync[] = syncsData?.myClaimantSyncs ?? [];
+
+  // Map venue ID → active claimant-sync row, so we can render sync controls next to each claim.
+  const syncByVenueId = new Map<string, ClaimantSync>();
+  for (const s of claimantSyncs) {
+    if (s.associatedVenue && s.isActive) syncByVenueId.set(s.associatedVenue, s);
+  }
+
+  async function handleDisconnectSync(syncId: string) {
+    const result = await executeDisconnectSync({ input: { dataSourceId: decodeId(syncId) } });
+    if (result.data?.disconnectClaimantSync?.error) {
+      setStatusMessage(result.data.disconnectClaimantSync.error);
+      return;
+    }
+    setStatusMessage("Sync disconnected. Unit is back to passive.");
+    refetchSyncs({ requestPolicy: "network-only" });
+    refetchClaims({ requestPolicy: "network-only" });
+  }
 
   // Group conflicting proposals together at the top of the queue.
   const conflictedIds = new Set(
@@ -423,6 +466,16 @@ export default function DashboardPage() {
                           Sync feed has been silent — review soon to keep the claim active.
                         </p>
                       )}
+
+                      {/* Phase 6 — sync source controls per venue claim. */}
+                      {claim.kind === "venue" && (
+                        <SyncSourceControls
+                          claim={claim}
+                          sync={syncByVenueId.get(claim.targetId) ?? null}
+                          onConnect={() => setSyncModalFor(claim)}
+                          onDisconnect={handleDisconnectSync}
+                        />
+                      )}
                     </div>
 
                     {isTransferring && (
@@ -495,6 +548,83 @@ export default function DashboardPage() {
           </div>
         </section>
       )}
+
+      {syncModalFor && (
+        <ConnectSyncSourceModal
+          targetKind="venue"
+          targetId={syncModalFor.targetId}
+          targetName={syncModalFor.name}
+          onClose={() => setSyncModalFor(null)}
+          onConnected={() => {
+            setSyncModalFor(null);
+            setStatusMessage("Sync source connected.");
+            refetchSyncs({ requestPolicy: "network-only" });
+            refetchClaims({ requestPolicy: "network-only" });
+          }}
+        />
+      )}
     </div>
   );
+}
+
+function SyncSourceControls({
+  claim,
+  sync,
+  onConnect,
+  onDisconnect,
+}: {
+  claim: MyClaim;
+  sync: ClaimantSync | null;
+  onConnect: () => void;
+  onDisconnect: (syncId: string) => void;
+}) {
+  if (claim.claimState === "claimed-passive" && !sync) {
+    return (
+      <div className="mt-3 pt-3 border-t border-curtn-dark/60">
+        <button
+          onClick={onConnect}
+          className="text-[11px] uppercase tracking-widest text-curtn-coral hover:text-curtn-red"
+        >
+          Connect a sync source →
+        </button>
+      </div>
+    );
+  }
+  if (sync) {
+    const lastSync = sync.lastSuccessAt
+      ? `Last sync ${timeSince(sync.lastSuccessAt)}`
+      : "Awaiting first sync";
+    const healthLabel =
+      claim.syncHealth === "stale" ? "Stale" : sync.healthStatus === "needs-attention" ? "Needs attention" : "Healthy";
+    const healthClass =
+      claim.syncHealth === "stale"
+        ? "bg-yellow-500/20 text-yellow-300"
+        : sync.healthStatus === "needs-attention"
+          ? "bg-yellow-500/20 text-yellow-300"
+          : "bg-green-500/20 text-green-400";
+    return (
+      <div className="mt-3 pt-3 border-t border-curtn-dark/60 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[11px] text-curtn-muted truncate" title={sync.url ?? ""}>
+              {sync.type.toUpperCase()} · {sync.url ?? "(no URL)"}
+            </p>
+            <p className="text-[10px] text-curtn-muted/80 mt-0.5">{lastSync}</p>
+          </div>
+          <span className={`shrink-0 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${healthClass}`}>
+            {healthLabel}
+          </span>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={() => onDisconnect(sync.id)}
+            className="text-[10px] uppercase tracking-widest text-curtn-muted hover:text-red-300"
+          >
+            Disconnect
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return null;
 }

@@ -19,6 +19,12 @@ export type NotificationKind =
   | 'proposal_declined'
   | 'proposal_timeout_warning'
   | 'proposal_timeout_auto_approved'
+  | 'sync_connected'
+  | 'sync_conflict_detected'
+  | 'sync_stale_alert'
+  | 'sync_recovered'
+  | 'sync_reverted_to_passive'
+  | 'sync_disconnected'
 
 export interface INotification {
   recipient: Types.ObjectId
@@ -51,6 +57,12 @@ const notificationSchema = new Schema<INotification>({
       'proposal_declined',
       'proposal_timeout_warning',
       'proposal_timeout_auto_approved',
+      'sync_connected',
+      'sync_conflict_detected',
+      'sync_stale_alert',
+      'sync_recovered',
+      'sync_reverted_to_passive',
+      'sync_disconnected',
     ]
   },
   context: {
