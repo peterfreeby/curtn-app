@@ -8,20 +8,57 @@ import {
   REJECT_CLAIM_REQUEST_MUTATION,
   ADMIN_UNCLAIM_PERSON_MUTATION,
 } from "@/lib/graphql/claims";
+import { APPROVE_CLAIM_MUTATION, DECLINE_CLAIM_MUTATION } from "@/lib/graphql/claim";
 import Link from "next/link";
+
+// Polymorphic admin claim review queue (Phase 2).
+//
+// Handles both legacy Person-only ClaimRequests (with `person` field) and
+// generalized polymorphic claims (with `target` field for Venue / Company /
+// Person). Legacy approvals use approveClaimRequest mutation; polymorphic
+// ones use approveClaim. Both fire in-app notifications.
+
+interface TargetNode {
+  kind: "venue" | "productionCompany" | "person";
+  targetId: string;
+  name: string | null;
+  slug: string | null;
+}
 
 interface ClaimRequestNode {
   id: string;
   user: { id: string; fullName: string; username: string; avatarUrl: string };
-  person: { id: string; name: string; slug: string; headshotUrl: string | null; isClaimed: boolean };
+  person: { id: string; name: string; slug: string; headshotUrl: string | null; isClaimed: boolean } | null;
+  target: TargetNode | null;
   status: string;
   message: string | null;
+  reviewerNotes: string | null;
   requestedAt: string;
   reviewedAt: string | null;
   reviewedBy: { id: string; username: string } | null;
 }
 
 type StatusFilter = "pending" | "approved" | "rejected" | "all";
+type TargetFilter = "all" | "venue" | "productionCompany" | "person";
+
+const TARGET_FILTER_LABELS: Record<TargetFilter, string> = {
+  all: "All types",
+  venue: "Venues",
+  productionCompany: "Companies",
+  person: "People",
+};
+
+const KIND_LABELS: Record<string, string> = {
+  venue: "Venue",
+  productionCompany: "Company",
+  person: "Person",
+};
+
+const KIND_PATH_PREFIX: Record<string, string> = {
+  venue: "/venues",
+  productionCompany: "/companies",
+  person: "/people",
+};
 
 function decodeGlobalId(globalId: string): string {
   const decoded = atob(globalId);
@@ -37,9 +74,29 @@ function timeSince(iso: string): string {
   return `${days}d ago`;
 }
 
+function resolveTargetDisplay(item: ClaimRequestNode): { kind: string; name: string; href: string | null } {
+  if (item.target?.kind && item.target.name) {
+    return {
+      kind: item.target.kind,
+      name: item.target.name,
+      href: item.target.slug ? `${KIND_PATH_PREFIX[item.target.kind]}/${item.target.slug}` : null,
+    };
+  }
+  if (item.person) {
+    return {
+      kind: "person",
+      name: item.person.name,
+      href: `/people/${item.person.slug}`,
+    };
+  }
+  return { kind: "unknown", name: "(unknown target)", href: null };
+}
+
 export default function AdminClaimsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
+  const [targetFilter, setTargetFilter] = useState<TargetFilter>("all");
   const [message, setMessage] = useState<string | null>(null);
+  const [reviewerNotesById, setReviewerNotesById] = useState<Record<string, string>>({});
 
   const [{ data, fetching }, reexecute] = useQuery({
     query: CLAIM_REQUESTS_QUERY,
@@ -48,16 +105,47 @@ export default function AdminClaimsPage() {
     },
   });
 
-  const [{ fetching: approving }, executeApprove] = useMutation(APPROVE_CLAIM_REQUEST_MUTATION);
-  const [{ fetching: rejecting }, executeReject] = useMutation(REJECT_CLAIM_REQUEST_MUTATION);
+  // Legacy mutations — used when a claim has a `person` ref but no polymorphic `target`.
+  const [{ fetching: legacyApproving }, executeLegacyApprove] = useMutation(APPROVE_CLAIM_REQUEST_MUTATION);
+  const [{ fetching: legacyRejecting }, executeLegacyReject] = useMutation(REJECT_CLAIM_REQUEST_MUTATION);
+  // Polymorphic mutations — used when a claim has a `target` ref.
+  const [{ fetching: approving }, executeApprove] = useMutation(APPROVE_CLAIM_MUTATION);
+  const [{ fetching: declining }, executeDecline] = useMutation(DECLINE_CLAIM_MUTATION);
   const [{ fetching: unclaiming }, executeUnclaim] = useMutation(ADMIN_UNCLAIM_PERSON_MUTATION);
 
-  const items: ClaimRequestNode[] =
-    data?.claimRequests?.edges?.map((e: any) => e.node) || [];
+  const allItems: ClaimRequestNode[] = data?.claimRequests?.edges?.map((e: any) => e.node) || [];
+  const items = allItems.filter((item) => {
+    if (targetFilter === "all") return true;
+    const display = resolveTargetDisplay(item);
+    return display.kind === targetFilter;
+  });
+
+  function reviewerNotesFor(id: string): string {
+    return reviewerNotesById[id] ?? "";
+  }
+  function setReviewerNotesFor(id: string, value: string) {
+    setReviewerNotesById((prev) => ({ ...prev, [id]: value }));
+  }
 
   async function handleApprove(item: ClaimRequestNode) {
     setMessage(null);
-    const result = await executeApprove({
+    const notes = reviewerNotesFor(item.id);
+
+    if (item.target?.kind) {
+      const result = await executeApprove({
+        input: { claimRequestId: decodeGlobalId(item.id), reviewerNotes: notes || undefined },
+      });
+      const payload = result.data?.approveClaim;
+      if (payload?.error) {
+        setMessage(payload.error);
+      } else {
+        reexecute({ requestPolicy: "network-only" });
+      }
+      return;
+    }
+
+    // Legacy path
+    const result = await executeLegacyApprove({
       input: { claimRequestId: decodeGlobalId(item.id) },
     });
     if (result.data?.approveClaimRequest?.error) {
@@ -67,9 +155,25 @@ export default function AdminClaimsPage() {
     }
   }
 
-  async function handleReject(item: ClaimRequestNode) {
+  async function handleDecline(item: ClaimRequestNode) {
     setMessage(null);
-    const result = await executeReject({
+    const notes = reviewerNotesFor(item.id);
+
+    if (item.target?.kind) {
+      const result = await executeDecline({
+        input: { claimRequestId: decodeGlobalId(item.id), reviewerNotes: notes || undefined },
+      });
+      const payload = result.data?.declineClaim;
+      if (payload?.error) {
+        setMessage(payload.error);
+      } else {
+        reexecute({ requestPolicy: "network-only" });
+      }
+      return;
+    }
+
+    // Legacy path
+    const result = await executeLegacyReject({
       input: { claimRequestId: decodeGlobalId(item.id) },
     });
     if (result.data?.rejectClaimRequest?.error) {
@@ -80,6 +184,7 @@ export default function AdminClaimsPage() {
   }
 
   async function handleUnclaim(item: ClaimRequestNode) {
+    if (!item.person) return;
     setMessage(null);
     const result = await executeUnclaim({
       input: { personId: decodeGlobalId(item.person.id) },
@@ -105,12 +210,22 @@ export default function AdminClaimsPage() {
     );
   }
 
+  function targetBadge(kind: string) {
+    return (
+      <span className="inline-block rounded-full bg-curtn-dark px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-curtn-muted">
+        {KIND_LABELS[kind] || kind}
+      </span>
+    );
+  }
+
+  const busy = approving || declining || legacyApproving || legacyRejecting || unclaiming;
+
   return (
     <div className="px-6 py-8 max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-bold text-curtn-cream">Claim Requests</h1>
         <p className="mt-1 text-sm text-curtn-muted">
-          Review requests from users to link their account to a performer/creator profile.
+          Review requests from users to claim venues, production companies, and performer profiles.
         </p>
       </div>
 
@@ -120,10 +235,9 @@ export default function AdminClaimsPage() {
         </div>
       )}
 
-      {/* Status filter tabs */}
-      <div className="flex gap-1 rounded-lg bg-curtn-surface p-1">
-        {(["pending", "approved", "rejected", "all"] as StatusFilter[]).map(
-          (s) => (
+      <div className="flex flex-wrap gap-3">
+        <div className="flex gap-1 rounded-lg bg-curtn-surface p-1">
+          {(["pending", "approved", "rejected", "all"] as StatusFilter[]).map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
@@ -135,8 +249,24 @@ export default function AdminClaimsPage() {
             >
               {s.charAt(0).toUpperCase() + s.slice(1)}
             </button>
-          )
-        )}
+          ))}
+        </div>
+
+        <div className="flex gap-1 rounded-lg bg-curtn-surface p-1">
+          {(["all", "venue", "productionCompany", "person"] as TargetFilter[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTargetFilter(t)}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                targetFilter === t
+                  ? "bg-curtn-deep text-curtn-cream"
+                  : "text-curtn-muted hover:text-curtn-cream"
+              }`}
+            >
+              {TARGET_FILTER_LABELS[t]}
+            </button>
+          ))}
+        </div>
       </div>
 
       {fetching && (
@@ -147,80 +277,108 @@ export default function AdminClaimsPage() {
 
       {!fetching && items.length === 0 && (
         <div className="rounded-lg border border-curtn-dark bg-curtn-surface px-6 py-10 text-center">
-          <p className="text-sm text-curtn-muted">No {statusFilter === "all" ? "" : statusFilter} claim requests.</p>
+          <p className="text-sm text-curtn-muted">
+            No {statusFilter === "all" ? "" : statusFilter} claim requests
+            {targetFilter !== "all" ? ` for ${TARGET_FILTER_LABELS[targetFilter].toLowerCase()}` : ""}.
+          </p>
         </div>
       )}
 
       {!fetching && items.length > 0 && (
         <div className="space-y-3">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="rounded-lg border border-curtn-dark bg-curtn-surface p-4 space-y-3"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0 space-y-1">
-                  <div className="flex items-center gap-2">
-                    {statusBadge(item.status)}
-                    <span className="text-xs text-curtn-muted">{timeSince(item.requestedAt)}</span>
+          {items.map((item) => {
+            const display = resolveTargetDisplay(item);
+            const isPolymorphic = !!item.target?.kind;
+            const isLegacyPersonClaim = !isPolymorphic && !!item.person;
+
+            return (
+              <div
+                key={item.id}
+                className="rounded-lg border border-curtn-dark bg-curtn-surface p-4 space-y-3"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2">
+                      {statusBadge(item.status)}
+                      {targetBadge(display.kind)}
+                      <span className="text-xs text-curtn-muted">{timeSince(item.requestedAt)}</span>
+                    </div>
+                    <p className="text-sm text-curtn-cream">
+                      <Link href={`/u/${item.user.username}`} className="text-curtn-coral hover:underline">
+                        @{item.user.username}
+                      </Link>
+                      {" "}wants to claim{" "}
+                      {display.href ? (
+                        <Link href={display.href} className="text-curtn-coral hover:underline">
+                          {display.name}
+                        </Link>
+                      ) : (
+                        <span className="text-curtn-cream">{display.name}</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-curtn-muted">{item.user.fullName}</p>
+                    {item.message && (
+                      <p className="text-xs text-curtn-muted/80 italic mt-1 whitespace-pre-wrap">
+                        &ldquo;{item.message}&rdquo;
+                      </p>
+                    )}
+                    {item.reviewerNotes && item.status !== "pending" && (
+                      <p className="text-[11px] text-curtn-muted/80 mt-1">
+                        <span className="uppercase tracking-wider text-[10px]">Reviewer notes:</span> {item.reviewerNotes}
+                      </p>
+                    )}
+                    {item.reviewedBy && item.reviewedAt && (
+                      <p className="text-[10px] text-curtn-muted/60 mt-1">
+                        Reviewed by @{item.reviewedBy.username} &middot; {timeSince(item.reviewedAt)}
+                      </p>
+                    )}
                   </div>
-                  <p className="text-sm text-curtn-cream">
-                    <Link href={`/u/${item.user.username}`} className="text-curtn-coral hover:underline">
-                      @{item.user.username}
-                    </Link>
-                    {" "}wants to claim{" "}
-                    <Link href={`/people/${item.person.slug}`} className="text-curtn-coral hover:underline">
-                      {item.person.name}
-                    </Link>
-                  </p>
-                  <p className="text-xs text-curtn-muted">
-                    {item.user.fullName}
-                  </p>
-                  {item.message && (
-                    <p className="text-xs text-curtn-muted/80 italic mt-1">
-                      &ldquo;{item.message}&rdquo;
-                    </p>
-                  )}
-                  {item.reviewedBy && item.reviewedAt && (
-                    <p className="text-[10px] text-curtn-muted/60 mt-1">
-                      Reviewed by @{item.reviewedBy.username} &middot; {timeSince(item.reviewedAt)}
-                    </p>
-                  )}
+
+                  <div className="flex gap-2 shrink-0">
+                    {item.status === "approved" && isLegacyPersonClaim && item.person?.isClaimed && (
+                      <button
+                        onClick={() => handleUnclaim(item)}
+                        disabled={busy}
+                        className="rounded-md bg-curtn-dark px-3 py-1.5 text-xs font-medium text-curtn-muted hover:text-curtn-cream transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        Unclaim
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                {/* Actions */}
-                <div className="flex gap-2 shrink-0">
-                  {item.status === "pending" && (
-                    <>
+                {item.status === "pending" && (
+                  <div className="space-y-2 border-t border-curtn-dark pt-3">
+                    {isPolymorphic && (
+                      <textarea
+                        value={reviewerNotesFor(item.id)}
+                        onChange={(e) => setReviewerNotesFor(item.id, e.target.value)}
+                        placeholder="Optional reviewer notes (visible to claimant on decline; logged on approve)"
+                        rows={2}
+                        className="w-full rounded-md border border-curtn-dark bg-curtn-deep px-3 py-2 text-xs text-curtn-cream placeholder:text-curtn-muted/60 focus:border-curtn-coral focus:outline-none"
+                      />
+                    )}
+                    <div className="flex gap-2">
                       <button
                         onClick={() => handleApprove(item)}
-                        disabled={approving}
+                        disabled={busy}
                         className="rounded-md bg-green-500/20 px-3 py-1.5 text-xs font-medium text-green-400 hover:bg-green-500/30 transition-colors cursor-pointer disabled:opacity-50"
                       >
                         Approve
                       </button>
                       <button
-                        onClick={() => handleReject(item)}
-                        disabled={rejecting}
+                        onClick={() => handleDecline(item)}
+                        disabled={busy}
                         className="rounded-md bg-red-500/20 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/30 transition-colors cursor-pointer disabled:opacity-50"
                       >
-                        Reject
+                        Decline
                       </button>
-                    </>
-                  )}
-                  {item.status === "approved" && item.person.isClaimed && (
-                    <button
-                      onClick={() => handleUnclaim(item)}
-                      disabled={unclaiming}
-                      className="rounded-md bg-curtn-dark px-3 py-1.5 text-xs font-medium text-curtn-muted hover:text-curtn-cream transition-colors cursor-pointer disabled:opacity-50"
-                    >
-                      Unclaim
-                    </button>
-                  )}
-                </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

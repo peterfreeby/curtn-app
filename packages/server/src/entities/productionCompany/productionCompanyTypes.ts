@@ -8,6 +8,7 @@ import { nodeInterface } from '../../graphql/nodeInterface'
 import { globalIdField, connectionDefinitions, connectionArgs } from 'graphql-relay'
 import { applyCursorToQuery, buildConnection } from '../../graphql/cursorPagination'
 import { entityRegister } from '../../graphql/entityHelpers'
+import { claimableFieldsGraphQL } from '../../permissions/claimableFieldsGraphQL'
 import { ProductionCompanyModel } from './productionCompanyModel'
 import { RunModel } from '../run/runModel'
 import { CreditModel } from '../credit/creditModel'
@@ -95,7 +96,8 @@ export const productionCompanyType: GraphQLObjectType = new GraphQLObjectType({
       updatedAt: {
         type: GraphQLString,
         resolve: company => company.updatedAt?.toISOString()
-      }
+      },
+      ...claimableFieldsGraphQL()
     }
   }
 })

@@ -1,6 +1,7 @@
 import mongoose, { Schema, Types } from 'mongoose'
+import { claimableFieldsSchema, IClaimableFields } from '../../permissions/claimableFields'
 
-export interface IProductionCompany {
+export interface IProductionCompany extends IClaimableFields {
   name: string
   slug: string
   description?: string
@@ -34,7 +35,8 @@ const productionCompanySchema = new Schema<IProductionCompany>({
     type: Schema.Types.ObjectId,
     ref: 'user',
     required: true
-  }
+  },
+  ...claimableFieldsSchema
 }, {
   timestamps: true
 })

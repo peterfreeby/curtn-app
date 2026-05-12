@@ -10,6 +10,7 @@ import { AddToListButton } from "@/components/lists/AddToListButton";
 import { Button } from "@/components/Button";
 import { InlineEditor } from "@/components/admin/InlineEditor";
 import { EntityDataSourcesPanel } from "@/components/admin/EntityDataSourcesPanel";
+import { ClaimCTA } from "@/components/claim/ClaimCTA";
 import { useAuth } from "@/lib/auth/useAuth";
 
 function decodeId(globalId: string): string {
@@ -67,6 +68,13 @@ export default function VenueDetailPage() {
         imageUrl={venue.imageUrl}
         permanentlyClosed={venue.permanentlyClosed}
         closedDate={venue.closedDate}
+      />
+
+      <ClaimCTA
+        kind="venue"
+        slug={venue.slug}
+        name={venue.name}
+        claimState={venue.claimState}
       />
 
       <AddToListButton itemId={venue.id} listType="venues" />

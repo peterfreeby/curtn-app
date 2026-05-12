@@ -8,6 +8,11 @@ export const COMPANY_BY_SLUG_QUERY = gql`
       slug
       description
       logoUrl
+      claimState
+      claimedBy {
+        id
+        username
+      }
       runs {
         edges {
           node {

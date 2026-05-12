@@ -71,6 +71,11 @@ export const VENUE_BY_SLUG_QUERY = gql`
       imageUrl
       permanentlyClosed
       closedDate
+      claimState
+      claimedBy {
+        id
+        username
+      }
     }
   }
 `;

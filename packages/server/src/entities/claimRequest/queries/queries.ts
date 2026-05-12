@@ -4,8 +4,10 @@ import { connectionFromArrayLean } from '../../../graphql/cursorPagination'
 import { ClaimRequestConnection, claimRequestType } from '../claimRequestTypes'
 import { ClaimRequestModel } from '../claimRequestModel'
 import { UserModel } from '../../user/userModel'
+import { myDashboardQueries } from './myDashboardQueries'
 
 export const claimRequestQueries = {
+  ...myDashboardQueries,
   claimRequests: {
     type: ClaimRequestConnection,
     args: {

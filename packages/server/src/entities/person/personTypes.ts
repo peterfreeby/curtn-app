@@ -10,6 +10,7 @@ import {
 import { nodeInterface } from '../../graphql/nodeInterface'
 import { globalIdField, connectionDefinitions } from 'graphql-relay'
 import { entityRegister } from '../../graphql/entityHelpers'
+import { claimableFieldsGraphQL } from '../../permissions/claimableFieldsGraphQL'
 import { PersonModel } from './personModel'
 import { CreditModel } from '../credit/creditModel'
 import { ShowCreditModel } from '../showCredit/showCreditModel'
@@ -113,7 +114,8 @@ export const personType: GraphQLObjectType = new GraphQLObjectType({
       updatedAt: {
         type: GraphQLString,
         resolve: person => person.updatedAt?.toISOString()
-      }
+      },
+      ...claimableFieldsGraphQL()
     }
   }
 })

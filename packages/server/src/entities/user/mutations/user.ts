@@ -6,6 +6,7 @@ import { userDelete } from './userDelete'
 import { userClaimPerson } from './userClaimPerson'
 import { userUnclaimPerson } from './userUnclaimPerson'
 import { adminUnclaimPerson } from './adminUnclaimPerson'
+import { pingDashboardActivity } from './pingDashboardActivity'
 
 export const userMutations = {
   authenticateWithPhone,
@@ -15,5 +16,6 @@ export const userMutations = {
   userDelete,
   userClaimPerson,
   userUnclaimPerson,
-  adminUnclaimPerson
+  adminUnclaimPerson,
+  pingDashboardActivity
 }

@@ -1,14 +1,15 @@
 import mongoose, { Schema, Types } from 'mongoose'
 import { enqueueGeocodingJob } from '../../services/geocoding/enqueueGeocodingJob'
+import { claimableFieldsSchema, IClaimableFields } from '../../permissions/claimableFields'
 
 const ADDRESS_FIELDS = ['address', 'city', 'state', 'zipCode'] as const
 
-export interface IVenue {
+export interface IVenue extends IClaimableFields {
   // Basic venue information
   name: string
   slug: string // URL-friendly version of name (e.g., "guthrie-theater")
   description?: string
-  
+
   // Location data
   address?: string
   city?: string
@@ -18,16 +19,16 @@ export interface IVenue {
     lat?: number
     lng?: number
   }
-  
+
   // Venue details
   capacity?: number
   venueType: 'theater' | 'concert-hall' | 'dance-studio' | 'comedy-club' | 'multi-purpose' | 'outdoor' | 'other'
-  
+
   // Contact and links
   website?: string
   phone?: string
   email?: string
-  
+
   // Image
   imageUrl?: string
 
@@ -39,7 +40,7 @@ export interface IVenue {
   wikidataId?: string
   eventbriteVenueId?: string
   googlePlaceId?: string
-  
+
   // Metadata
   createdAt: Date
   updatedAt: Date
@@ -143,7 +144,8 @@ const venueSchema = new Schema<IVenue>({
     type: Schema.Types.ObjectId,
     ref: 'user',
     required: true
-  }
+  },
+  ...claimableFieldsSchema
 }, {
   timestamps: true // Adds createdAt and updatedAt automatically
 })

@@ -3,7 +3,9 @@ import { mutationWithClientMutationId } from 'graphql-relay'
 import { errorField } from '../../../graphql/errorField'
 import { claimRequestType } from '../claimRequestTypes'
 import { ClaimRequestModel } from '../claimRequestModel'
+import { PersonModel } from '../../person/personModel'
 import { UserModel } from '../../user/userModel'
+import { createNotification } from '../../../services/notifications/createNotification'
 
 export const rejectClaimRequest = mutationWithClientMutationId({
   name: 'rejectClaimRequest',
@@ -27,6 +29,21 @@ export const rejectClaimRequest = mutationWithClientMutationId({
     claimRequest.reviewedAt = new Date()
     claimRequest.reviewedBy = adminUser._id
     await claimRequest.save()
+
+    const person = claimRequest.person ? await PersonModel.findById(claimRequest.person).select('name slug').lean() : null
+    if (claimRequest.user) {
+      await createNotification({
+        recipient: claimRequest.user,
+        kind: 'claim_declined',
+        context: {
+          targetKind: 'person',
+          targetId: claimRequest.person?.toString() ?? null,
+          targetName: person?.name ?? null,
+          targetSlug: person?.slug ?? null,
+          reviewerNotes: null,
+        }
+      })
+    }
 
     return { claimRequest }
   },

@@ -12,6 +12,7 @@ import {
   import { nodeInterface } from '../../graphql/nodeInterface'
   import { globalIdField, connectionDefinitions } from 'graphql-relay'
   import { entityRegister } from '../../graphql/entityHelpers'
+  import { claimableFieldsGraphQL } from '../../permissions/claimableFieldsGraphQL'
   import { VenueModel } from './venueModel'
   
   // Coordinates type for venue location
@@ -162,7 +163,8 @@ import {
         type: GraphQLString,
         description: 'When venue was last updated',
         resolve: venue => venue.updatedAt?.toISOString()
-      }
+      },
+      ...claimableFieldsGraphQL()
     })
   })
   

@@ -1,0 +1,18 @@
+name: Claim Auto-Expire Check
+
+on:
+  schedule:
+    # Weekly, Mondays at 09:00 UTC. Expire is a slow cadence — 12 months ± a week is fine.
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit claim-expire worker
+        run: |
+          curl -fsS \
+            --max-time 65 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/claim-expire"

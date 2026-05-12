@@ -19,8 +19,15 @@ export const CLAIM_REQUESTS_QUERY = gql`
             headshotUrl
             isClaimed
           }
+          target {
+            kind
+            targetId
+            name
+            slug
+          }
           status
           message
+          reviewerNotes
           requestedAt
           reviewedAt
           reviewedBy {

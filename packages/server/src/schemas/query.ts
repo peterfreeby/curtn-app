@@ -18,6 +18,8 @@ import { pendingImportQueries } from '../entities/pendingImport/queries/queries'
 import { listQueries } from '../entities/list/queries/queries'
 import { claimRequestQueries } from '../entities/claimRequest/queries/queries'
 import { seenQueries } from '../entities/seen/queries/queries'
+import { notificationQueries } from '../entities/notification/queries/queries'
+import { claimTransferQueries } from '../entities/claimTransfer/queries/queries'
 import { nodeField, nodesField } from '../graphql/nodeInterface'
 
 export const query = new GraphQLObjectType({
@@ -43,6 +45,8 @@ export const query = new GraphQLObjectType({
     ...listQueries,
     ...claimRequestQueries,
     ...seenQueries,
+    ...notificationQueries,
+    ...claimTransferQueries,
     node: nodeField,
     nodes: nodesField
   })

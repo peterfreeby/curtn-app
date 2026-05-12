@@ -2,12 +2,13 @@ import { GraphQLBoolean, GraphQLNonNull, GraphQLString } from 'graphql'
 import { mutationWithClientMutationId } from 'graphql-relay'
 import { venueType } from '../venueTypes'
 import { VenueModel } from '../venueModel'
-import { UserModel } from '../../user/userModel'
 import { errorField } from '../../../graphql/errorField'
+import { canPerform } from '../../../permissions/canPerform'
+import { bumpForUnit } from '../../../services/claims/bumpClaimantActivity'
 
 export const venueUpdate = mutationWithClientMutationId({
   name: 'venueUpdate',
-  description: 'Update an existing venue (admin only)',
+  description: 'Update an existing venue (admin or claimant)',
   inputFields: {
     venueId: {
       type: new GraphQLNonNull(GraphQLString),
@@ -80,8 +81,14 @@ export const venueUpdate = mutationWithClientMutationId({
   mutateAndGetPayload: async (input, ctx) => {
     if (!ctx.user) return { error: 'Unauthorized' }
 
-    const adminUser = await UserModel.findById(ctx.user.id)
-    if (!adminUser?.isAdmin) return { error: 'Admin access required' }
+    // Phase 5 TODO: switch to per-field action mapping once trusted-editor scope is wired.
+    const decision = await canPerform(ctx.user.id, 'venue.edit_description', {
+      kind: 'Venue',
+      id: input.venueId
+    })
+    if (decision.mode !== 'auto-publish') {
+      return { error: decision.reason || 'Permission denied' }
+    }
 
     try {
       const venue = await VenueModel.findById(input.venueId)
@@ -109,6 +116,10 @@ export const venueUpdate = mutationWithClientMutationId({
       }
 
       const updated = await VenueModel.findByIdAndUpdate(input.venueId, updates, { new: true })
+      // Track claimant activity for auto-expire (Phase 2 / Task 17).
+      if (updated && updated.claimedBy?.toString() === ctx.user.id) {
+        await bumpForUnit('venue', updated._id)
+      }
       return { venue: updated }
     } catch (err) {
       console.error('venueUpdate error:', err)

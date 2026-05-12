@@ -5,6 +5,7 @@ import { claimRequestType } from '../claimRequestTypes'
 import { ClaimRequestModel } from '../claimRequestModel'
 import { PersonModel } from '../../person/personModel'
 import { UserModel } from '../../user/userModel'
+import { createNotification } from '../../../services/notifications/createNotification'
 
 export const approveClaimRequest = mutationWithClientMutationId({
   name: 'approveClaimRequest',
@@ -35,6 +36,11 @@ export const approveClaimRequest = mutationWithClientMutationId({
     // Execute bidirectional link
     user.personId = person._id
     person.userId = user._id
+    // Also align Phase-1 claimable fields so canPerform and Phase 2+ work consistently.
+    person.claimState = 'claimed-passive'
+    person.claimedBy = user._id
+    person.claimedAt = new Date()
+    person.lastClaimantActivityAt = new Date()
     await Promise.all([user.save(), person.save()])
 
     // Mark approved
@@ -42,6 +48,18 @@ export const approveClaimRequest = mutationWithClientMutationId({
     claimRequest.reviewedAt = new Date()
     claimRequest.reviewedBy = adminUser._id
     await claimRequest.save()
+
+    await createNotification({
+      recipient: user._id,
+      kind: 'claim_approved',
+      context: {
+        targetKind: 'person',
+        targetId: person._id.toString(),
+        targetName: person.name,
+        targetSlug: person.slug ?? null,
+        reviewerNotes: null,
+      }
+    })
 
     return { claimRequest }
   },

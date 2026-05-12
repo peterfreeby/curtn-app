@@ -2,12 +2,13 @@ import { GraphQLNonNull, GraphQLString } from 'graphql'
 import { mutationWithClientMutationId } from 'graphql-relay'
 import { personType } from '../personTypes'
 import { PersonModel } from '../personModel'
-import { UserModel } from '../../user/userModel'
 import { errorField } from '../../../graphql/errorField'
+import { canPerform } from '../../../permissions/canPerform'
+import { bumpForUnit } from '../../../services/claims/bumpClaimantActivity'
 
 export const personUpdate = mutationWithClientMutationId({
   name: 'personUpdate',
-  description: 'Update an existing person (admin or claimed owner)',
+  description: 'Update an existing person (admin or claimant)',
   inputFields: {
     personId: {
       type: new GraphQLNonNull(GraphQLString),
@@ -40,16 +41,18 @@ export const personUpdate = mutationWithClientMutationId({
   mutateAndGetPayload: async (input, ctx) => {
     if (!ctx.user) return { error: 'Unauthorized' }
 
-    try {
-      const currentUser = await UserModel.findById(ctx.user.id)
-      if (!currentUser) return { error: 'User not found' }
+    // Phase 5 TODO: switch to per-field action mapping once trusted-editor scope is wired.
+    const decision = await canPerform(ctx.user.id, 'person.edit_bio', {
+      kind: 'Person',
+      id: input.personId
+    })
+    if (decision.mode !== 'auto-publish') {
+      return { error: decision.reason || 'Permission denied' }
+    }
 
+    try {
       const person = await PersonModel.findById(input.personId)
       if (!person) return { error: 'Person not found' }
-
-      const isAdmin = !!currentUser.isAdmin
-      const isClaimOwner = person.userId && person.userId.toString() === ctx.user.id
-      if (!isAdmin && !isClaimOwner) return { error: 'Admin access or claimed ownership required' }
 
       const updates: Record<string, any> = {}
 
@@ -70,6 +73,9 @@ export const personUpdate = mutationWithClientMutationId({
       }
 
       const updated = await PersonModel.findByIdAndUpdate(input.personId, updates, { new: true })
+      if (updated && updated.claimedBy?.toString() === ctx.user.id) {
+        await bumpForUnit('person', updated._id)
+      }
       return { person: updated }
     } catch (err) {
       console.error('personUpdate error:', err)

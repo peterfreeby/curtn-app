@@ -8,6 +8,7 @@ import { CompanyHero } from "@/components/companies/CompanyHero";
 import { CompanyRuns } from "@/components/companies/CompanyRuns";
 import { Icon } from "@/components/icons/Icons";
 import { EntityDataSourcesPanel } from "@/components/admin/EntityDataSourcesPanel";
+import { ClaimCTA } from "@/components/claim/ClaimCTA";
 import { useAuth } from "@/lib/auth/useAuth";
 
 export default function CompanyDetailPage() {
@@ -59,6 +60,13 @@ export default function CompanyDetailPage() {
         name={company.name}
         description={company.description}
         logoUrl={company.logoUrl}
+      />
+
+      <ClaimCTA
+        kind="productionCompany"
+        slug={company.slug}
+        name={company.name}
+        claimState={company.claimState}
       />
 
       {isAdmin && (
