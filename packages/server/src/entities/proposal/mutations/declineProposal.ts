@@ -11,6 +11,7 @@ import { PerformanceModel } from '../../performance/performanceModel'
 import { RunModel } from '../../run/runModel'
 import { UserModel } from '../../user/userModel'
 import { createNotification } from '../../../services/notifications/createNotification'
+import { isAutoconfirmed } from '../../../permissions/checkAntiAbuse'
 
 // Phase 4 — declineProposal. Either claimant can decline a joint proposal;
 // the proposal is terminal regardless of partial approvals already recorded.
@@ -71,12 +72,22 @@ export const declineProposal = mutationWithClientMutationId({
     if (!proposal) return { error: 'Proposal not found' }
     if (proposal.status !== 'pending') return { error: `Proposal already ${proposal.status}` }
 
-    const allowed = await userCanDecline(
+    const isCommunityReview = !!(proposal as any).isCommunityReview
+    let allowed = await userCanDecline(
       proposal.target.kind as ProposalTargetKind,
       proposal.target.id as Types.ObjectId,
       ctx.user.id,
       !!proposal.isJointStewardship,
     )
+    // Phase 7 — community-review decline path. Autoconfirmed users can decline
+    // the same proposals they can approve. (Proposer can't self-decline either.)
+    if (!allowed && isCommunityReview) {
+      const proposerUserId = proposal.proposer?.userId?.toString?.()
+      if (proposerUserId && proposerUserId === ctx.user.id) {
+        return { error: "You can't decline your own community-review edit." }
+      }
+      if (await isAutoconfirmed(ctx.user.id)) allowed = true
+    }
     if (!allowed) return { error: 'You are not authorized to decline this proposal' }
 
     proposal.status = 'declined'
@@ -88,7 +99,7 @@ export const declineProposal = mutationWithClientMutationId({
     if (proposal.proposer?.kind === 'User' && proposal.proposer.userId) {
       await createNotification({
         recipient: proposal.proposer.userId,
-        kind: 'proposal_declined',
+        kind: isCommunityReview ? 'community_review_declined' : 'proposal_declined',
         context: {
           proposalId: proposal._id.toString(),
           targetKind: proposal.target.kind,

@@ -85,6 +85,43 @@ export const MY_PENDING_PROPOSALS_QUERY = gql`
       submissionVersion
       status
       isJointStewardship
+      isCommunityReview
+      firstApprovalAt
+      conflictsWithProposalIds
+      createdAt
+      target {
+        kind
+        targetId
+        name
+        slug
+      }
+      proposer {
+        kind
+        label
+        user {
+          id
+          username
+          fullName
+        }
+      }
+      approvals {
+        userId
+        role
+        approvedAt
+      }
+    }
+  }
+`;
+
+export const COMMUNITY_REVIEW_PROPOSALS_QUERY = gql`
+  query CommunityReviewProposals($targetKind: String, $sinceDays: Int) {
+    communityReviewProposals(targetKind: $targetKind, sinceDays: $sinceDays) {
+      id
+      diffJson
+      submissionVersion
+      status
+      isJointStewardship
+      isCommunityReview
       firstApprovalAt
       conflictsWithProposalIds
       createdAt

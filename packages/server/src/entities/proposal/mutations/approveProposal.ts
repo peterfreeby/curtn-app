@@ -23,13 +23,14 @@ import {
   ROLE_TEMPLATES,
   RoleTemplateId,
 } from '../../../permissions/actionCatalog'
+import { isAutoconfirmed } from '../../../permissions/checkAntiAbuse'
 
 // Phase 4 — approveProposal. Single-approver case applies the diff and writes
 // an AuditLog row attributed to the original proposer. Joint case requires
 // two approvals (one from each side) before applying; first approval just
 // records the vote and bumps firstApprovalAt for the timeout clock.
 
-export type ApprovalSourceForProposal = 'claimant-approved' | 'timeout-approved'
+export type ApprovalSourceForProposal = 'claimant-approved' | 'timeout-approved' | 'community-approved'
 
 // Phase 5 — infer the most-specific role template that covers a set of action
 // ids from a proposal diff. Used as the default when the approver toggles
@@ -409,14 +410,41 @@ export const approveProposal = mutationWithClientMutationId({
     const targetId = proposal.target.id as Types.ObjectId
 
     if (!isJoint) {
-      const eligible = await isApproverEligibleSingle(
-        proposal.target.kind as ProposalTargetKind,
-        targetId,
-        ctx.user.id,
-      )
+      // Phase 7 — community-review proposals (non-autoconfirmed user on
+      // unclaimed record) approve via any autoconfirmed user OR admin. The
+      // approval source distinguishes them from claimant-approved rows in
+      // the audit log; notifications use the community_review_* kinds.
+      const isCommunityReview = !!(proposal as any).isCommunityReview
+      const adminUserDoc = await UserModel.findById(ctx.user.id).select('isAdmin').lean()
+      const isAdmin = !!adminUserDoc?.isAdmin
+
+      let approvalSource: ApprovalSourceForProposal = 'claimant-approved'
+      let eligible = false
+
+      if (isCommunityReview) {
+        // Admin can always approve. Otherwise the approver must be auto-
+        // confirmed and NOT the proposer (can't approve your own edit).
+        const proposerUserId = proposal.proposer?.userId?.toString?.()
+        if (isAdmin) {
+          eligible = true
+          approvalSource = 'community-approved'
+        } else if (proposerUserId && proposerUserId === ctx.user.id) {
+          return { error: "You can't approve your own community-review edit." }
+        } else if (await isAutoconfirmed(ctx.user.id)) {
+          eligible = true
+          approvalSource = 'community-approved'
+        }
+      } else {
+        eligible = await isApproverEligibleSingle(
+          proposal.target.kind as ProposalTargetKind,
+          targetId,
+          ctx.user.id,
+        )
+      }
+
       if (!eligible) return { error: 'You are not authorized to approve this proposal' }
 
-      const applyResult = await applyProposalDiff(proposal, 'claimant-approved', { approverId: ctx.user.id })
+      const applyResult = await applyProposalDiff(proposal, approvalSource, { approverId: ctx.user.id })
       if (!applyResult.ok) return { error: applyResult.error }
 
       proposal.status = 'approved'
@@ -429,7 +457,7 @@ export const approveProposal = mutationWithClientMutationId({
       if (proposal.proposer?.kind === 'User' && proposal.proposer.userId) {
         await createNotification({
           recipient: proposal.proposer.userId,
-          kind: 'proposal_approved',
+          kind: isCommunityReview ? 'community_review_approved' : 'proposal_approved',
           context: {
             proposalId: proposal._id.toString(),
             targetKind: proposal.target.kind,
@@ -438,7 +466,7 @@ export const approveProposal = mutationWithClientMutationId({
         })
       }
 
-      if (autoApproveFutureFromProposer) {
+      if (autoApproveFutureFromProposer && !isCommunityReview) {
         await maybeCreateTrustForProposer({
           proposal,
           approverUserId: ctx.user.id,

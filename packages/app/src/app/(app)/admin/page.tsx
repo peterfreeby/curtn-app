@@ -253,6 +253,15 @@ export default function AdminPage() {
           </Card>
         </Link>
 
+        <Link href="/admin/blocks">
+          <Card className="transition-colors hover:border-curtn-muted/30 cursor-pointer">
+            <h2 className="text-sm font-medium text-curtn-cream">Block Activity</h2>
+            <p className="mt-1 text-xs text-curtn-muted/60">
+              Recent claimant-issued blocks and high-volume blockers flagged for review.
+            </p>
+          </Card>
+        </Link>
+
         <Link href="/admin/styleguide">
           <Card className="transition-colors hover:border-curtn-muted/30 cursor-pointer">
             <h2 className="text-sm font-medium text-curtn-cream">Style Guide</h2>

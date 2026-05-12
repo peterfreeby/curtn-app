@@ -8,6 +8,7 @@ import { PersonModel } from '../../person/personModel'
 import { ShowModel } from '../../show/showModel'
 import { StageModel } from '../../stage/stageModel'
 import { createNotification } from '../../../services/notifications/createNotification'
+import { incrementEditActivity } from '../../../services/antiAbuse/incrementEditActivity'
 
 // Internal helper called by update mutations when canPerform decides 'queue'.
 // Not exposed as a GraphQL mutation — proposers don't call this directly; the
@@ -27,6 +28,9 @@ export interface CreateProposalArgs {
   isJointStewardship?: boolean
   // Optional bridge to PendingImport (scraper proposal wrapping an import).
   pendingImportId?: string | Types.ObjectId | null
+  // Phase 7 — set when a non-autoconfirmed user proposes an edit on an
+  // unclaimed record. Routes the proposal to the community-review queue.
+  isCommunityReview?: boolean
 }
 
 export interface CreateProposalResult {
@@ -139,7 +143,15 @@ export async function createProposal(args: CreateProposalArgs): Promise<CreatePr
     approvals: [],
     conflictsWithProposalIds: [],
     pendingImportId: args.pendingImportId ?? null,
+    isCommunityReview: !!args.isCommunityReview,
   })
+
+  // Phase 7 — User-authored proposals count toward editCount + autoconfirmed
+  // gate. Scraper / SyncFeed proposals do not (they don't gate against an
+  // anti-abuse threshold).
+  if (args.proposer.kind === 'User' && args.proposer.userId) {
+    await incrementEditActivity(args.proposer.userId)
+  }
 
   // Conflict detection (Phase 4 D4).
   const diffFields = Object.keys(args.diff)

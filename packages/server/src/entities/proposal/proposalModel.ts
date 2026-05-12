@@ -76,6 +76,10 @@ export interface IProposal {
   conflictsWithProposalIds: Types.ObjectId[]
   // Set on Scraper proposals that wrap a PendingImport pending promotion.
   pendingImportId?: Types.ObjectId | null
+  // Phase 7 — true when a non-autoconfirmed user proposed an edit on an
+  // unclaimed record. Surfaces in /community-review and approves via any
+  // autoconfirmed user (not just the unit claimant, who doesn't exist).
+  isCommunityReview: boolean
   createdAt: Date
   updatedAt: Date
 }
@@ -130,6 +134,7 @@ const proposalSchema = new Schema<IProposal>({
   firstApprovalAt: { type: Date, default: null },
   conflictsWithProposalIds: [{ type: Schema.Types.ObjectId, ref: 'proposal' }],
   pendingImportId: { type: Schema.Types.ObjectId, ref: 'pendingImport', default: null },
+  isCommunityReview: { type: Boolean, default: false, index: true },
 }, {
   timestamps: true,
 })
@@ -140,5 +145,7 @@ proposalSchema.index({ 'target.kind': 1, 'target.id': 1, status: 1 })
 proposalSchema.index({ status: 1, firstApprovalAt: 1 })
 // "My proposals as proposer" view
 proposalSchema.index({ 'proposer.userId': 1, status: 1, createdAt: -1 })
+// Phase 7 — community-review queue scan
+proposalSchema.index({ isCommunityReview: 1, status: 1, createdAt: -1 })
 
 export const ProposalModel = (mongoose.models.proposal as mongoose.Model<IProposal>) || mongoose.model<IProposal>('proposal', proposalSchema)

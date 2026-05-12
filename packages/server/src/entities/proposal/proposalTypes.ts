@@ -84,6 +84,7 @@ export const proposalType: GraphQLObjectType = new GraphQLObjectType({
     submissionVersion: { type: new GraphQLNonNull(GraphQLString), resolve: (p: any) => p.submissionVersion?.toISOString() },
     status: { type: new GraphQLNonNull(GraphQLString), resolve: (p: any) => p.status },
     isJointStewardship: { type: new GraphQLNonNull(GraphQLBoolean), resolve: (p: any) => !!p.isJointStewardship },
+    isCommunityReview: { type: new GraphQLNonNull(GraphQLBoolean), resolve: (p: any) => !!p.isCommunityReview },
     approvals: { type: new GraphQLNonNull(new GraphQLList(proposalApprovalType)), resolve: (p: any) => p.approvals ?? [] },
     firstApprovalAt: { type: GraphQLString, resolve: (p: any) => p.firstApprovalAt?.toISOString() ?? null },
     declineReason: { type: GraphQLString, resolve: (p: any) => p.declineReason ?? null },

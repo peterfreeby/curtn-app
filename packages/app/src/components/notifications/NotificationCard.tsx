@@ -30,7 +30,11 @@ export type NotificationKind =
   | "sync_stale_alert"
   | "sync_recovered"
   | "sync_reverted_to_passive"
-  | "sync_disconnected";
+  | "sync_disconnected"
+  | "community_review_approved"
+  | "community_review_declined"
+  | "autoconfirmed_achieved"
+  | "high_block_volume_alert";
 
 export interface NotificationData {
   id: string;
@@ -329,6 +333,49 @@ function renderBody(notification: NotificationData) {
       return (
         <p className="text-sm text-curtn-cream">
           You disconnected sync from <span className="font-medium">{ctx.targetName ?? "your venue"}</span>. The unit is back to passive.
+        </p>
+      );
+    }
+
+    case "community_review_approved": {
+      const slug = ctx.targetSlug as string | undefined;
+      const path = ctx.targetKind && slug && PROPOSAL_TARGET_PATH_PREFIX[ctx.targetKind]
+        ? `${PROPOSAL_TARGET_PATH_PREFIX[ctx.targetKind]}/${slug}`
+        : null;
+      return (
+        <p className="text-sm text-curtn-cream">
+          Your edit was approved through community review.
+          {path ? <> Applied to <Link href={path} className="text-curtn-coral hover:underline font-medium">{ctx.targetName ?? "a record"}</Link>.</> : ctx.targetName ? <> Applied to <span className="font-medium">{ctx.targetName}</span>.</> : null}
+        </p>
+      );
+    }
+
+    case "community_review_declined": {
+      return (
+        <p className="text-sm text-curtn-cream">
+          Your edit was declined through community review.
+          {ctx.declineReason ? (
+            <span className="block mt-1 text-xs text-curtn-muted italic">Reason: {ctx.declineReason}</span>
+          ) : null}
+        </p>
+      );
+    }
+
+    case "autoconfirmed_achieved": {
+      return (
+        <p className="text-sm text-curtn-cream">
+          You're now an autoconfirmed contributor. Edits you make to unclaimed records publish directly — no community review needed.
+        </p>
+      );
+    }
+
+    case "high_block_volume_alert": {
+      const handle = ctx.blockerUsername ? `@${ctx.blockerUsername}` : (ctx.blockerFullName ?? "A claimant");
+      return (
+        <p className="text-sm text-curtn-cream">
+          <span className="font-medium">{handle}</span> issued {ctx.blockCount ?? "several"} blocks in the last {ctx.windowDays ?? 30} days
+          (threshold {ctx.threshold ?? 10}).{" "}
+          <Link href="/admin/blocks" className="text-curtn-coral hover:underline">Review →</Link>
         </p>
       );
     }

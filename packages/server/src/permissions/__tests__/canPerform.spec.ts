@@ -93,10 +93,20 @@ describe('canPerform', () => {
   })
 
   describe('denied / queue routing', () => {
-    it('regular user denied on unclaimed venue', async () => {
+    it('non-autoconfirmed user routes to community-review queue on unclaimed venue (Phase 7)', async () => {
       const venue = await makeVenue({ submittedBy: adminUser._id })
       const decision = await canPerform(regularUser._id.toString(), 'venue.edit_description', { kind: 'Venue', id: venue._id })
-      expect(decision.mode).toBe('denied')
+      expect(decision.mode).toBe('queue')
+      expect(decision.isCommunityReview).toBe(true)
+    })
+
+    it('autoconfirmed user auto-publishes on unclaimed venue (Phase 7)', async () => {
+      const venue = await makeVenue({ submittedBy: adminUser._id })
+      // Push regularUser into autoconfirmed state — old account + edits.
+      const old = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      await UserModel.updateOne({ _id: regularUser._id }, { $set: { createdAt: old, editCount: 25 } })
+      const decision = await canPerform(regularUser._id.toString(), 'venue.edit_description', { kind: 'Venue', id: venue._id })
+      expect(decision.mode).toBe('auto-publish')
     })
 
     it('non-claimant routes to queue on claimed venue (Phase 4)', async () => {
@@ -115,13 +125,16 @@ describe('canPerform', () => {
       expect(decision.mode).toBe('auto-publish')
     })
 
-    it('non-admin denied on missing venue', async () => {
+    it('non-admin on missing venue → community-review queue (Phase 7)', async () => {
       const decision = await canPerform(regularUser._id.toString(), 'venue.edit_description', {
         kind: 'Venue',
         id: new Types.ObjectId(),
       })
-      // No unit found, no claimedBy match → falls through to queue-denied
-      expect(decision.mode).toBe('denied')
+      // No unit found → treated as unclaimed; non-autoconfirmed routes to
+      // community-review queue. (The downstream update mutation will fail to
+      // find the target and reject — canPerform is just the gate.)
+      expect(decision.mode).toBe('queue')
+      expect(decision.isCommunityReview).toBe(true)
     })
   })
 
@@ -288,10 +301,10 @@ describe('canPerform', () => {
       expect(decision.mode).toBe('queue')
     })
 
-    it('unclaimed record path UNCHANGED — Phase 1 denial preserved', async () => {
+    it('unclaimed record + non-autoconfirmed → community-review queue (Phase 7)', async () => {
       const venue = await makeVenue({ submittedBy: adminUser._id })
-      // Even with a trust grant on an unclaimed venue, denial holds (no claimant
-      // means we never reach the trust lookup — the gate is upstream).
+      // A trust grant on an unclaimed venue is bypassed — there's no claimant
+      // path to fall through; Phase 7 routes new accounts to community review.
       await new TrustedEditorModel({
         grantedOn: { kind: 'Venue', id: venue._id },
         recipient: { kind: 'User', id: otherUser._id },
@@ -300,7 +313,8 @@ describe('canPerform', () => {
         grantedBy: adminUser._id,
       }).save()
       const decision = await canPerform(otherUser._id.toString(), 'venue.edit_description', { kind: 'Venue', id: venue._id })
-      expect(decision.mode).toBe('denied')
+      expect(decision.mode).toBe('queue')
+      expect(decision.isCommunityReview).toBe(true)
     })
   })
 })

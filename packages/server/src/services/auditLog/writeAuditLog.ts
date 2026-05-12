@@ -6,6 +6,7 @@ import {
   ApprovalSource,
   IAuditLog,
 } from '../../entities/auditLog/auditLogModel'
+import { incrementEditActivity } from '../antiAbuse/incrementEditActivity'
 
 // Single entry point for recording an edit to an existing record. Every
 // update mutation calls this after a successful write. For record creation
@@ -86,7 +87,7 @@ export async function writeAuditLog(opts: WriteAuditLogOptions): Promise<IAuditL
     ? { _created: true, snapshot: normalize(opts.newDoc) }
     : computeDiff(opts.oldDoc, opts.newDoc)
 
-  return AuditLogModel.create({
+  const row = await AuditLogModel.create({
     target: {
       kind: opts.target.kind,
       id: opts.target.id,
@@ -103,6 +104,14 @@ export async function writeAuditLog(opts: WriteAuditLogOptions): Promise<IAuditL
     isRevert: opts.isRevert ?? false,
     revertOf: opts.revertOf ?? null,
   })
+
+  // Phase 7 — bump editCount / fire autoconfirmed_achieved when a User
+  // author publishes. Scraper / SyncFeed / System authors don't count.
+  if (opts.author.kind === 'User' && opts.author.userId) {
+    await incrementEditActivity(opts.author.userId)
+  }
+
+  return row
 }
 
 export { computeDiff as _computeDiffForTest }
