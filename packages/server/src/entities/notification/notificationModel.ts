@@ -28,6 +28,11 @@ export type NotificationKind =
   | 'sync_recovered'
   | 'sync_reverted_to_passive'
   | 'sync_disconnected'
+  // Phase 8 — verification signals / auto-promotion
+  | 'claim_auto_approved'
+  | 'claim_signals_insufficient'
+  | 'webmaster_verification_failed'
+  | 'webmaster_verification_succeeded'
 
 export interface INotification {
   recipient: Types.ObjectId
@@ -69,6 +74,11 @@ const notificationSchema = new Schema<INotification>({
       'sync_recovered',
       'sync_reverted_to_passive',
       'sync_disconnected',
+      // Phase 8 — verification signals / auto-promotion
+      'claim_auto_approved',
+      'claim_signals_insufficient',
+      'webmaster_verification_failed',
+      'webmaster_verification_succeeded',
     ]
   },
   context: {

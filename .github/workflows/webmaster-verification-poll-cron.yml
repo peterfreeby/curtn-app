@@ -1,0 +1,18 @@
+name: Webmaster Verification Poll
+
+on:
+  schedule:
+    # Every 15 minutes. Cheap; just fetches a small set of pending claims.
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit webmaster-verification-poll worker
+        run: |
+          curl -fsS \
+            --max-time 65 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/webmaster-verification-poll"

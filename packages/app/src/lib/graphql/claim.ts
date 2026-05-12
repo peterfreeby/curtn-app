@@ -10,6 +10,10 @@ export const SUBMIT_CLAIM_MUTATION = gql`
         id
         status
         requestedAt
+        signals {
+          autoPromotionScore
+          autoPromotedAt
+        }
       }
       error
     }
@@ -90,6 +94,134 @@ export const PERSON_FOR_CLAIM_QUERY = gql`
       claimedBy {
         id
         username
+      }
+    }
+  }
+`;
+
+// Phase 8 — verification signals.
+
+export const CLAIM_SIGNALS_FRAGMENT = gql`
+  fragment ClaimSignalsFields on ClaimRequest {
+    id
+    status
+    signals {
+      webmasterVerified
+      webmasterToken
+      webmasterTokenExpires
+      externalProfileLinks {
+        url
+        platform
+        verifiedAt
+      }
+      trustGraphEndorsements {
+        grantingUnitKind
+        grantingUnitId
+        grantedAt
+      }
+      autoPromotionScore
+      autoPromotedAt
+    }
+  }
+`;
+
+export const GET_CLAIM_SIGNALS_QUERY = gql`
+  query GetClaimSignals($claimRequestId: String!) {
+    getClaimSignals(claimRequestId: $claimRequestId) {
+      ...ClaimSignalsFields
+    }
+  }
+  ${CLAIM_SIGNALS_FRAGMENT}
+`;
+
+export const GENERATE_WEBMASTER_TOKEN_MUTATION = gql`
+  mutation GenerateWebmasterToken($input: generateWebmasterTokenInput!) {
+    generateWebmasterToken(input: $input) {
+      claimRequest {
+        ...ClaimSignalsFields
+      }
+      token
+      website
+      error
+    }
+  }
+  ${CLAIM_SIGNALS_FRAGMENT}
+`;
+
+export const VERIFY_WEBMASTER_MUTATION = gql`
+  mutation VerifyWebmaster($input: verifyWebmasterInput!) {
+    verifyWebmaster(input: $input) {
+      claimRequest {
+        ...ClaimSignalsFields
+      }
+      verified
+      method
+      autoPromoted
+      error
+    }
+  }
+  ${CLAIM_SIGNALS_FRAGMENT}
+`;
+
+export const LINK_EXTERNAL_PROFILE_MUTATION = gql`
+  mutation LinkExternalProfile($input: linkExternalProfileInput!) {
+    linkExternalProfile(input: $input) {
+      claimRequest {
+        ...ClaimSignalsFields
+      }
+      autoPromoted
+      error
+    }
+  }
+  ${CLAIM_SIGNALS_FRAGMENT}
+`;
+
+export const ADMIN_REVOKE_AUTO_PROMOTION_MUTATION = gql`
+  mutation AdminRevokeAutoPromotion($input: adminRevokeAutoPromotionInput!) {
+    adminRevokeAutoPromotion(input: $input) {
+      claimRequest {
+        id
+        status
+        reviewerNotes
+      }
+      error
+    }
+  }
+`;
+
+export const AUTO_PROMOTED_CLAIMS_QUERY = gql`
+  query AutoPromotedClaims {
+    autoPromotedClaims(first: 50) {
+      edges {
+        node {
+          id
+          status
+          message
+          requestedAt
+          user {
+            id
+            username
+            fullName
+          }
+          target {
+            kind
+            targetId
+            name
+            slug
+          }
+          signals {
+            webmasterVerified
+            externalProfileLinks {
+              url
+              platform
+            }
+            trustGraphEndorsements {
+              grantingUnitKind
+            }
+            autoPromotionScore
+            autoPromotedAt
+          }
+        }
       }
     }
   }

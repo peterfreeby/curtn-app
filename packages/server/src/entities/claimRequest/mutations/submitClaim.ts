@@ -7,6 +7,10 @@ import { VenueModel } from '../../venue/venueModel'
 import { ProductionCompanyModel } from '../../productionCompany/productionCompanyModel'
 import { PersonModel } from '../../person/personModel'
 import { UserModel } from '../../user/userModel'
+import { computeTrustGraphEndorsements } from '../../../services/verificationSignals/computeTrustGraphEndorsements'
+import { maybeAutoPromote } from '../../../services/verificationSignals/maybeAutoPromote'
+import { createNotification } from '../../../services/notifications/createNotification'
+import { SIGNAL_POINTS } from '../../../permissions/verificationSignals'
 
 const TARGET_KINDS: ClaimTargetKind[] = ['venue', 'productionCompany', 'person']
 
@@ -71,16 +75,48 @@ export const submitClaim = mutationWithClientMutationId({
     })
     if (existing) return { error: 'You already have a pending claim request on this unit.' }
 
+    // Compute trust-graph endorsements at submission time. (Phase 8 — refreshed
+    // periodically by /api/cron/refresh-trust-graph-signals.)
+    const endorsements = await computeTrustGraphEndorsements(user._id)
+
     const claimRequest = await new ClaimRequestModel({
       user: user._id,
       target: { kind: targetKind, id: unit._id },
       message: evidence.trim(),
+      signals: {
+        webmasterVerified: false,
+        externalProfileLinks: [],
+        trustGraphEndorsements: endorsements,
+        autoPromotionScore: 0,
+      },
     }).save()
 
     // Transition unit → provisionally-claimed (don't overwrite if already provisional from another user)
     if (unit.claimState === 'unclaimed') {
       unit.claimState = 'provisionally-claimed'
       await unit.save()
+    }
+
+    // Phase 8 — try auto-promotion. If signals already meet the threshold at
+    // submission (e.g. user has trust-graph + prior claim), the claim moves
+    // straight to `approved` and the unit to `claimed-passive`.
+    const result = await maybeAutoPromote(claimRequest)
+
+    // If not auto-promoted, fire a `claim_signals_insufficient` informational
+    // notification so the claimant knows the claim is queued for admin.
+    if (!result.promoted && result.score < SIGNAL_POINTS.AUTO_PROMOTE_THRESHOLD) {
+      await createNotification({
+        recipient: user._id,
+        kind: 'claim_signals_insufficient',
+        context: {
+          targetKind,
+          targetId: unit._id.toString(),
+          targetName: unit.name,
+          targetSlug: unit.slug ?? null,
+          score: result.score,
+          threshold: SIGNAL_POINTS.AUTO_PROMOTE_THRESHOLD,
+        },
+      })
     }
 
     return { claimRequest }

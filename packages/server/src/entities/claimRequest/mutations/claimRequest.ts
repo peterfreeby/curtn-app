@@ -5,6 +5,10 @@ import { rejectClaimRequest } from './rejectClaimRequest'
 import { submitClaim } from './submitClaim'
 import { approveClaim } from './approveClaim'
 import { declineClaim } from './declineClaim'
+import { generateWebmasterTokenMutation } from './generateWebmasterToken'
+import { verifyWebmasterMutation } from './verifyWebmaster'
+import { linkExternalProfileMutation } from './linkExternalProfile'
+import { adminRevokeAutoPromotionMutation } from './adminRevokeAutoPromotion'
 
 export const claimRequestMutations = {
   // Legacy Person-only flow (kept for backward compatibility)
@@ -16,4 +20,9 @@ export const claimRequestMutations = {
   submitClaim,
   approveClaim,
   declineClaim,
+  // Phase 8 — verification signals + auto-promotion
+  generateWebmasterToken: generateWebmasterTokenMutation,
+  verifyWebmaster: verifyWebmasterMutation,
+  linkExternalProfile: linkExternalProfileMutation,
+  adminRevokeAutoPromotion: adminRevokeAutoPromotionMutation,
 }

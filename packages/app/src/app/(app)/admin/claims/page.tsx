@@ -25,6 +25,14 @@ interface TargetNode {
   slug: string | null;
 }
 
+interface ClaimSignals {
+  webmasterVerified: boolean;
+  externalProfileLinks: Array<{ url: string; platform: string }>;
+  trustGraphEndorsements: Array<{ grantingUnitKind: string | null }>;
+  autoPromotionScore: number;
+  autoPromotedAt: string | null;
+}
+
 interface ClaimRequestNode {
   id: string;
   user: { id: string; fullName: string; username: string; avatarUrl: string };
@@ -36,6 +44,7 @@ interface ClaimRequestNode {
   requestedAt: string;
   reviewedAt: string | null;
   reviewedBy: { id: string; username: string } | null;
+  signals: ClaimSignals | null;
 }
 
 type StatusFilter = "pending" | "approved" | "rejected" | "all";
@@ -222,11 +231,19 @@ export default function AdminClaimsPage() {
 
   return (
     <div className="px-6 py-8 max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-curtn-cream">Claim Requests</h1>
-        <p className="mt-1 text-sm text-curtn-muted">
-          Review requests from users to claim venues, production companies, and performer profiles.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-curtn-cream">Claim Requests</h1>
+          <p className="mt-1 text-sm text-curtn-muted">
+            Review requests from users to claim venues, production companies, and performer profiles.
+          </p>
+        </div>
+        <Link
+          href="/admin/claims/auto-approved"
+          className="text-xs text-curtn-coral hover:underline shrink-0"
+        >
+          Auto-approved claims →
+        </Link>
       </div>
 
       {message && (
@@ -321,6 +338,38 @@ export default function AdminClaimsPage() {
                       <p className="text-xs text-curtn-muted/80 italic mt-1 whitespace-pre-wrap">
                         &ldquo;{item.message}&rdquo;
                       </p>
+                    )}
+                    {item.signals && (
+                      <div className="mt-2 rounded-md border border-curtn-dark bg-curtn-deep/50 px-3 py-2 text-[11px] text-curtn-muted space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="uppercase tracking-wider text-[10px]">Signals</span>
+                          <span className="text-curtn-cream font-medium">
+                            {item.signals.autoPromotionScore} / 100
+                          </span>
+                          {item.signals.autoPromotedAt && (
+                            <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-[9px] uppercase tracking-wider text-green-400">
+                              Auto-approved
+                            </span>
+                          )}
+                        </div>
+                        <ul className="space-y-0.5">
+                          <li>
+                            Webmaster:{" "}
+                            <span className={item.signals.webmasterVerified ? "text-green-400" : "text-curtn-muted"}>
+                              {item.signals.webmasterVerified ? "verified" : "not verified"}
+                            </span>
+                          </li>
+                          <li>
+                            External profiles: {item.signals.externalProfileLinks.length}
+                            {item.signals.externalProfileLinks.length > 0 && (
+                              <span className="ml-1 text-curtn-muted/70">
+                                ({item.signals.externalProfileLinks.map((l) => l.platform).join(", ")})
+                              </span>
+                            )}
+                          </li>
+                          <li>Trust graph: {item.signals.trustGraphEndorsements.length} endorsement(s)</li>
+                        </ul>
+                      </div>
                     )}
                     {item.reviewerNotes && item.status !== "pending" && (
                       <p className="text-[11px] text-curtn-muted/80 mt-1">

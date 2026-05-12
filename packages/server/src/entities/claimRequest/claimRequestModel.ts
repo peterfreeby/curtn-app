@@ -7,6 +7,43 @@ export interface IClaimTarget {
   id: Types.ObjectId
 }
 
+// Phase 8 — verification signals sub-document. Each signal contributes points
+// toward an auto-promotion score; threshold = 100 → auto-approve. Trust-graph
+// endorsements are the load-bearing signal (grounded in Phase 5 design);
+// webmaster verification + external profile linking are additive proposed
+// signals (Bluesky / Wikidata patterns).
+
+export type ExternalProfilePlatform =
+  | 'imdb-pro'
+  | 'wikidata'
+  | 'spotify-artist'
+  | 'wikipedia'
+  | 'other'
+
+export interface IExternalProfileLink {
+  url: string
+  platform: ExternalProfilePlatform
+  verifiedAt?: Date
+}
+
+export interface ITrustGraphEndorsement {
+  grantingUnit: {
+    kind: string
+    id: Types.ObjectId
+  }
+  grantedAt: Date
+}
+
+export interface IClaimSignals {
+  webmasterVerified: boolean
+  webmasterToken?: string
+  webmasterTokenExpires?: Date
+  externalProfileLinks: IExternalProfileLink[]
+  trustGraphEndorsements: ITrustGraphEndorsement[]
+  autoPromotionScore: number
+  autoPromotedAt?: Date
+}
+
 export interface IClaimRequest {
   user: Types.ObjectId
   // Legacy field — pre-Phase-1 claims targeted Person only. New claims use `target`.
@@ -19,6 +56,7 @@ export interface IClaimRequest {
   reviewedAt?: Date
   reviewedBy?: Types.ObjectId
   reviewerNotes?: string
+  signals: IClaimSignals
   createdAt: Date
   updatedAt: Date
 }
@@ -64,7 +102,36 @@ const claimRequestSchema = new Schema<IClaimRequest>({
   reviewerNotes: {
     type: String,
     trim: true
-  }
+  },
+  signals: {
+    webmasterVerified: { type: Boolean, default: false },
+    webmasterToken: { type: String },
+    webmasterTokenExpires: { type: Date },
+    externalProfileLinks: {
+      type: [{
+        url: { type: String, required: true },
+        platform: {
+          type: String,
+          enum: ['imdb-pro', 'wikidata', 'spotify-artist', 'wikipedia', 'other'],
+          required: true,
+        },
+        verifiedAt: { type: Date },
+      }],
+      default: [],
+    },
+    trustGraphEndorsements: {
+      type: [{
+        grantingUnit: {
+          kind: { type: String },
+          id: { type: Schema.Types.ObjectId },
+        },
+        grantedAt: { type: Date },
+      }],
+      default: [],
+    },
+    autoPromotionScore: { type: Number, default: 0 },
+    autoPromotedAt: { type: Date },
+  },
 }, {
   timestamps: true
 })
