@@ -7,6 +7,7 @@ import { PersonModel } from '../../entities/person/personModel'
 import { RunModel } from '../../entities/run/runModel'
 import { ShowModel } from '../../entities/show/showModel'
 import { PerformanceModel } from '../../entities/performance/performanceModel'
+import { TrustedEditorModel } from '../../entities/trustedEditor/trustedEditorModel'
 
 // canPerform tests. Covers admin, claimant, denied, action mismatch, queue
 // routing (Phase 4) and Performance joint-stewardship resolution.
@@ -27,6 +28,7 @@ describe('canPerform', () => {
       RunModel.deleteMany({}),
       ShowModel.deleteMany({}),
       PerformanceModel.deleteMany({}),
+      TrustedEditorModel.deleteMany({}),
     ])
 
     adminUser = await new UserModel({ firebaseUid: 'admin-uid', phoneNumber: '+15550000001', username: 'admin', isAdmin: true }).save()
@@ -201,6 +203,104 @@ describe('canPerform', () => {
         id: performance._id,
       })
       expect(decision.mode).toBe('auto-publish')
+    })
+  })
+
+  describe('Phase 5 — trusted editor', () => {
+    it('direct user grant within scope auto-publishes', async () => {
+      const venue = await makeVenue({ submittedBy: adminUser._id, claimedBy: claimantUser._id, claimState: 'claimed-passive' })
+      await new TrustedEditorModel({
+        grantedOn: { kind: 'Venue', id: venue._id },
+        recipient: { kind: 'User', id: otherUser._id },
+        scope: ['venue.edit_description'],
+        roleTemplate: 'Publicist',
+        grantedBy: claimantUser._id,
+      }).save()
+      const decision = await canPerform(otherUser._id.toString(), 'venue.edit_description', { kind: 'Venue', id: venue._id })
+      expect(decision.mode).toBe('auto-publish')
+      expect(decision.trustSource).toBe('direct-grant')
+    })
+
+    it('revoked grant ignored — falls back to queue', async () => {
+      const venue = await makeVenue({ submittedBy: adminUser._id, claimedBy: claimantUser._id, claimState: 'claimed-passive' })
+      await new TrustedEditorModel({
+        grantedOn: { kind: 'Venue', id: venue._id },
+        recipient: { kind: 'User', id: otherUser._id },
+        scope: ['venue.edit_description'],
+        roleTemplate: 'Publicist',
+        grantedBy: claimantUser._id,
+        revokedAt: new Date(),
+        revokedBy: claimantUser._id,
+      }).save()
+      const decision = await canPerform(otherUser._id.toString(), 'venue.edit_description', { kind: 'Venue', id: venue._id })
+      expect(decision.mode).toBe('queue')
+    })
+
+    it('cascade: Manager-scope editor of recipient unit auto-publishes', async () => {
+      const venue = await makeVenue({ submittedBy: adminUser._id, claimedBy: claimantUser._id, claimState: 'claimed-passive' })
+      const companyClaimantUser = await new UserModel({ firebaseUid: 'cc-canperf', phoneNumber: '+15550009001', username: 'ccp' }).save()
+      const carol = await new UserModel({ firebaseUid: 'carol-canperf', phoneNumber: '+15550009002', username: 'carol' }).save()
+      const company = await makeCompany({ submittedBy: adminUser._id, claimedBy: companyClaimantUser._id, claimState: 'claimed-passive' })
+
+      // Venue grants trust on Civilians (unit grant)
+      await new TrustedEditorModel({
+        grantedOn: { kind: 'Venue', id: venue._id },
+        recipient: { kind: 'ProductionCompany', id: company._id },
+        scope: ['venue.edit_description'],
+        roleTemplate: 'Publicist',
+        grantedBy: claimantUser._id,
+      }).save()
+      // Carol = Manager-scope editor of Civilians
+      await new TrustedEditorModel({
+        grantedOn: { kind: 'ProductionCompany', id: company._id },
+        recipient: { kind: 'User', id: carol._id },
+        scope: ['company.edit_description'],
+        roleTemplate: 'Manager',
+        grantedBy: companyClaimantUser._id,
+      }).save()
+      const decision = await canPerform(carol._id.toString(), 'venue.edit_description', { kind: 'Venue', id: venue._id })
+      expect(decision.mode).toBe('auto-publish')
+      expect(decision.trustSource).toBe('cascade')
+    })
+
+    it('cascade: non-Manager-scope editor of recipient unit does NOT cascade', async () => {
+      const venue = await makeVenue({ submittedBy: adminUser._id, claimedBy: claimantUser._id, claimState: 'claimed-passive' })
+      const companyClaimantUser = await new UserModel({ firebaseUid: 'cc-canperf2', phoneNumber: '+15550009003', username: 'ccp2' }).save()
+      const carol = await new UserModel({ firebaseUid: 'carol-canperf2', phoneNumber: '+15550009004', username: 'carol2' }).save()
+      const company = await makeCompany({ submittedBy: adminUser._id, claimedBy: companyClaimantUser._id, claimState: 'claimed-passive' })
+
+      await new TrustedEditorModel({
+        grantedOn: { kind: 'Venue', id: venue._id },
+        recipient: { kind: 'ProductionCompany', id: company._id },
+        scope: ['venue.edit_description'],
+        roleTemplate: 'Publicist',
+        grantedBy: claimantUser._id,
+      }).save()
+      // Carol is a Booker (non-Manager) of Civilians
+      await new TrustedEditorModel({
+        grantedOn: { kind: 'ProductionCompany', id: company._id },
+        recipient: { kind: 'User', id: carol._id },
+        scope: ['company.edit_run'],
+        roleTemplate: 'Booker',
+        grantedBy: companyClaimantUser._id,
+      }).save()
+      const decision = await canPerform(carol._id.toString(), 'venue.edit_description', { kind: 'Venue', id: venue._id })
+      expect(decision.mode).toBe('queue')
+    })
+
+    it('unclaimed record path UNCHANGED — Phase 1 denial preserved', async () => {
+      const venue = await makeVenue({ submittedBy: adminUser._id })
+      // Even with a trust grant on an unclaimed venue, denial holds (no claimant
+      // means we never reach the trust lookup — the gate is upstream).
+      await new TrustedEditorModel({
+        grantedOn: { kind: 'Venue', id: venue._id },
+        recipient: { kind: 'User', id: otherUser._id },
+        scope: ['venue.edit_description'],
+        roleTemplate: 'Publicist',
+        grantedBy: adminUser._id,
+      }).save()
+      const decision = await canPerform(otherUser._id.toString(), 'venue.edit_description', { kind: 'Venue', id: venue._id })
+      expect(decision.mode).toBe('denied')
     })
   })
 })

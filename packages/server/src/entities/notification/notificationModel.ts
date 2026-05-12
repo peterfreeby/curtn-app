@@ -19,6 +19,9 @@ export type NotificationKind =
   | 'proposal_declined'
   | 'proposal_timeout_warning'
   | 'proposal_timeout_auto_approved'
+  | 'trust_granted'
+  | 'trust_revoked'
+  | 'reciprocity_offered'
 
 export interface INotification {
   recipient: Types.ObjectId
@@ -51,6 +54,9 @@ const notificationSchema = new Schema<INotification>({
       'proposal_declined',
       'proposal_timeout_warning',
       'proposal_timeout_auto_approved',
+      'trust_granted',
+      'trust_revoked',
+      'reciprocity_offered',
     ]
   },
   context: {
