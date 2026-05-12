@@ -34,7 +34,11 @@ export type NotificationKind =
   | "community_review_approved"
   | "community_review_declined"
   | "autoconfirmed_achieved"
-  | "high_block_volume_alert";
+  | "high_block_volume_alert"
+  | "claim_auto_approved"
+  | "claim_signals_insufficient"
+  | "webmaster_verification_failed"
+  | "webmaster_verification_succeeded";
 
 export interface NotificationData {
   id: string;
@@ -376,6 +380,67 @@ function renderBody(notification: NotificationData) {
           <span className="font-medium">{handle}</span> issued {ctx.blockCount ?? "several"} blocks in the last {ctx.windowDays ?? 30} days
           (threshold {ctx.threshold ?? 10}).{" "}
           <Link href="/admin/blocks" className="text-curtn-coral hover:underline">Review →</Link>
+        </p>
+      );
+    }
+
+    case "claim_auto_approved": {
+      const slug = ctx.targetSlug as string | undefined;
+      const path = ctx.targetKind && slug ? `${KIND_PATH_PREFIX[ctx.targetKind]}/${slug}` : null;
+      const isForAdmin = !!ctx.forAdmin;
+      const signals: string[] = Array.isArray(ctx.signals) ? ctx.signals : [];
+      return (
+        <p className="text-sm text-curtn-cream">
+          {isForAdmin ? (
+            <>Claim auto-approved on </>
+          ) : (
+            <>Your claim on </>
+          )}
+          {path ? (
+            <Link href={path} className="text-curtn-coral hover:underline font-medium">
+              {ctx.targetName ?? "a unit"}
+            </Link>
+          ) : (
+            <span className="font-medium">{ctx.targetName ?? "a unit"}</span>
+          )}
+          {" "}was auto-approved
+          {ctx.score != null ? <> ({ctx.score} pts)</> : null}.
+          {signals.length > 0 ? (
+            <span className="block mt-1 text-xs text-curtn-muted italic">
+              Signals: {signals.join(", ")}
+            </span>
+          ) : null}
+        </p>
+      );
+    }
+
+    case "claim_signals_insufficient": {
+      return (
+        <p className="text-sm text-curtn-cream">
+          Your claim on <span className="font-medium">{ctx.targetName ?? "a unit"}</span> was submitted
+          ({ctx.score ?? 0} / {ctx.threshold ?? 100} pts) — admin will review.
+          {" "}Add a webmaster meta tag or link an external profile to speed it up.
+        </p>
+      );
+    }
+
+    case "webmaster_verification_failed": {
+      return (
+        <p className="text-sm text-curtn-cream">
+          Webmaster verification failed{ctx.website ? <> for <span className="font-medium">{ctx.website}</span></> : null}.
+          {ctx.reason ? (
+            <span className="block mt-1 text-xs text-curtn-muted italic">{ctx.reason}</span>
+          ) : null}
+        </p>
+      );
+    }
+
+    case "webmaster_verification_succeeded": {
+      return (
+        <p className="text-sm text-curtn-cream">
+          Webmaster verified{ctx.website ? <> for <span className="font-medium">{ctx.website}</span></> : null}
+          {ctx.method ? <> ({ctx.method === "txt" ? "DNS TXT" : "meta tag"})</> : null}.
+          Your claim should auto-approve momentarily.
         </p>
       );
     }

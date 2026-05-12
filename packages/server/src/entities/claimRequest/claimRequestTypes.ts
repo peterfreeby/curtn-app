@@ -1,7 +1,10 @@
 import {
   GraphQLString,
   GraphQLNonNull,
-  GraphQLObjectType
+  GraphQLObjectType,
+  GraphQLBoolean,
+  GraphQLInt,
+  GraphQLList,
 } from 'graphql'
 import { nodeInterface } from '../../graphql/nodeInterface'
 import { globalIdField, connectionDefinitions } from 'graphql-relay'
@@ -71,6 +74,68 @@ const claimTargetType = new GraphQLObjectType({
   })
 })
 
+// Phase 8 — verification signals surfaced on the claim. Read-only here; mutations
+// (linkExternalProfile, verifyWebmaster, etc.) update the underlying document.
+
+const externalProfileLinkType = new GraphQLObjectType({
+  name: 'ExternalProfileLink',
+  fields: () => ({
+    url: { type: new GraphQLNonNull(GraphQLString), resolve: (l: any) => l.url },
+    platform: { type: new GraphQLNonNull(GraphQLString), resolve: (l: any) => l.platform },
+    verifiedAt: {
+      type: GraphQLString,
+      resolve: (l: any) => l.verifiedAt?.toISOString?.() ?? null,
+    },
+  }),
+})
+
+const trustGraphEndorsementType = new GraphQLObjectType({
+  name: 'TrustGraphEndorsement',
+  fields: () => ({
+    grantingUnitKind: { type: GraphQLString, resolve: (e: any) => e.grantingUnit?.kind ?? null },
+    grantingUnitId: {
+      type: GraphQLString,
+      resolve: (e: any) => e.grantingUnit?.id?.toString?.() ?? null,
+    },
+    grantedAt: {
+      type: GraphQLString,
+      resolve: (e: any) => e.grantedAt?.toISOString?.() ?? null,
+    },
+  }),
+})
+
+const claimSignalsType = new GraphQLObjectType({
+  name: 'ClaimSignals',
+  description: 'Phase 8 verification signals attached to a ClaimRequest.',
+  fields: () => ({
+    webmasterVerified: {
+      type: new GraphQLNonNull(GraphQLBoolean),
+      resolve: (s: any) => !!s?.webmasterVerified,
+    },
+    webmasterToken: { type: GraphQLString, resolve: (s: any) => s?.webmasterToken ?? null },
+    webmasterTokenExpires: {
+      type: GraphQLString,
+      resolve: (s: any) => s?.webmasterTokenExpires?.toISOString?.() ?? null,
+    },
+    externalProfileLinks: {
+      type: new GraphQLList(externalProfileLinkType),
+      resolve: (s: any) => s?.externalProfileLinks ?? [],
+    },
+    trustGraphEndorsements: {
+      type: new GraphQLList(trustGraphEndorsementType),
+      resolve: (s: any) => s?.trustGraphEndorsements ?? [],
+    },
+    autoPromotionScore: {
+      type: new GraphQLNonNull(GraphQLInt),
+      resolve: (s: any) => s?.autoPromotionScore ?? 0,
+    },
+    autoPromotedAt: {
+      type: GraphQLString,
+      resolve: (s: any) => s?.autoPromotedAt?.toISOString?.() ?? null,
+    },
+  }),
+})
+
 export const claimRequestType = new GraphQLObjectType({
   name: 'ClaimRequest',
   description: 'A request from a user to claim a Venue, ProductionCompany, or Person, pending admin approval',
@@ -128,7 +193,12 @@ export const claimRequestType = new GraphQLObjectType({
       createdAt: {
         type: GraphQLString,
         resolve: (cr: any) => cr.createdAt?.toISOString()
-      }
+      },
+      signals: {
+        type: claimSignalsType,
+        description: 'Phase 8 — verification signals (webmaster status, profile links, trust-graph endorsements, score).',
+        resolve: (cr: any) => cr.signals ?? null
+      },
     }
   }
 })

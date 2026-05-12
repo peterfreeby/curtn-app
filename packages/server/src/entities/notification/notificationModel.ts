@@ -32,6 +32,10 @@ export type NotificationKind =
   | 'community_review_declined'
   | 'autoconfirmed_achieved'
   | 'high_block_volume_alert'
+  | 'claim_auto_approved'
+  | 'claim_signals_insufficient'
+  | 'webmaster_verification_failed'
+  | 'webmaster_verification_succeeded'
 
 export interface INotification {
   recipient: Types.ObjectId
@@ -77,6 +81,10 @@ const notificationSchema = new Schema<INotification>({
       'community_review_declined',
       'autoconfirmed_achieved',
       'high_block_volume_alert',
+      'claim_auto_approved',
+      'claim_signals_insufficient',
+      'webmaster_verification_failed',
+      'webmaster_verification_succeeded',
     ]
   },
   context: {

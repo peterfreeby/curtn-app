@@ -143,9 +143,11 @@ describe('Polymorphic claim mutations (Phase 2)', () => {
       expect(updatedCR?.status).toBe('approved')
       expect(updatedCR?.reviewerNotes).toBe('Verified via website.')
 
-      const notifications = await NotificationModel.find({ recipient: claimantUser._id })
+      const notifications = await NotificationModel.find({
+        recipient: claimantUser._id,
+        kind: 'claim_approved',
+      })
       expect(notifications).toHaveLength(1)
-      expect(notifications[0].kind).toBe('claim_approved')
       expect((notifications[0].context as any).targetName).toBe('Test Venue')
     })
 
@@ -197,9 +199,11 @@ describe('Polymorphic claim mutations (Phase 2)', () => {
       expect(updated?.claimState).toBe('unclaimed')
       expect(updated?.claimedBy).toBeNull()
 
-      const notifications = await NotificationModel.find({ recipient: claimantUser._id })
+      const notifications = await NotificationModel.find({
+        recipient: claimantUser._id,
+        kind: 'claim_declined',
+      })
       expect(notifications).toHaveLength(1)
-      expect(notifications[0].kind).toBe('claim_declined')
       expect((notifications[0].context as any).reviewerNotes).toBe('Need more evidence.')
     })
 

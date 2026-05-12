@@ -34,6 +34,18 @@ export const CLAIM_REQUESTS_QUERY = gql`
             id
             username
           }
+          signals {
+            webmasterVerified
+            externalProfileLinks {
+              url
+              platform
+            }
+            trustGraphEndorsements {
+              grantingUnitKind
+            }
+            autoPromotionScore
+            autoPromotedAt
+          }
         }
       }
     }
