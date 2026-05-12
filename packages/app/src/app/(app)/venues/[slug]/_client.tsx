@@ -11,6 +11,7 @@ import { Button } from "@/components/Button";
 import { InlineEditor } from "@/components/admin/InlineEditor";
 import { EntityDataSourcesPanel } from "@/components/admin/EntityDataSourcesPanel";
 import { ClaimCTA } from "@/components/claim/ClaimCTA";
+import { EditHistory } from "@/components/auditLog/EditHistory";
 import { useAuth } from "@/lib/auth/useAuth";
 
 function decodeId(globalId: string): string {
@@ -114,6 +115,12 @@ export default function VenueDetailPage() {
       )}
 
       <VenuePerformances venueName={venue.name} />
+
+      <EditHistory
+        targetKind="Venue"
+        targetId={decodeId(venue.id)}
+        canEdit={isAdmin}
+      />
     </div>
   );
 }

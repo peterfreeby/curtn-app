@@ -7,10 +7,18 @@ import { PersonHero } from "@/components/people/PersonHero";
 import { PersonCredits } from "@/components/people/PersonCredits";
 import { ClaimPersonButton } from "@/components/people/ClaimPersonButton";
 import { AddToListButton } from "@/components/lists/AddToListButton";
+import { EditHistory } from "@/components/auditLog/EditHistory";
+import { useAuth } from "@/lib/auth/useAuth";
+
+function decodeId(globalId: string): string {
+  return atob(globalId).split(":")[1];
+}
 
 export default function PersonDetailPage() {
   const params = useParams();
   const slug = params.slug as string;
+  const { user } = useAuth();
+  const isAdmin = !!user?.isAdmin;
 
   const [{ data, fetching }, reexecute] = useQuery({
     query: PERSON_BY_SLUG_QUERY,
@@ -68,6 +76,12 @@ export default function PersonDetailPage() {
         castCredits={person.castCredits ?? []}
         crewCredits={person.crewCredits ?? []}
         showCredits={person.showCredits ?? []}
+      />
+
+      <EditHistory
+        targetKind="Person"
+        targetId={decodeId(person.id)}
+        canEdit={isAdmin}
       />
     </div>
   );

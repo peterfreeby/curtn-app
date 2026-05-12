@@ -4,6 +4,7 @@ import { performanceType } from '../performanceTypes'
 import { PerformanceModel } from '../performanceModel'
 import { UserModel } from '../../user/userModel'
 import { errorField } from '../../../graphql/errorField'
+import { writeAuditLog } from '../../../services/auditLog/writeAuditLog'
 
 export const performanceUpdate = mutationWithClientMutationId({
   name: 'performanceUpdate',
@@ -12,6 +13,10 @@ export const performanceUpdate = mutationWithClientMutationId({
     performanceId: {
       type: new GraphQLNonNull(GraphQLString),
       description: 'MongoDB ObjectId of the performance to update'
+    },
+    expectedUpdatedAt: {
+      type: GraphQLString,
+      description: 'Optimistic concurrency token. ISO string of updatedAt at edit-form load time.'
     },
     date: {
       type: GraphQLString,
@@ -63,6 +68,14 @@ export const performanceUpdate = mutationWithClientMutationId({
       const performance = await PerformanceModel.findById(input.performanceId)
       if (!performance) return { error: 'Performance not found' }
 
+      if (input.expectedUpdatedAt) {
+        const submitted = new Date(input.expectedUpdatedAt).getTime()
+        const current = (performance as any).updatedAt?.getTime() ?? 0
+        if (current > submitted) {
+          return { error: `STALE_VERSION: record changed at ${(performance as any).updatedAt?.toISOString()}` }
+        }
+      }
+
       const updates: Record<string, any> = {}
 
       if (input.date !== undefined && input.date !== '') updates.date = new Date(input.date)
@@ -78,7 +91,17 @@ export const performanceUpdate = mutationWithClientMutationId({
         return { performance }
       }
 
+      const oldDoc = performance.toObject()
       const updated = await PerformanceModel.findByIdAndUpdate(input.performanceId, updates, { new: true })
+      if (updated) {
+        await writeAuditLog({
+          target: { kind: 'Performance', id: updated._id },
+          author: { kind: 'User', userId: ctx.user.id },
+          oldDoc,
+          newDoc: updated.toObject(),
+          approvalSource: 'admin-override',
+        })
+      }
       return { performance: updated }
     } catch (err) {
       console.error('performanceUpdate error:', err)

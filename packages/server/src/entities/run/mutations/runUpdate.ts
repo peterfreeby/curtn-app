@@ -4,6 +4,7 @@ import { runType } from '../runTypes'
 import { RunModel } from '../runModel'
 import { UserModel } from '../../user/userModel'
 import { errorField } from '../../../graphql/errorField'
+import { writeAuditLog } from '../../../services/auditLog/writeAuditLog'
 
 export const runUpdate = mutationWithClientMutationId({
   name: 'runUpdate',
@@ -12,6 +13,10 @@ export const runUpdate = mutationWithClientMutationId({
     runId: {
       type: new GraphQLNonNull(GraphQLString),
       description: 'MongoDB ObjectId of the run to update'
+    },
+    expectedUpdatedAt: {
+      type: GraphQLString,
+      description: 'Optimistic concurrency token. ISO string of updatedAt at edit-form load time.'
     },
     title: {
       type: GraphQLString,
@@ -75,6 +80,14 @@ export const runUpdate = mutationWithClientMutationId({
       const run = await RunModel.findById(input.runId)
       if (!run) return { error: 'Run not found' }
 
+      if (input.expectedUpdatedAt) {
+        const submitted = new Date(input.expectedUpdatedAt).getTime()
+        const current = (run as any).updatedAt?.getTime() ?? 0
+        if (current > submitted) {
+          return { error: `STALE_VERSION: record changed at ${(run as any).updatedAt?.toISOString()}` }
+        }
+      }
+
       const updates: Record<string, any> = {}
 
       if (input.title !== undefined) updates.title = input.title
@@ -103,7 +116,17 @@ export const runUpdate = mutationWithClientMutationId({
         return { run }
       }
 
+      const oldDoc = run.toObject()
       const updated = await RunModel.findByIdAndUpdate(input.runId, updates, { new: true })
+      if (updated) {
+        await writeAuditLog({
+          target: { kind: 'Run', id: updated._id },
+          author: { kind: 'User', userId: ctx.user.id },
+          oldDoc,
+          newDoc: updated.toObject(),
+          approvalSource: 'admin-override',
+        })
+      }
       return { run: updated }
     } catch (err) {
       console.error('runUpdate error:', err)

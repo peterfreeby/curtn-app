@@ -5,6 +5,7 @@ import { PersonModel } from '../personModel'
 import { errorField } from '../../../graphql/errorField'
 import { canPerform } from '../../../permissions/canPerform'
 import { bumpForUnit } from '../../../services/claims/bumpClaimantActivity'
+import { writeAuditLog } from '../../../services/auditLog/writeAuditLog'
 
 export const personUpdate = mutationWithClientMutationId({
   name: 'personUpdate',
@@ -13,6 +14,10 @@ export const personUpdate = mutationWithClientMutationId({
     personId: {
       type: new GraphQLNonNull(GraphQLString),
       description: 'MongoDB ObjectId of the person to update'
+    },
+    expectedUpdatedAt: {
+      type: GraphQLString,
+      description: 'Optimistic concurrency token. ISO string of updatedAt at edit-form load time.'
     },
     name: {
       type: GraphQLString,
@@ -54,6 +59,14 @@ export const personUpdate = mutationWithClientMutationId({
       const person = await PersonModel.findById(input.personId)
       if (!person) return { error: 'Person not found' }
 
+      if (input.expectedUpdatedAt) {
+        const submitted = new Date(input.expectedUpdatedAt).getTime()
+        const current = person.updatedAt?.getTime() ?? 0
+        if (current > submitted) {
+          return { error: `STALE_VERSION: record changed at ${person.updatedAt?.toISOString()}` }
+        }
+      }
+
       const updates: Record<string, any> = {}
 
       if (input.name !== undefined) {
@@ -72,9 +85,19 @@ export const personUpdate = mutationWithClientMutationId({
         return { person }
       }
 
+      const oldDoc = person.toObject()
       const updated = await PersonModel.findByIdAndUpdate(input.personId, updates, { new: true })
-      if (updated && updated.claimedBy?.toString() === ctx.user.id) {
-        await bumpForUnit('person', updated._id)
+      if (updated) {
+        await writeAuditLog({
+          target: { kind: 'Person', id: updated._id },
+          author: { kind: 'User', userId: ctx.user.id },
+          oldDoc,
+          newDoc: updated.toObject(),
+          approvalSource: 'direct-publish',
+        })
+        if (updated.claimedBy?.toString() === ctx.user.id) {
+          await bumpForUnit('person', updated._id)
+        }
       }
       return { person: updated }
     } catch (err) {

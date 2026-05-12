@@ -9,7 +9,12 @@ import { CompanyRuns } from "@/components/companies/CompanyRuns";
 import { Icon } from "@/components/icons/Icons";
 import { EntityDataSourcesPanel } from "@/components/admin/EntityDataSourcesPanel";
 import { ClaimCTA } from "@/components/claim/ClaimCTA";
+import { EditHistory } from "@/components/auditLog/EditHistory";
 import { useAuth } from "@/lib/auth/useAuth";
+
+function decodeId(globalId: string): string {
+  return atob(globalId).split(":")[1];
+}
 
 export default function CompanyDetailPage() {
   const params = useParams();
@@ -118,6 +123,12 @@ export default function CompanyDetailPage() {
           </div>
         </div>
       )}
+
+      <EditHistory
+        targetKind="ProductionCompany"
+        targetId={decodeId(company.id)}
+        canEdit={isAdmin}
+      />
     </div>
   );
 }

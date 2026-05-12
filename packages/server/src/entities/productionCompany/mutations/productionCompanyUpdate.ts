@@ -5,6 +5,7 @@ import { ProductionCompanyModel } from '../productionCompanyModel'
 import { errorField } from '../../../graphql/errorField'
 import { canPerform } from '../../../permissions/canPerform'
 import { bumpForUnit } from '../../../services/claims/bumpClaimantActivity'
+import { writeAuditLog } from '../../../services/auditLog/writeAuditLog'
 
 export const productionCompanyUpdate = mutationWithClientMutationId({
   name: 'productionCompanyUpdate',
@@ -13,6 +14,10 @@ export const productionCompanyUpdate = mutationWithClientMutationId({
     productionCompanyId: {
       type: new GraphQLNonNull(GraphQLString),
       description: 'MongoDB ObjectId of the production company to update'
+    },
+    expectedUpdatedAt: {
+      type: GraphQLString,
+      description: 'Optimistic concurrency token. ISO string of updatedAt at edit-form load time.'
     },
     name: {
       type: GraphQLString,
@@ -54,6 +59,14 @@ export const productionCompanyUpdate = mutationWithClientMutationId({
       const company = await ProductionCompanyModel.findById(input.productionCompanyId)
       if (!company) return { error: 'Production company not found' }
 
+      if (input.expectedUpdatedAt) {
+        const submitted = new Date(input.expectedUpdatedAt).getTime()
+        const current = company.updatedAt?.getTime() ?? 0
+        if (current > submitted) {
+          return { error: `STALE_VERSION: record changed at ${company.updatedAt?.toISOString()}` }
+        }
+      }
+
       const updates: Record<string, any> = {}
 
       if (input.name !== undefined) {
@@ -71,9 +84,19 @@ export const productionCompanyUpdate = mutationWithClientMutationId({
         return { productionCompany: company }
       }
 
+      const oldDoc = company.toObject()
       const updated = await ProductionCompanyModel.findByIdAndUpdate(input.productionCompanyId, updates, { new: true })
-      if (updated && updated.claimedBy?.toString() === ctx.user.id) {
-        await bumpForUnit('productionCompany', updated._id)
+      if (updated) {
+        await writeAuditLog({
+          target: { kind: 'ProductionCompany', id: updated._id },
+          author: { kind: 'User', userId: ctx.user.id },
+          oldDoc,
+          newDoc: updated.toObject(),
+          approvalSource: 'direct-publish',
+        })
+        if (updated.claimedBy?.toString() === ctx.user.id) {
+          await bumpForUnit('productionCompany', updated._id)
+        }
       }
       return { productionCompany: updated }
     } catch (err) {

@@ -5,6 +5,7 @@ import { VenueModel } from '../venueModel'
 import { errorField } from '../../../graphql/errorField'
 import { canPerform } from '../../../permissions/canPerform'
 import { bumpForUnit } from '../../../services/claims/bumpClaimantActivity'
+import { writeAuditLog } from '../../../services/auditLog/writeAuditLog'
 
 export const venueUpdate = mutationWithClientMutationId({
   name: 'venueUpdate',
@@ -13,6 +14,10 @@ export const venueUpdate = mutationWithClientMutationId({
     venueId: {
       type: new GraphQLNonNull(GraphQLString),
       description: 'MongoDB ObjectId of the venue to update'
+    },
+    expectedUpdatedAt: {
+      type: GraphQLString,
+      description: 'Optimistic concurrency token. ISO string of updatedAt at edit-form load time. If provided and the record has changed since, returns STALE_VERSION.'
     },
     name: {
       type: GraphQLString,
@@ -94,6 +99,15 @@ export const venueUpdate = mutationWithClientMutationId({
       const venue = await VenueModel.findById(input.venueId)
       if (!venue) return { error: 'Venue not found' }
 
+      // Optimistic concurrency check (Phase 3 / Task 22).
+      if (input.expectedUpdatedAt) {
+        const submitted = new Date(input.expectedUpdatedAt).getTime()
+        const current = venue.updatedAt?.getTime() ?? 0
+        if (current > submitted) {
+          return { error: `STALE_VERSION: record changed at ${venue.updatedAt?.toISOString()}` }
+        }
+      }
+
       const updates: Record<string, any> = {}
 
       if (input.name !== undefined) updates.name = input.name
@@ -115,10 +129,19 @@ export const venueUpdate = mutationWithClientMutationId({
         return { venue }
       }
 
+      const oldDoc = venue.toObject()
       const updated = await VenueModel.findByIdAndUpdate(input.venueId, updates, { new: true })
-      // Track claimant activity for auto-expire (Phase 2 / Task 17).
-      if (updated && updated.claimedBy?.toString() === ctx.user.id) {
-        await bumpForUnit('venue', updated._id)
+      if (updated) {
+        await writeAuditLog({
+          target: { kind: 'Venue', id: updated._id },
+          author: { kind: 'User', userId: ctx.user.id },
+          oldDoc,
+          newDoc: updated.toObject(),
+          approvalSource: 'direct-publish',
+        })
+        if (updated.claimedBy?.toString() === ctx.user.id) {
+          await bumpForUnit('venue', updated._id)
+        }
       }
       return { venue: updated }
     } catch (err) {

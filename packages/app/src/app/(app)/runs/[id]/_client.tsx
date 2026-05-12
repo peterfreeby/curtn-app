@@ -21,6 +21,7 @@ import { InlineEditor } from "@/components/admin/InlineEditor";
 import { BatchPerformanceCreator } from "@/components/admin/BatchPerformanceCreator";
 import { EntityDataSourcesPanel } from "@/components/admin/EntityDataSourcesPanel";
 import { DetailBreadcrumb } from "@/components/nav/DetailBreadcrumb";
+import { EditHistory } from "@/components/auditLog/EditHistory";
 import { formatShowDate, formatShowTime } from "@/lib/format";
 
 function decodeId(globalId: string): string {
@@ -576,6 +577,12 @@ export default function RunDetailPage() {
           onDismiss={() => setSeenToast(false)}
         />
       )}
+
+      <EditHistory
+        targetKind="Run"
+        targetId={id}
+        canEdit={isAdmin}
+      />
     </div>
     </div>
   );
