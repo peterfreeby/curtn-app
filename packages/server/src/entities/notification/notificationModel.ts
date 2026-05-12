@@ -28,6 +28,10 @@ export type NotificationKind =
   | 'sync_recovered'
   | 'sync_reverted_to_passive'
   | 'sync_disconnected'
+  | 'community_review_approved'
+  | 'community_review_declined'
+  | 'autoconfirmed_achieved'
+  | 'high_block_volume_alert'
 
 export interface INotification {
   recipient: Types.ObjectId
@@ -69,6 +73,10 @@ const notificationSchema = new Schema<INotification>({
       'sync_recovered',
       'sync_reverted_to_passive',
       'sync_disconnected',
+      'community_review_approved',
+      'community_review_declined',
+      'autoconfirmed_achieved',
+      'high_block_volume_alert',
     ]
   },
   context: {

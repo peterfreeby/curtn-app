@@ -66,6 +66,10 @@ export const performanceUpdate = mutationWithClientMutationId({
       type: GraphQLString,
       resolve: response => response.proposalId ?? null
     },
+    isCommunityReview: {
+      type: GraphQLBoolean,
+      resolve: response => !!response.isCommunityReview
+    },
     ...errorField
   },
   mutateAndGetPayload: async (input, ctx) => {
@@ -115,8 +119,9 @@ export const performanceUpdate = mutationWithClientMutationId({
           diff,
           submissionVersion: (performance as any).updatedAt,
           isJointStewardship: !!decision.isJointStewardship,
+          isCommunityReview: !!decision.isCommunityReview,
         })
-        return { queued: true, proposalId: result.proposalId, performance }
+        return { queued: true, proposalId: result.proposalId, performance, isCommunityReview: !!decision.isCommunityReview }
       }
 
       const oldDoc = performance.toObject()

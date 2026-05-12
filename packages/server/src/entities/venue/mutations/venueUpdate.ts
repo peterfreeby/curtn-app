@@ -93,6 +93,11 @@ export const venueUpdate = mutationWithClientMutationId({
       description: 'ID of the Proposal created when queued.',
       resolve: response => response.proposalId ?? null
     },
+    isCommunityReview: {
+      type: GraphQLBoolean,
+      description: 'True when the queued proposal routed to community review (Phase 7).',
+      resolve: response => !!response.isCommunityReview
+    },
     ...errorField
   },
   mutateAndGetPayload: async (input, ctx) => {
@@ -149,8 +154,9 @@ export const venueUpdate = mutationWithClientMutationId({
           proposer: { kind: 'User', userId: ctx.user.id, label: ctx.user.username },
           diff,
           submissionVersion: venue.updatedAt,
+          isCommunityReview: !!decision.isCommunityReview,
         })
-        return { queued: true, proposalId: result.proposalId, venue }
+        return { queued: true, proposalId: result.proposalId, venue, isCommunityReview: !!decision.isCommunityReview }
       }
 
       const oldDoc = venue.toObject()

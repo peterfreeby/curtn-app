@@ -7,6 +7,7 @@ import { PersonModel } from '../entities/person/personModel'
 import { PerformanceModel } from '../entities/performance/performanceModel'
 import { RunModel } from '../entities/run/runModel'
 import { TrustedEditorModel } from '../entities/trustedEditor/trustedEditorModel'
+import { checkAntiAbuse, isAutoconfirmed } from './checkAntiAbuse'
 
 // Central permission gate for every edit on a claimable unit.
 //
@@ -42,6 +43,10 @@ export interface CanPerformDecision {
   // Phase 5 — set when auto-publish was unlocked by a trusted-editor grant
   // (direct or cascade). Used by callers to attribute the audit row.
   trustSource?: 'direct-grant' | 'cascade'
+  // Phase 7 — set on queue routing for the community-review path (non-
+  // autoconfirmed user editing an unclaimed record). The createProposal
+  // call uses this to flag the Proposal for /community-review.
+  isCommunityReview?: boolean
 }
 
 export async function canPerform(
@@ -57,6 +62,14 @@ export async function canPerform(
     return denied(`Action ${actionId} cannot be performed on ${unitRef.kind}`)
   }
 
+  // Phase 7 — anti-abuse pre-check. Runs BEFORE admin/claimant grants so that
+  // a blocked or rate-limited user is rejected even on a unit they could
+  // otherwise edit. The helper internally exempts admins + the unit's own
+  // claimant from all four layers (per scoping doc D6 open question — a
+  // claimant editing their own unit should never trip).
+  const abuse = await checkAntiAbuse(userId, { kind: unitRef.kind, id: unitRef.id })
+  if (!abuse.allowed) return denied(abuse.reason!)
+
   const user = await UserModel.findById(userId).select('isAdmin').lean()
   if (user?.isAdmin) return autoPublish()
 
@@ -68,22 +81,24 @@ export async function canPerform(
   // Venue / ProductionCompany / Person.
   const claimedBy = await fetchClaimedBy(unitRef.kind, unitRef.id)
 
-  // Unclaimed unit: only admins direct-publish in Phase 1. Phase 4 still routes
-  // non-admin edits on unclaimed records to denied until the "anyone can edit
-  // unclaimed records" mechanic ships in a later phase.
-  if (!claimedBy) return denied('Only admin can edit unclaimed records (Phase 1 scope)')
+  if (claimedBy && claimedBy.toString() === userId) return autoPublish()
 
-  if (claimedBy.toString() === userId) return autoPublish()
+  // Phase 5 — trusted editor lookups (only meaningful on claimed records,
+  // since grants are made by a claimant). Consulted on claimed records before
+  // the queue fallback.
+  if (claimedBy) {
+    const trustDecision = await consultTrustedEditors(userId, actionId, unitRef)
+    if (trustDecision) return trustDecision
+    // Non-claimant on a claimed record → queue (Phase 4).
+    return queue()
+  }
 
-  // Phase 5 — trusted editor lookups, in order:
-  //   (a) direct user grant on this unit, in-scope → auto-publish
-  //   (b) 1-hop cascade: another unit has a grant on this unit AND the user is
-  //       that unit's claimant or a Manager-scope editor of it → auto-publish
-  const trustDecision = await consultTrustedEditors(userId, actionId, unitRef)
-  if (trustDecision) return trustDecision
-
-  // Non-claimant on a claimed record → queue (Phase 4).
-  return queue()
+  // Phase 7 — unclaimed record. Autoconfirmed users auto-publish per the
+  // original "anyone can edit unclaimed records" design; brand-new accounts
+  // route to /community-review until they hit 4 days + 10 edits.
+  const auto = await isAutoconfirmed(userId)
+  if (auto) return autoPublish()
+  return queue({ isCommunityReview: true })
 }
 
 async function canPerformOnPerformance(
@@ -109,9 +124,12 @@ async function canPerformOnPerformance(
   const isVenueClaimant = !!venueClaimantId && venueClaimantId === userId
   const isCompanyClaimant = !!companyClaimantId && companyClaimantId === userId
 
-  // Neither side claimed → denied (matches Phase 1 unclaimed-record behavior).
+  // Phase 7 — both sides unclaimed: autoconfirmed users auto-publish; non-
+  // autoconfirmed route to community review.
   if (!venueClaimantId && !companyClaimantId) {
-    return denied('Only admin can edit unclaimed records (Phase 1 scope)')
+    const auto = await isAutoconfirmed(userId)
+    if (auto) return autoPublish()
+    return queue({ isCommunityReview: true })
   }
 
   // Phase 4: if the editor is one of the claimants, auto-publish (still
@@ -214,7 +232,7 @@ function autoPublish(): CanPerformDecision {
   return { allowed: true, mode: 'auto-publish' }
 }
 
-function queue(extra: Pick<CanPerformDecision, 'isJointStewardship' | 'jointClaimants'> = {}): CanPerformDecision {
+function queue(extra: Pick<CanPerformDecision, 'isJointStewardship' | 'jointClaimants' | 'isCommunityReview'> = {}): CanPerformDecision {
   return { allowed: true, mode: 'queue', ...extra }
 }
 

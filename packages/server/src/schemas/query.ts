@@ -24,6 +24,7 @@ import { auditLogQueries } from '../entities/auditLog/queries/queries'
 import { removalRequestQueries } from '../entities/removalRequest/queries/queries'
 import { proposalQueries } from '../entities/proposal/queries/queries'
 import { trustedEditorQueries } from '../entities/trustedEditor/queries/queries'
+import { blockQueries } from '../entities/block/queries/queries'
 import { nodeField, nodesField } from '../graphql/nodeInterface'
 
 export const query = new GraphQLObjectType({
@@ -55,6 +56,7 @@ export const query = new GraphQLObjectType({
     ...removalRequestQueries,
     ...proposalQueries,
     ...trustedEditorQueries,
+    ...blockQueries,
     node: nodeField,
     nodes: nodesField
   })

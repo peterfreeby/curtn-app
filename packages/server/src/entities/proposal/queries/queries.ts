@@ -8,6 +8,7 @@ import { PersonModel } from '../../person/personModel'
 import { PerformanceModel } from '../../performance/performanceModel'
 import { RunModel } from '../../run/runModel'
 import { UserModel } from '../../user/userModel'
+import { isAutoconfirmed } from '../../../permissions/checkAntiAbuse'
 
 // Phase 4 — queue queries.
 //
@@ -97,6 +98,42 @@ export const proposalQueries = {
       }
       return rows
     }
+  },
+
+  // Phase 7 — /community-review surface. Lists pending proposals flagged
+  // isCommunityReview = true. Accessible to admins + autoconfirmed users; any
+  // qualified caller can approve or decline.
+  communityReviewProposals: {
+    type: new GraphQLList(proposalType),
+    description: 'Pending proposals on unclaimed records from non-autoconfirmed users. Visible to admins + autoconfirmed users.',
+    args: {
+      targetKind: { type: GraphQLString },
+      sinceDays: { type: GraphQLInt },
+    },
+    resolve: async (_: any, args: any, ctx: any) => {
+      if (!ctx.user) return []
+      const adminUser = await UserModel.findById(ctx.user.id).select('isAdmin').lean()
+      const isAdmin = !!adminUser?.isAdmin
+      if (!isAdmin) {
+        const auto = await isAutoconfirmed(ctx.user.id)
+        if (!auto) return []
+      }
+
+      const filter: Record<string, any> = {
+        isCommunityReview: true,
+        status: 'pending',
+      }
+      if (args.targetKind) filter['target.kind'] = args.targetKind
+      if (args.sinceDays && Number.isFinite(args.sinceDays)) {
+        const since = new Date(Date.now() - args.sinceDays * 24 * 60 * 60 * 1000)
+        filter.createdAt = { $gte: since }
+      }
+      const rows = await ProposalModel.find(filter).sort({ createdAt: -1 }).limit(200).lean()
+      for (const r of rows as any[]) {
+        if (r && r._id && !r.id) r.id = r._id.toString()
+      }
+      return rows
+    },
   },
 
   pendingProposalsForTarget: {

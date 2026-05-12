@@ -15,6 +15,7 @@ export type ApprovalSource =
   | 'timeout-approved'
   | 'trusted-editor'
   | 'admin-override'
+  | 'community-approved'
 
 export interface IAuditLogTarget {
   kind: AuditTargetKind
@@ -72,7 +73,7 @@ const auditLogSchema = new Schema<IAuditLog>({
   },
   approvalSource: {
     type: String,
-    enum: ['direct-publish', 'claimant-approved', 'timeout-approved', 'trusted-editor', 'admin-override'],
+    enum: ['direct-publish', 'claimant-approved', 'timeout-approved', 'trusted-editor', 'admin-override', 'community-approved'],
     required: true,
   },
   approvalContext: {
