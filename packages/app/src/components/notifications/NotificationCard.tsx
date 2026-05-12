@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useMutation } from "urql";
 import { MARK_NOTIFICATION_READ_MUTATION } from "@/lib/graphql/notifications";
+import { ACCEPT_RECIPROCITY_MUTATION } from "@/lib/graphql/trust";
 
 // One render per notification kind. Each kind reads `context` (parsed from
 // contextJson) for the bits it needs.
@@ -20,7 +21,10 @@ export type NotificationKind =
   | "proposal_approved"
   | "proposal_declined"
   | "proposal_timeout_warning"
-  | "proposal_timeout_auto_approved";
+  | "proposal_timeout_auto_approved"
+  | "trust_granted"
+  | "trust_revoked"
+  | "reciprocity_offered";
 
 export interface NotificationData {
   id: string;
@@ -215,9 +219,101 @@ function renderBody(notification: NotificationData) {
       );
     }
 
+    case "trust_granted": {
+      const recipientLabel = ctx.recipientName
+        ? <> for <span className="font-medium">{ctx.recipientName}</span></>
+        : null;
+      const grantedOnPath = ctx.grantedOnKind && ctx.grantedOnSlug && PROPOSAL_TARGET_PATH_PREFIX[ctx.grantedOnKind]
+        ? `${PROPOSAL_TARGET_PATH_PREFIX[ctx.grantedOnKind]}/${ctx.grantedOnSlug}`
+        : null;
+      return (
+        <p className="text-sm text-curtn-cream">
+          You've been added as a trusted editor on{" "}
+          {grantedOnPath ? (
+            <Link href={grantedOnPath} className="text-curtn-coral hover:underline font-medium">
+              {ctx.grantedOnName ?? "a unit"}
+            </Link>
+          ) : (
+            <span className="font-medium">{ctx.grantedOnName ?? "a unit"}</span>
+          )}
+          {recipientLabel}
+          {ctx.roleTemplate ? <> · {ctx.roleTemplate}</> : null}.{" "}
+          <Link href="/dashboard/trust" className="text-curtn-coral hover:underline">Manage →</Link>
+        </p>
+      );
+    }
+
+    case "trust_revoked": {
+      return (
+        <p className="text-sm text-curtn-cream">
+          Your trusted-editor access on <span className="font-medium">{ctx.grantedOnName ?? "a unit"}</span> has been revoked.
+        </p>
+      );
+    }
+
+    case "reciprocity_offered":
+      // Rendered by the dedicated card below — surfaces an Accept button.
+      return null;
+
     default:
       return <p className="text-sm text-curtn-muted">Notification: {notification.kind}</p>;
   }
+}
+
+// Reciprocity offer needs an inline Accept button. Splits out so the urql
+// mutation hook stays scoped to the card.
+function ReciprocityOfferBody({ notification }: { notification: NotificationData }) {
+  const ctx = parseContext(notification.contextJson);
+  const [accepted, setAccepted] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [{ fetching }, executeAccept] = useMutation(ACCEPT_RECIPROCITY_MUTATION);
+
+  const grantedOnPath = ctx.grantedOnKind && ctx.grantedOnSlug && PROPOSAL_TARGET_PATH_PREFIX[ctx.grantedOnKind]
+    ? `${PROPOSAL_TARGET_PATH_PREFIX[ctx.grantedOnKind]}/${ctx.grantedOnSlug}`
+    : null;
+
+  async function handleAccept(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (accepted || fetching) return;
+    setErrorMsg(null);
+    const res = await executeAccept({
+      input: { originalTrustedEditorId: ctx.trustedEditorId },
+    });
+    const payload = res.data?.acceptReciprocity;
+    if (payload?.error) {
+      setErrorMsg(payload.error);
+      return;
+    }
+    setAccepted(true);
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm text-curtn-cream">
+        {grantedOnPath ? (
+          <Link href={grantedOnPath} className="text-curtn-coral hover:underline font-medium">
+            {ctx.grantedOnName ?? "Another unit"}
+          </Link>
+        ) : (
+          <span className="font-medium">{ctx.grantedOnName ?? "Another unit"}</span>
+        )}{" "}
+        added <span className="font-medium">{ctx.recipientName ?? "your unit"}</span> as a trusted editor. Want to add them back?
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={handleAccept}
+          disabled={accepted || fetching}
+          className="rounded-md bg-curtn-coral px-3 py-1.5 text-xs font-medium text-curtn-deep hover:bg-curtn-red transition-colors disabled:opacity-50"
+        >
+          {accepted ? "Reciprocated" : fetching ? "Accepting…" : "Reciprocate"}
+        </button>
+        <Link href="/dashboard/trust" className="text-[11px] text-curtn-muted hover:text-curtn-cream">
+          Customize first →
+        </Link>
+        {errorMsg && <span className="text-[11px] text-red-300">{errorMsg}</span>}
+      </div>
+    </div>
+  );
 }
 
 export function NotificationCard({ notification }: { notification: NotificationData }) {
@@ -235,6 +331,8 @@ export function NotificationCard({ notification }: { notification: NotificationD
     }
   }
 
+  const isReciprocity = notification.kind === "reciprocity_offered";
+
   return (
     <div
       onClick={handleMarkRead}
@@ -246,7 +344,11 @@ export function NotificationCard({ notification }: { notification: NotificationD
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          {renderBody(notification)}
+          {isReciprocity ? (
+            <ReciprocityOfferBody notification={notification} />
+          ) : (
+            renderBody(notification)
+          )}
           <p className="mt-1 text-[11px] text-curtn-muted">{timeSince(notification.createdAt)}</p>
         </div>
         {!isRead && <span className="mt-1 h-2 w-2 rounded-full bg-curtn-coral shrink-0" />}

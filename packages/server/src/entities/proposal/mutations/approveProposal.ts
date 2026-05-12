@@ -1,4 +1,4 @@
-import { GraphQLBoolean, GraphQLNonNull, GraphQLString } from 'graphql'
+import { GraphQLBoolean, GraphQLList, GraphQLNonNull, GraphQLString } from 'graphql'
 import { mutationWithClientMutationId } from 'graphql-relay'
 import { Types } from 'mongoose'
 import { errorField } from '../../../graphql/errorField'
@@ -16,6 +16,13 @@ import { writeAuditLog } from '../../../services/auditLog/writeAuditLog'
 import { createNotification } from '../../../services/notifications/createNotification'
 import { bumpForUnit } from '../../../services/claims/bumpClaimantActivity'
 import { PendingImportModel } from '../../pendingImport/pendingImportModel'
+import { TrustedEditorModel, TrustedEditorRoleTemplate } from '../../trustedEditor/trustedEditorModel'
+import {
+  ACTION_CATALOG,
+  ActionId,
+  ROLE_TEMPLATES,
+  RoleTemplateId,
+} from '../../../permissions/actionCatalog'
 
 // Phase 4 — approveProposal. Single-approver case applies the diff and writes
 // an AuditLog row attributed to the original proposer. Joint case requires
@@ -23,6 +30,141 @@ import { PendingImportModel } from '../../pendingImport/pendingImportModel'
 // records the vote and bumps firstApprovalAt for the timeout clock.
 
 export type ApprovalSourceForProposal = 'claimant-approved' | 'timeout-approved'
+
+// Phase 5 — infer the most-specific role template that covers a set of action
+// ids from a proposal diff. Used as the default when the approver toggles
+// auto-approve-future without explicitly picking a template. Custom returns
+// when no template fully covers the actions.
+export function inferRoleTemplateFromActions(actions: ActionId[]): TrustedEditorRoleTemplate {
+  if (actions.length === 0) return 'Custom'
+  const templateOrder: RoleTemplateId[] = ['Personal', 'Publicist', 'Booker', 'Manager']
+  for (const tpl of templateOrder) {
+    const tplActions = new Set(ROLE_TEMPLATES[tpl])
+    if (actions.every(a => tplActions.has(a))) return tpl
+  }
+  return 'Custom'
+}
+
+// Phase 5 — derive likely action ids from a proposal diff by mapping each
+// changed field on the target kind to a best-fit ActionId. This is a coarse
+// heuristic — the UI can offer the approver an override before commit. We use
+// it here so the toggle works without a UI roundtrip.
+function inferActionsFromDiff(targetKind: ProposalTargetKind, diff: Record<string, any>): ActionId[] {
+  const fields = Object.keys(diff).filter(k => !k.startsWith('_') && k !== 'snapshot')
+  const out = new Set<ActionId>()
+  const prefix = targetKind === 'Venue' ? 'venue'
+    : targetKind === 'ProductionCompany' ? 'company'
+    : targetKind === 'Person' ? 'person'
+    : targetKind === 'Performance' ? 'performance'
+    : null
+  if (!prefix) return []
+  // Heuristic mapping field name → action id. Anything unmatched falls into
+  // the kind's most general edit action.
+  for (const f of fields) {
+    const lower = f.toLowerCase()
+    if (prefix === 'venue') {
+      if (lower.includes('name')) out.add('venue.edit_name')
+      else if (lower.includes('address') || lower.includes('city') || lower.includes('state') || lower.includes('zip')) out.add('venue.edit_address')
+      else if (lower.includes('description') || lower.includes('bio')) out.add('venue.edit_description')
+      else if (lower.includes('website') || lower.includes('phone') || lower.includes('email') || lower.includes('contact') || lower.includes('social')) out.add('venue.edit_contact')
+      else if (lower.includes('image') || lower.includes('photo') || lower.includes('logo')) out.add('venue.edit_images')
+      else if (lower.includes('capacity') || lower.includes('seat')) out.add('venue.edit_capacity')
+      else if (lower.includes('closed')) out.add('venue.mark_closed')
+      else out.add('venue.edit_description')
+    } else if (prefix === 'company') {
+      if (lower.includes('name')) out.add('company.edit_name')
+      else if (lower.includes('logo') || lower.includes('image')) out.add('company.edit_logo')
+      else out.add('company.edit_description')
+    } else if (prefix === 'person') {
+      if (lower.includes('name')) out.add('person.edit_name')
+      else if (lower.includes('bio') || lower.includes('description')) out.add('person.edit_bio')
+      else if (lower.includes('headshot') || lower.includes('image') || lower.includes('photo')) out.add('person.edit_headshot')
+      else out.add('person.edit_bio')
+    } else if (prefix === 'performance') {
+      if (lower.includes('date') || lower.includes('time')) out.add('performance.edit_date_time')
+      else if (lower.includes('ticket') || lower.includes('url')) out.add('performance.edit_ticket_url')
+      else if (lower.includes('stage')) out.add('performance.edit_stage_override')
+      else if (lower.includes('credit')) out.add('performance.edit_credit_overrides')
+      else out.add('performance.edit_metadata_override')
+    }
+  }
+  return [...out]
+}
+
+// Phase 5 — issue a TrustedEditor on the just-approved unit. Skips silently
+// when the proposer isn't a User, when there's no valid grantedOn target,
+// when scope resolves empty, or when an active grant already exists.
+async function maybeCreateTrustForProposer(opts: {
+  proposal: any
+  approverUserId: string
+  roleTemplate?: string
+  scope?: string[]
+}): Promise<void> {
+  const { proposal, approverUserId } = opts
+  if (proposal.proposer?.kind !== 'User' || !proposal.proposer.userId) return
+
+  const kind = proposal.target.kind as ProposalTargetKind
+  const grantedOnKind: 'Venue' | 'ProductionCompany' | 'Person' | null =
+    kind === 'Venue' || kind === 'ProductionCompany' || kind === 'Person' ? kind : null
+  if (!grantedOnKind) return
+
+  const recipientId = proposal.proposer.userId as Types.ObjectId
+  if (recipientId.toString() === approverUserId) return
+
+  const explicitScope = opts.scope?.filter(s => s in ACTION_CATALOG) as ActionId[] | undefined
+  const explicitTemplate = (opts.roleTemplate && ['Manager', 'Booker', 'Publicist', 'Personal', 'Custom'].includes(opts.roleTemplate))
+    ? (opts.roleTemplate as TrustedEditorRoleTemplate)
+    : null
+
+  let resolvedScope: ActionId[] = explicitScope ?? []
+  let resolvedTemplate: TrustedEditorRoleTemplate
+
+  if (explicitScope && explicitScope.length > 0) {
+    resolvedTemplate = explicitTemplate ?? inferRoleTemplateFromActions(explicitScope)
+  } else if (explicitTemplate && explicitTemplate !== 'Custom') {
+    resolvedTemplate = explicitTemplate
+    resolvedScope = [...(ROLE_TEMPLATES[explicitTemplate as RoleTemplateId] ?? [])]
+  } else {
+    const inferredActions = inferActionsFromDiff(kind, proposal.diff ?? {})
+    resolvedTemplate = inferRoleTemplateFromActions(inferredActions)
+    resolvedScope = resolvedTemplate === 'Custom'
+      ? inferredActions
+      : [...(ROLE_TEMPLATES[resolvedTemplate as RoleTemplateId] ?? [])]
+  }
+
+  if (resolvedScope.length === 0) return
+
+  const existing = await TrustedEditorModel.findOne({
+    'grantedOn.kind': grantedOnKind,
+    'grantedOn.id': proposal.target.id,
+    'recipient.kind': 'User',
+    'recipient.id': recipientId,
+    revokedAt: null,
+  }).select('_id').lean()
+  if (existing) return
+
+  await new TrustedEditorModel({
+    grantedOn: { kind: grantedOnKind, id: proposal.target.id },
+    recipient: { kind: 'User', id: recipientId },
+    scope: resolvedScope,
+    roleTemplate: resolvedTemplate,
+    grantedBy: new Types.ObjectId(approverUserId),
+    grantedAt: new Date(),
+  }).save()
+
+  await createNotification({
+    recipient: recipientId,
+    kind: 'trust_granted',
+    context: {
+      grantedOnKind,
+      grantedOnId: proposal.target.id.toString(),
+      roleTemplate: resolvedTemplate,
+      scope: resolvedScope,
+      viaProposalApproval: true,
+      proposalId: proposal._id.toString(),
+    },
+  })
+}
 
 function modelForKind(kind: ProposalTargetKind): any {
   switch (kind) {
@@ -233,7 +375,15 @@ export const approveProposal = mutationWithClientMutationId({
     proposalId: { type: new GraphQLNonNull(GraphQLString) },
     autoApproveFutureFromProposer: {
       type: GraphQLBoolean,
-      description: 'Phase 4 stub: log the approver\'s intent to auto-approve future edits from this proposer. Phase 5 will read this signal to create TrustedEditor records.'
+      description: 'When true, creates a TrustedEditor grant for the proposer on the approved unit. Phase 5.'
+    },
+    trustRoleTemplate: {
+      type: GraphQLString,
+      description: 'Optional override: Manager | Booker | Publicist | Personal | Custom. Used when autoApproveFutureFromProposer is true.'
+    },
+    trustScope: {
+      type: new GraphQLList(new GraphQLNonNull(GraphQLString)),
+      description: 'Optional explicit scope (ActionId list) when autoApproveFutureFromProposer is true. Overrides the template default.'
     },
   },
   outputFields: {
@@ -241,25 +391,12 @@ export const approveProposal = mutationWithClientMutationId({
     applied: { type: GraphQLBoolean, resolve: (r: any) => !!r.applied },
     ...errorField,
   },
-  mutateAndGetPayload: async ({ proposalId, autoApproveFutureFromProposer }, ctx) => {
+  mutateAndGetPayload: async ({ proposalId, autoApproveFutureFromProposer, trustRoleTemplate, trustScope }, ctx) => {
     if (!ctx.user) return { error: 'Unauthorized' }
 
     const proposal = await ProposalModel.findById(proposalId)
     if (!proposal) return { error: 'Proposal not found' }
     if (proposal.status !== 'pending') return { error: `Proposal already ${proposal.status}` }
-
-    // Phase 4 trusted-editor stub: log the user's intent. Phase 5 will read this.
-    if (autoApproveFutureFromProposer) {
-      // eslint-disable-next-line no-console
-      console.log('[Phase4 stub] auto-approve-future intent', {
-        approverId: ctx.user.id,
-        proposerKind: proposal.proposer.kind,
-        proposerUserId: proposal.proposer.userId?.toString() ?? null,
-        proposerDataSourceId: proposal.proposer.dataSourceId?.toString() ?? null,
-        proposalId: proposal._id.toString(),
-        timestamp: new Date().toISOString(),
-      })
-    }
 
     const isJoint = !!proposal.isJointStewardship
     const targetId = proposal.target.id as Types.ObjectId
@@ -291,6 +428,15 @@ export const approveProposal = mutationWithClientMutationId({
             targetKind: proposal.target.kind,
             targetId: targetId.toString(),
           },
+        })
+      }
+
+      if (autoApproveFutureFromProposer) {
+        await maybeCreateTrustForProposer({
+          proposal,
+          approverUserId: ctx.user.id,
+          roleTemplate: trustRoleTemplate,
+          scope: trustScope,
         })
       }
 

@@ -243,6 +243,12 @@ export default function DashboardPage() {
         <p className="mt-1 text-sm text-curtn-muted">
           Units you steward and claims awaiting review.
         </p>
+        <Link
+          href="/dashboard/trust"
+          className="mt-2 inline-block text-xs text-curtn-coral hover:underline"
+        >
+          Trusted editors →
+        </Link>
       </div>
 
       {statusMessage && (

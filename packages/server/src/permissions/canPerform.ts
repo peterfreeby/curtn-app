@@ -6,15 +6,18 @@ import { ProductionCompanyModel } from '../entities/productionCompany/production
 import { PersonModel } from '../entities/person/personModel'
 import { PerformanceModel } from '../entities/performance/performanceModel'
 import { RunModel } from '../entities/run/runModel'
+import { TrustedEditorModel } from '../entities/trustedEditor/trustedEditorModel'
 
 // Central permission gate for every edit on a claimable unit.
 //
 // Phase 1: admin and claimant auto-publish; everything else denied.
-// Phase 4 (live): non-claimant on a claimed record routes to the proposal
-//                 queue via `mode: 'queue'`. Performance routes to a joint-
-//                 stewardship queue when both venue + company claimants exist.
+// Phase 4: non-claimant on a claimed record routes to the proposal queue
+//          via `mode: 'queue'`. Performance routes to a joint-stewardship
+//          queue when both venue + company claimants exist.
+// Phase 5 (live): trusted-editor direct grants + 1-hop unit→unit cascade
+//                 (Manager-scope only). Consulted BEFORE the queue fallback so
+//                 in-scope grants auto-publish.
 // Future phases:
-//   - Phase 5: trusted editor + 1-hop cascade checks
 //   - Phase 7: anti-abuse layers (rate limits, autoconfirmed gate, blocks)
 
 export type UnitKind = ActionTargetKind  // 'Venue' | 'ProductionCompany' | 'Person' | 'Performance'
@@ -36,6 +39,9 @@ export interface CanPerformDecision {
     venueClaimantId?: string
     companyClaimantId?: string
   }
+  // Phase 5 — set when auto-publish was unlocked by a trusted-editor grant
+  // (direct or cascade). Used by callers to attribute the audit row.
+  trustSource?: 'direct-grant' | 'cascade'
 }
 
 export async function canPerform(
@@ -68,6 +74,13 @@ export async function canPerform(
   if (!claimedBy) return denied('Only admin can edit unclaimed records (Phase 1 scope)')
 
   if (claimedBy.toString() === userId) return autoPublish()
+
+  // Phase 5 — trusted editor lookups, in order:
+  //   (a) direct user grant on this unit, in-scope → auto-publish
+  //   (b) 1-hop cascade: another unit has a grant on this unit AND the user is
+  //       that unit's claimant or a Manager-scope editor of it → auto-publish
+  const trustDecision = await consultTrustedEditors(userId, actionId, unitRef)
+  if (trustDecision) return trustDecision
 
   // Non-claimant on a claimed record → queue (Phase 4).
   return queue()
@@ -118,6 +131,64 @@ async function canPerformOnPerformance(
       companyClaimantId,
     },
   })
+}
+
+// Phase 5 — TrustedEditor consultation. Returns an auto-publish decision when
+// the user is in scope (direct or via 1-hop cascade); returns null to let the
+// caller fall through to queue/denied.
+async function consultTrustedEditors(
+  userId: string,
+  actionId: ActionId,
+  unitRef: UnitRef,
+): Promise<CanPerformDecision | null> {
+  // (a) Direct user grant on this exact unit.
+  const direct = await TrustedEditorModel.findOne({
+    'grantedOn.kind': unitRef.kind,
+    'grantedOn.id': unitRef.id,
+    'recipient.kind': 'User',
+    'recipient.id': new Types.ObjectId(userId),
+    revokedAt: null,
+    scope: actionId,
+  }).select('_id').lean()
+  if (direct) return { ...autoPublish(), trustSource: 'direct-grant' }
+
+  // (b) 1-hop unit cascade. Find unit-kind grants on this unit whose scope
+  // includes the action; for each, check whether the user is that recipient
+  // unit's claimant or a Manager-scope editor of it. Cascade STOPS here —
+  // never recurse another hop.
+  const unitGrants = await TrustedEditorModel.find({
+    'grantedOn.kind': unitRef.kind,
+    'grantedOn.id': unitRef.id,
+    'recipient.kind': { $in: ['Venue', 'ProductionCompany', 'Person'] },
+    revokedAt: null,
+    scope: actionId,
+  }).select('recipient').lean()
+
+  if (unitGrants.length === 0) return null
+
+  for (const grant of unitGrants) {
+    const recipientKind = grant.recipient.kind as 'Venue' | 'ProductionCompany' | 'Person'
+    const recipientId = grant.recipient.id
+    // Is user the claimant of the recipient unit?
+    const recipientClaimant = await fetchClaimedBy(recipientKind, recipientId)
+    if (recipientClaimant && recipientClaimant.toString() === userId) {
+      return { ...autoPublish(), trustSource: 'cascade' }
+    }
+    // Is user a Manager-scope editor of the recipient unit?
+    const managerGrant = await TrustedEditorModel.findOne({
+      'grantedOn.kind': recipientKind,
+      'grantedOn.id': recipientId,
+      'recipient.kind': 'User',
+      'recipient.id': new Types.ObjectId(userId),
+      roleTemplate: 'Manager',
+      revokedAt: null,
+    }).select('_id').lean()
+    if (managerGrant) {
+      return { ...autoPublish(), trustSource: 'cascade' }
+    }
+  }
+
+  return null
 }
 
 async function fetchClaimedBy(

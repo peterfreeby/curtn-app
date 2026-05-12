@@ -23,6 +23,7 @@ import { claimTransferQueries } from '../entities/claimTransfer/queries/queries'
 import { auditLogQueries } from '../entities/auditLog/queries/queries'
 import { removalRequestQueries } from '../entities/removalRequest/queries/queries'
 import { proposalQueries } from '../entities/proposal/queries/queries'
+import { trustedEditorQueries } from '../entities/trustedEditor/queries/queries'
 import { nodeField, nodesField } from '../graphql/nodeInterface'
 
 export const query = new GraphQLObjectType({
@@ -53,6 +54,7 @@ export const query = new GraphQLObjectType({
     ...auditLogQueries,
     ...removalRequestQueries,
     ...proposalQueries,
+    ...trustedEditorQueries,
     node: nodeField,
     nodes: nodesField
   })
