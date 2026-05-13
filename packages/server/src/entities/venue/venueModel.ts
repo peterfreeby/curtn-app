@@ -155,7 +155,10 @@ venueSchema.index({ name: 'text', description: 'text' }) // Text search
 venueSchema.index({ name: 1, _id: 1 }) // cursor pagination
 venueSchema.index({ slug: 1 }, { unique: true }) // URL lookups
 venueSchema.index({ city: 1 }) // Filter by city
-venueSchema.index({ coordinates: '2dsphere' }) // Geospatial queries
+// 2dsphere index intentionally removed: coordinates are stored as `{lat, lng}`,
+// which 2dsphere can't project into a spherical CRS — and no code queries by
+// geo anyway. Reinstate as a real GeoJSON Point field if/when geo queries are
+// actually needed.
 venueSchema.index({ venueType: 1 }) // Filter by venue type
 
 // Pre-save middleware to generate slug from name
