@@ -58,7 +58,7 @@ export const claimTransferType: GraphQLObjectType = new GraphQLObjectType({
     const { userType } = require('../user/userTypes')
     const { UserModel } = require('../user/userModel')
     return {
-      id: globalIdField('ClaimTransfer', t => t.id),
+      id: globalIdField('ClaimTransfer', t => t._id),
       fromUser: {
         type: new GraphQLNonNull(userType),
         resolve: async (t: any) => UserModel.findById(t.fromUser),

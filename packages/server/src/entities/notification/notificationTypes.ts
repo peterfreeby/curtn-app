@@ -17,7 +17,7 @@ export const notificationType: GraphQLObjectType = new GraphQLObjectType({
   description: 'An in-app notification surfaced to a recipient user.',
   interfaces: () => [nodeInterface],
   fields: () => ({
-    id: globalIdField('Notification', n => n.id),
+    id: globalIdField('Notification', n => n._id),
     kind: {
       type: new GraphQLNonNull(GraphQLString),
       description: 'Kind of notification (claim_approved, transfer_received, etc.)',

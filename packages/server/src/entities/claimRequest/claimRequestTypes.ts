@@ -147,7 +147,7 @@ export const claimRequestType = new GraphQLObjectType({
     const { PersonModel } = require('../person/personModel')
 
     return {
-      id: globalIdField('ClaimRequest', cr => cr.id),
+      id: globalIdField('ClaimRequest', cr => cr._id),
       user: {
         type: new GraphQLNonNull(userType),
         resolve: async (cr: any) => UserModel.findById(cr.user)

@@ -37,7 +37,7 @@ export const auditLogType: GraphQLObjectType = new GraphQLObjectType({
   description: 'One row of edit history on a record. Append-only.',
   interfaces: () => [nodeInterface],
   fields: () => ({
-    id: globalIdField('AuditLogEntry', e => e.id),
+    id: globalIdField('AuditLogEntry', e => e._id),
     target: { type: new GraphQLNonNull(auditTargetType), resolve: (e: any) => e.target },
     author: { type: new GraphQLNonNull(auditAuthorType), resolve: (e: any) => e.author },
     diffJson: {
