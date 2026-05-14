@@ -46,6 +46,9 @@ export function DesktopNav() {
             )}
           </>
         )}
+        <NavLink href="/faq" className="text-[12px] font-display font-semibold uppercase tracking-[0.5px]">
+          FAQ
+        </NavLink>
       </div>
 
       {/* Right: Actions */}

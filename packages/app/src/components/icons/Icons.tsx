@@ -46,6 +46,7 @@ const ICONS = {
   "folder-simple-plus": "\uE25E",
   "check": "\uE182",
   "funnel-simple": "\uE268",
+  "question": "\uE3FC",
 } as const;
 
 export type IconName = keyof typeof ICONS;
