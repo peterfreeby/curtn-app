@@ -194,13 +194,39 @@ export default function DashboardPage() {
     );
   }
 
-  const claims: MyClaim[] = claimsData?.myClaims ?? [];
-  const requests: MyClaimRequest[] = requestsData?.myClaimRequests ?? [];
+  // Defensive: a server-side NonNull violation on any sub-field of a list item
+  // causes GraphQL to null the entire item. Filter those out before reading
+  // `.status` etc. — otherwise the page crashes. Log to console so we can
+  // identify which list contains nulls and chase the root cause.
+  const rawClaims: any[] = claimsData?.myClaims ?? [];
+  const rawRequests: any[] = requestsData?.myClaimRequests ?? [];
+  const rawTransfers: any[] = transfersData?.myPendingTransfers ?? [];
+  const rawProposals: any[] = proposalsData?.myPendingProposals ?? [];
+  const rawSyncs: any[] = syncsData?.myClaimantSyncs ?? [];
+
+  const claims: MyClaim[] = rawClaims.filter((c): c is MyClaim => c != null);
+  const requests: MyClaimRequest[] = rawRequests.filter((r): r is MyClaimRequest => r != null);
+  const pendingTransfers: MyPendingTransfer[] = rawTransfers.filter((t): t is MyPendingTransfer => t != null);
+  const pendingProposals: ProposalCardData[] = rawProposals.filter((p): p is ProposalCardData => p != null);
+  const claimantSyncs: ClaimantSync[] = rawSyncs.filter((s): s is ClaimantSync => s != null);
+
+  if (typeof window !== "undefined") {
+    const droppedCounts = {
+      claims: rawClaims.length - claims.length,
+      requests: rawRequests.length - requests.length,
+      transfers: rawTransfers.length - pendingTransfers.length,
+      proposals: rawProposals.length - pendingProposals.length,
+      syncs: rawSyncs.length - claimantSyncs.length,
+    };
+    const dropped = Object.entries(droppedCounts).filter(([, n]) => n > 0);
+    if (dropped.length > 0) {
+      // eslint-disable-next-line no-console
+      console.warn("[dashboard] dropped null items from list responses:", Object.fromEntries(dropped));
+    }
+  }
+
   const pendingRequests = requests.filter((r) => r.status === "pending");
   const resolvedRequests = requests.filter((r) => r.status !== "pending");
-  const pendingTransfers: MyPendingTransfer[] = transfersData?.myPendingTransfers ?? [];
-  const pendingProposals: ProposalCardData[] = proposalsData?.myPendingProposals ?? [];
-  const claimantSyncs: ClaimantSync[] = syncsData?.myClaimantSyncs ?? [];
 
   // Map venue ID → active claimant-sync row, so we can render sync controls next to each claim.
   const syncByVenueId = new Map<string, ClaimantSync>();
