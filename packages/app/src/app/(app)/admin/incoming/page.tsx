@@ -57,6 +57,8 @@ export default function IncomingEventsPage() {
   const [rowError, setRowError] = useState<Record<string, string>>({});
   // Top-level message reserved for bulk operations only
   const [bulkMessage, setBulkMessage] = useState<string | null>(null);
+  // Bulk reject loops the single-reject mutation, so track in-flight here
+  const [rejectingSelected, setRejectingSelected] = useState(false);
 
   const [{ data, fetching }, reexecuteQuery] = useQuery({
     query: PENDING_IMPORTS_QUERY,
@@ -228,6 +230,38 @@ export default function IncomingEventsPage() {
     }
   }
 
+  async function handleBulkReject() {
+    const ids = Array.from(selected);
+    if (ids.length === 0) {
+      setBulkMessage("No items selected to reject.");
+      return;
+    }
+    if (
+      !window.confirm(
+        `Reject ${ids.length} selected item${ids.length === 1 ? "" : "s"}? They'll move to the Rejected filter and stay out of the catalog.`
+      )
+    ) {
+      return;
+    }
+    setBulkMessage(null);
+    setRejectingSelected(true);
+    let rejected = 0;
+    let errors = 0;
+    for (const id of ids) {
+      const result = await executeReject({
+        input: { pendingImportId: decodeGlobalId(id) },
+      });
+      if (result.data?.rejectPendingImport?.error) errors += 1;
+      else rejected += 1;
+    }
+    setRejectingSelected(false);
+    setBulkMessage(
+      `Rejected ${rejected}${errors ? `, ${errors} error${errors === 1 ? "" : "s"}` : ""}.`
+    );
+    setSelected(new Set());
+    reexecuteQuery({ requestPolicy: "network-only" });
+  }
+
   function toggleSelect(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -274,25 +308,41 @@ export default function IncomingEventsPage() {
         </div>
         <div className="flex gap-2">
           {selected.size > 0 && (
-            <Button
-              variant="primary"
-              onClick={() => handleBulkApprove()}
-              disabled={validating || approvingAll}
-            >
-              {approvingAll ? "Approving..." : `Approve ${selected.size} Selected`}
-            </Button>
+            <>
+              <Button
+                variant="primary"
+                onClick={() => handleBulkApprove()}
+                disabled={validating || approvingAll || rejectingSelected}
+              >
+                {approvingAll ? "Approving..." : `Approve ${selected.size} Selected`}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleBulkReject}
+                disabled={validating || approvingAll || rejectingSelected}
+              >
+                {rejectingSelected
+                  ? "Rejecting..."
+                  : `Reject ${selected.size} Selected`}
+              </Button>
+            </>
           )}
           <Button
             variant="secondary"
             onClick={handleAutoValidate}
-            disabled={validating || approvingAll}
+            disabled={validating || approvingAll || rejectingSelected}
           >
             {validating ? "Validating..." : "Auto-Validate"}
           </Button>
           <Button
             variant="secondary"
             onClick={() => handleBulkApprove(selectableIds)}
-            disabled={validating || approvingAll || pendingItems.length === 0}
+            disabled={
+              validating ||
+              approvingAll ||
+              rejectingSelected ||
+              pendingItems.length === 0
+            }
           >
             {approvingAll ? "Approving..." : "Approve All"}
           </Button>
