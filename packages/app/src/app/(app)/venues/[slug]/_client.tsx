@@ -103,6 +103,7 @@ export default function VenueDetailPage() {
           initialValues={{
             name: venue.name,
             venueType: venue.venueType || "theater",
+            defaultPerformanceType: venue.defaultPerformanceType || "",
             address: venue.address,
             city: venue.city,
             state: venue.state,

@@ -30,6 +30,10 @@ export const runUpdate = mutationWithClientMutationId({
       type: GraphQLString,
       description: 'Number of intermissions (string, parsed to int)'
     },
+    lineupPerPerformance: {
+      type: GraphQLString,
+      description: 'Override the variable-lineup flag ("true"/"false"). true = cast varies per performance (no aggregate run cast); false = fixed cast shared across performances.'
+    },
     startDate: {
       type: GraphQLString,
       description: 'Start date (ISO string)'
@@ -93,6 +97,9 @@ export const runUpdate = mutationWithClientMutationId({
       if (input.title !== undefined) updates.title = input.title
       if (input.description !== undefined) updates.description = input.description
       if (input.intermissions !== undefined && input.intermissions !== '') updates.intermissions = parseInt(input.intermissions, 10) || 0
+      if (input.lineupPerPerformance !== undefined && input.lineupPerPerformance !== '') {
+        updates.lineupPerPerformance = input.lineupPerPerformance === 'true'
+      }
       if (input.startDate !== undefined && input.startDate !== '') updates.startDate = new Date(input.startDate)
       if (input.endDate !== undefined && input.endDate !== '') updates.endDate = new Date(input.endDate)
       if (input.imageUrl !== undefined && input.imageUrl !== '') updates.imageUrl = input.imageUrl

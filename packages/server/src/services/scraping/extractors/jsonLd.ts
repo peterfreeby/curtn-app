@@ -48,6 +48,100 @@ function asUrl(v: unknown): string | undefined {
   return undefined
 }
 
+// Resolve a possibly-relative URL against the page's URL. Returns undefined
+// if the input is empty. Returns the original if URL construction fails.
+function resolveUrl(url: string | undefined, baseUrl: string | undefined): string | undefined {
+  if (!url) return undefined
+  if (!baseUrl) return url
+  try {
+    return new URL(url, baseUrl).href
+  } catch {
+    return url
+  }
+}
+
+const NAMED_ENTITIES: Record<string, string> = {
+  // Structural
+  '&lt;': '<', '&gt;': '>', '&amp;': '&', '&quot;': '"', '&apos;': "'",
+  '&nbsp;': ' ',
+  // Typographic punctuation — the set that actually shows up in venue copy.
+  // Smart quotes are the big one (the "Cansu&rsquo;s" bug).
+  '&rsquo;': '’', '&lsquo;': '‘', '&rdquo;': '”',
+  '&ldquo;': '“', '&sbquo;': '‚', '&bdquo;': '„',
+  '&prime;': '′', '&Prime;': '″',
+  '&hellip;': '…', '&mdash;': '—', '&ndash;': '–', '&minus;': '−',
+  '&bull;': '•', '&middot;': '·', '&deg;': '°',
+  '&times;': '×', '&frac12;': '½', '&frac14;': '¼',
+  '&frac34;': '¾',
+  '&rarr;': '→', '&larr;': '←', '&copy;': '©', '&reg;': '®', '&trade;': '™',
+  '&eacute;': 'é', '&egrave;': 'è', '&ecirc;': 'ê',
+  '&agrave;': 'à', '&acirc;': 'â', '&ccedil;': 'ç',
+  '&iacute;': 'í', '&oacute;': 'ó', '&uacute;': 'ú',
+  '&ntilde;': 'ñ', '&uuml;': 'ü', '&ouml;': 'ö',
+  '&auml;': 'ä', '&aacute;': 'á', '&Eacute;': 'É'
+}
+
+function decodeEntitiesOnce(s: string): string {
+  // Handles named (&rsquo;), decimal (&#8217;), and hex (&#x2019;) entities.
+  return s.replace(/&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z]+);/g, (match) => {
+    if (NAMED_ENTITIES[match]) return NAMED_ENTITIES[match]
+    const hex = match.match(/&#x([0-9a-fA-F]+);/)
+    if (hex) {
+      const code = parseInt(hex[1], 16)
+      if (!isNaN(code)) return String.fromCodePoint(code)
+    }
+    const dec = match.match(/&#(\d+);/)
+    if (dec) {
+      const code = parseInt(dec[1], 10)
+      if (!isNaN(code)) return String.fromCodePoint(code)
+    }
+    return match
+  })
+}
+
+// Strip HTML to clean plain text. Handles double-entity-encoded input
+// (Wordpress event plugins commonly emit &lt;p&gt; instead of <p> inside
+// JSON-LD), preserves paragraph breaks, drops Wordpress "Continue reading..."
+// more-link suffixes.
+function stripHtml(s: string | undefined): string | undefined {
+  if (!s) return undefined
+  let out = s
+  // Decode entities up to twice — JSON-LD sometimes contains &amp;lt; which
+  // takes two passes to reach the literal '<'.
+  out = decodeEntitiesOnce(out)
+  if (/&(#x[0-9a-fA-F]+|#\d+|\w+);/.test(out)) out = decodeEntitiesOnce(out)
+  // <br> → newline before tag stripping so we preserve line breaks
+  out = out.replace(/<br\s*\/?>/gi, '\n')
+  // </p>, </div>, </li> → paragraph break
+  out = out.replace(/<\/(p|div|li|h[1-6])\s*>/gi, '\n\n')
+  // Drop the Wordpress more-link entirely (with its inner span text)
+  out = out.replace(/<a[^>]*class="[^"]*more-link[^"]*"[\s\S]*?<\/a>/gi, '')
+  // Strip remaining tags
+  out = out.replace(/<[^>]+>/g, '')
+  // Drop residual "Continue reading ..." suffix that survives tag-stripping
+  out = out.replace(/[\s…]*Continue reading\s+[^\n]*$/i, '')
+  // Wordpress event plugins sometimes embed literal escape sequences ('\n',
+  // '\t', '\r' as two-character text, not real escapes) in the description.
+  // Collapse them to a single space — they're never meaningful content.
+  out = out.replace(/\\[nrt]/g, ' ')
+  // Collapse whitespace: 3+ newlines → 2, multi-space → single space
+  out = out.replace(/\n{3,}/g, '\n\n').replace(/[ \t]+/g, ' ').trim()
+  return out || undefined
+}
+
+// Schema.org @type names that some JSON-LD emitters mistakenly write as
+// performer.name string values (Wordpress event plugins, particularly).
+// When we see a performer whose name is one of these, it's a placeholder
+// stub, not a real cast member.
+const JSON_LD_TYPE_NAMES = new Set([
+  'Organization', 'Person', 'MusicGroup', 'PerformingGroup',
+  'TheaterGroup', 'Place', 'Thing'
+])
+
+function isPlaceholderName(s: string): boolean {
+  return JSON_LD_TYPE_NAMES.has(s.trim())
+}
+
 // Resolve schema.org image which may be a string, ImageObject, or array
 function asImage(v: unknown): string | undefined {
   if (!v) return undefined
@@ -121,24 +215,31 @@ function extractPerformer(performer: unknown): { personName?: string; creditType
   if (Array.isArray(performer)) return performer.flatMap(extractPerformer)
   if (typeof performer === 'string') {
     const name = performer.trim()
-    return name ? [{ personName: name, creditType: 'cast' }] : []
+    if (!name || isPlaceholderName(name)) return []
+    return [{ personName: name, creditType: 'cast' }]
   }
   if (typeof performer === 'object') {
-    const name = asString((performer as any).name)
-    return name ? [{ personName: name, creditType: 'cast' }] : []
+    const obj = performer as any
+    // Skip Organization-typed performers entirely — they're producer/venue
+    // stubs, not cast. We have a separate Company concept for that.
+    const type = asString(obj['@type']) || ''
+    if (/^(Organization|PerformingGroup|TheaterGroup)$/i.test(type)) return []
+    const name = asString(obj.name)
+    if (!name || isPlaceholderName(name)) return []
+    return [{ personName: name, creditType: 'cast' }]
   }
   return []
 }
 
-function eventToRows(event: any): Partial<CsvRowInput>[] {
+function eventToRows(event: any, baseUrl: string | undefined): Partial<CsvRowInput>[] {
   const title = asString(event.name)
   if (!title) return []
 
   const { date, time } = extractDate(event.startDate)
   const venue = extractVenue(event.location)
-  const ticketUrl = extractOffers(event.offers) || asUrl(event.url)
-  const image = asImage(event.image)
-  const description = asString(event.description)
+  const ticketUrl = resolveUrl(extractOffers(event.offers) || asUrl(event.url), baseUrl)
+  const image = resolveUrl(asImage(event.image), baseUrl)
+  const description = stripHtml(asString(event.description))
 
   // Map @type to performance type
   let performanceType: string | undefined
@@ -188,7 +289,13 @@ function* walkNodes(node: any): Generator<any> {
 }
 
 export const jsonLdExtractor: Extractor = {
-  async extract(page, _sourceUrl) {
+  async extract(page, sourceUrl) {
+    // Use the page's actual URL (post-redirect) for relative URL resolution.
+    // Falls back to sourceUrl if page.url() is 'about:blank' (cache hit served
+    // via setContent).
+    const pageUrl = page.url()
+    const baseUrl = pageUrl && pageUrl !== 'about:blank' ? pageUrl : sourceUrl
+
     const blobs = await page.$$eval(
       'script[type="application/ld+json"]',
       (nodes) => nodes.map(n => n.textContent || '')
@@ -204,7 +311,7 @@ export const jsonLdExtractor: Extractor = {
       }
       for (const node of walkNodes(parsed)) {
         if (isEventType(node['@type'])) {
-          rows.push(...eventToRows(node))
+          rows.push(...eventToRows(node, baseUrl))
         }
       }
     }

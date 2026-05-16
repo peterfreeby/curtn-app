@@ -28,6 +28,29 @@ function decodeId(globalId: string): string {
   return atob(globalId).split(":")[1];
 }
 
+// Variable-lineup runs (recurring showcases, comedy nights) have no shared
+// cast — the lineup changes each date. Showing an aggregate roster would be
+// the union of every night, which is wrong. Point people at the per-date
+// performances instead.
+function LineupVariesNote({ cast, crew }: { cast?: any[]; crew?: any[] }) {
+  // If the run somehow still has aggregate credits, fall back to showing them.
+  if ((cast?.length ?? 0) > 0 || (crew?.length ?? 0) > 0) {
+    return <CreditsList cast={cast ?? []} crew={crew ?? []} />;
+  }
+  return (
+    <div className="dog-ear dog-ear-dark border border-curtn-dark bg-curtn-surface px-4 py-3">
+      <div className="flex items-center gap-2 font-display text-xs font-bold uppercase tracking-wide text-curtn-cream">
+        <Icon name="users-three" weight="bold" />
+        Lineup varies by date
+      </div>
+      <p className="mt-1 font-sans text-xs text-curtn-muted">
+        This run has a different lineup each performance. See an individual date
+        below for that night&rsquo;s cast.
+      </p>
+    </div>
+  );
+}
+
 function ReviewFilters({
   followedOnly,
   onFollowedChange,
@@ -305,7 +328,11 @@ export default function RunDetailPage() {
           </Link>
         )}
 
+        {run.lineupPerPerformance ? (
+        <LineupVariesNote cast={run.cast} crew={run.crew} />
+      ) : (
         <CreditsList cast={run.cast ?? []} crew={run.crew ?? []} />
+      )}
 
         {isAdmin && !editing && !batchCreating && (
           <div className="flex gap-2">
@@ -330,6 +357,7 @@ export default function RunDetailPage() {
               title: run.title || "",
               description: run.description || "",
               intermissions: run.intermissions ?? 0,
+              lineupPerPerformance: run.lineupPerPerformance ? "true" : "false",
               startDate: run.startDate || "",
               endDate: run.endDate || "",
               posterUrl: run.posterUrl || "",
@@ -471,7 +499,11 @@ export default function RunDetailPage() {
         </Link>
       )}
 
-      <CreditsList cast={run.cast ?? []} crew={run.crew ?? []} />
+      {run.lineupPerPerformance ? (
+        <LineupVariesNote cast={run.cast} crew={run.crew} />
+      ) : (
+        <CreditsList cast={run.cast ?? []} crew={run.crew ?? []} />
+      )}
 
       {isAdmin && !editing && !batchCreating && (
         <div className="hidden sm:flex gap-2">
@@ -496,6 +528,7 @@ export default function RunDetailPage() {
             title: run.title || "",
             description: run.description || "",
             intermissions: run.intermissions ?? 0,
+            lineupPerPerformance: run.lineupPerPerformance ? "true" : "false",
             startDate: run.startDate || "",
             endDate: run.endDate || "",
             posterUrl: run.posterUrl || "",

@@ -127,8 +127,18 @@ export const performanceType = new GraphQLObjectType({
         type: new GraphQLList(creditType),
         description: 'Cast with per-performance overrides applied',
         resolve: async (performance: any, _args: any, ctx: any) => {
+          // Variable-lineup runs (recurring showcases, comedy nights) carry no
+          // shared default cast — each performance's cast is solely its own
+          // creditOverrides.added. See [[Per-Performance Cast Attribution]].
+          const run = ctx.loaders
+            ? await ctx.loaders.runLoader.load(performance.run.toString())
+            : await RunModel.findById(performance.run)
+          const lineupPerPerformance = !!run?.lineupPerPerformance
+
           let defaultCast: any[]
-          if (ctx.loaders) {
+          if (lineupPerPerformance) {
+            defaultCast = []
+          } else if (ctx.loaders) {
             const allCredits = await ctx.loaders.creditsByRunLoader.load(performance.run.toString())
             defaultCast = allCredits.filter((c: any) => c.creditType === 'cast')
           } else {
@@ -153,8 +163,15 @@ export const performanceType = new GraphQLObjectType({
         type: new GraphQLList(creditType),
         description: 'Crew with per-performance overrides applied',
         resolve: async (performance: any, _args: any, ctx: any) => {
+          const run = ctx.loaders
+            ? await ctx.loaders.runLoader.load(performance.run.toString())
+            : await RunModel.findById(performance.run)
+          const lineupPerPerformance = !!run?.lineupPerPerformance
+
           let defaultCrew: any[]
-          if (ctx.loaders) {
+          if (lineupPerPerformance) {
+            defaultCrew = []
+          } else if (ctx.loaders) {
             const allCredits = await ctx.loaders.creditsByRunLoader.load(performance.run.toString())
             defaultCrew = allCredits.filter((c: any) => c.creditType === 'crew')
           } else {

@@ -4,7 +4,8 @@ import {
   GraphQLString,
   GraphQLNonNull,
   GraphQLObjectType,
-  GraphQLInt
+  GraphQLInt,
+  GraphQLBoolean
 } from 'graphql'
 import { nodeInterface } from '../../graphql/nodeInterface'
 import { globalIdField, connectionDefinitions, connectionArgs } from 'graphql-relay'
@@ -82,6 +83,11 @@ export const runType: GraphQLObjectType = new GraphQLObjectType({
         type: GraphQLInt,
         resolve: run => run.intermissions
       },
+      lineupPerPerformance: {
+        type: GraphQLBoolean,
+        description: 'When true, this run has a different lineup each performance (recurring showcase / comedy night). The aggregate run cast is empty by design; each performance carries its own cast via effectiveCast.',
+        resolve: run => !!run.lineupPerPerformance
+      },
       startDate: {
         type: GraphQLString,
         resolve: run => run.startDate?.toISOString()
@@ -141,6 +147,10 @@ export const runType: GraphQLObjectType = new GraphQLObjectType({
       cast: {
         type: new GraphQLList(creditType),
         resolve: async (run: any, _args: any, ctx: any) => {
+          // Variable-lineup runs have no shared aggregate cast — each
+          // performance carries its own lineup. Return empty so consumers
+          // don't render the union of every night.
+          if (run.lineupPerPerformance) return []
           if (ctx.loaders) {
             const credits = await ctx.loaders.creditsByRunLoader.load(run._id.toString())
             return credits.filter((c: any) => c.creditType === 'cast')
@@ -151,6 +161,7 @@ export const runType: GraphQLObjectType = new GraphQLObjectType({
       crew: {
         type: new GraphQLList(creditType),
         resolve: async (run: any, _args: any, ctx: any) => {
+          if (run.lineupPerPerformance) return []
           if (ctx.loaders) {
             const credits = await ctx.loaders.creditsByRunLoader.load(run._id.toString())
             return credits.filter((c: any) => c.creditType === 'crew')

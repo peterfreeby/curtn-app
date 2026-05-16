@@ -65,6 +65,7 @@ export const VENUE_BY_SLUG_QUERY = gql`
       zipCode
       capacity
       venueType
+      defaultPerformanceType
       website
       phone
       email

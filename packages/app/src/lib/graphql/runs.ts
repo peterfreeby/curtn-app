@@ -44,6 +44,7 @@ export const SINGLE_RUN_QUERY = gql`
         city
       }
       intermissions
+      lineupPerPerformance
       startDate
       endDate
       description

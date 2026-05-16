@@ -7,6 +7,13 @@ export interface IRun {
   venues: Types.ObjectId[]
   stage?: Types.ObjectId
   intermissions: number
+  // When true, this run's cast varies per performance (recurring showcases,
+  // comedy lineups, rotating rep). The Run carries no aggregate default cast;
+  // each Performance's effectiveCast comes solely from its own
+  // creditOverrides.added. When false (default), Run-level Credits are the
+  // shared cast inherited by every performance (a normal play). See
+  // [[Per-Performance Cast Attribution]].
+  lineupPerPerformance: boolean
   startDate?: Date
   endDate?: Date
   description?: string
@@ -47,6 +54,10 @@ const runSchema = new Schema<IRun>({
     type: Number,
     default: 0,
     min: 0
+  },
+  lineupPerPerformance: {
+    type: Boolean,
+    default: false
   },
   startDate: Date,
   endDate: Date,

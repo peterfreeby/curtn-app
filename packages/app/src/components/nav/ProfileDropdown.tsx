@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/useAuth";
 import { Icon } from "@/components/icons/Icons";
+import { Avatar } from "@/components/Avatar";
 
 export function ProfileDropdown() {
   const { user, logout } = useAuth();
@@ -22,8 +23,6 @@ export function ProfileDropdown() {
 
   if (!user) return null;
 
-  const initial = user.fullName.charAt(0).toUpperCase();
-
   return (
     <div ref={ref} className="relative">
       <button
@@ -31,9 +30,18 @@ export function ProfileDropdown() {
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1.5 text-curtn-cream hover:text-curtn-coral transition-colors duration-200"
       >
-        <span className="w-8 h-8 rounded-full bg-curtn-surface border border-curtn-dark/50 flex items-center justify-center text-sm font-semibold">
-          {initial}
-        </span>
+        {user.avatarUrl ? (
+          <Avatar
+            src={user.avatarUrl}
+            name={user.fullName}
+            size="sm"
+            className="!w-8 !h-8"
+          />
+        ) : (
+          <span className="w-8 h-8 rounded-full bg-curtn-surface border border-curtn-dark/50 flex items-center justify-center text-sm font-semibold">
+            {user.fullName.charAt(0).toUpperCase()}
+          </span>
+        )}
         <Icon name="caret-down" size={16} className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
 

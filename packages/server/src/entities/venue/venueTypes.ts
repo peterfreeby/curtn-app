@@ -89,6 +89,11 @@ import {
         description: 'Type of venue (theater, comedy-club, etc.)',
         resolve: venue => venue.venueType
       },
+      defaultPerformanceType: {
+        type: GraphQLString,
+        description: 'Discipline this venue predominantly programs. Fallback for imported events with no type of their own. Unset for mixed-discipline venues.',
+        resolve: venue => venue.defaultPerformanceType ?? null
+      },
       website: {
         type: GraphQLString,
         description: 'Venue website URL',

@@ -1,6 +1,7 @@
 import mongoose, { Schema, Types } from 'mongoose'
 import { enqueueGeocodingJob } from '../../services/geocoding/enqueueGeocodingJob'
 import { claimableFieldsSchema, IClaimableFields } from '../../permissions/claimableFields'
+import { PERFORMANCE_TYPES, type PerformanceType } from '../show/showModel'
 
 const ADDRESS_FIELDS = ['address', 'city', 'state', 'zipCode'] as const
 
@@ -23,6 +24,11 @@ export interface IVenue extends IClaimableFields {
   // Venue details
   capacity?: number
   venueType: 'theater' | 'concert-hall' | 'dance-studio' | 'comedy-club' | 'multi-purpose' | 'outdoor' | 'other'
+  // Discipline the venue predominantly programs. Used as a *fallback* for
+  // scraped/imported events whose own performance type is missing or
+  // unresolvable — never overrides an explicitly-typed event. See
+  // [[Venue Default Performance Type]].
+  defaultPerformanceType?: PerformanceType
 
   // Contact and links
   website?: string
@@ -101,6 +107,11 @@ const venueSchema = new Schema<IVenue>({
     type: String,
     enum: ['theater', 'concert-hall', 'dance-studio', 'comedy-club', 'multi-purpose', 'outdoor', 'other'],
     default: 'theater'
+  },
+  defaultPerformanceType: {
+    type: String,
+    enum: PERFORMANCE_TYPES
+    // optional — left unset for mixed-discipline venues (BAM, REDCAT, 92NY)
   },
   website: {
     type: String,

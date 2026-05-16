@@ -16,6 +16,11 @@ import { StageModel } from '../../stage/stageModel'
 import { DataSourceModel } from '../../dataSource/dataSourceModel'
 import { ProposalModel } from '../../proposal/proposalModel'
 import { createNotification } from '../../../services/notifications/createNotification'
+import {
+  typeImpliesVariableLineup,
+  resolvePerformanceTypes,
+  isCleanLineupBreak
+} from '../../../services/importEngine/lineupHeuristics'
 
 /**
  * Promotes a pending import into real Show/Run/Performance records.
@@ -25,6 +30,7 @@ export async function promoteToRecords(pi: any, userId: string) {
   // 1. Find or create Show
   const titleRegex = new RegExp(`^${pi.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')
   let show = await ShowModel.findOne({ title: titleRegex })
+  let showWasCreated = false
   if (!show) {
     show = await new ShowModel({
       title: pi.title,
@@ -35,11 +41,13 @@ export async function promoteToRecords(pi: any, userId: string) {
       submittedBy: userId,
       source: pi.dataSource
     }).save()
+    showWasCreated = true
   }
 
   // 2. Find or create Venue
   let venueIds: string[] = []
   let stageId: string | undefined
+  let resolvedVenue: any = null
   if (pi.venueName?.trim()) {
     const venueSlug = pi.venueName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
     let venue = await VenueModel.findOne({ slug: venueSlug })
@@ -54,6 +62,7 @@ export async function promoteToRecords(pi: any, userId: string) {
         submittedBy: userId
       }).save()
     }
+    resolvedVenue = venue
     venueIds = [venue._id.toString()]
     const defaultStage = await ensureDefaultStage(venue._id, userId as any)
 
@@ -73,6 +82,17 @@ export async function promoteToRecords(pi: any, userId: string) {
     } else {
       stageId = defaultStage._id.toString()
     }
+  }
+
+  // 2b. Venue default performance type — fallback only. If this PendingImport
+  // carried no performance type and we just created the Show, inherit the
+  // venue's default discipline so the Show isn't left untyped. Never
+  // overrides an explicitly-typed event. See [[Venue Default Performance Type]].
+  const venueDefaultType: string | undefined = resolvedVenue?.defaultPerformanceType
+  const effectiveTypes = resolvePerformanceTypes(pi.performanceTypes, venueDefaultType)
+  if (showWasCreated && (!show.performanceTypes || show.performanceTypes.length === 0) && effectiveTypes.length) {
+    show.performanceTypes = effectiveTypes as any
+    await show.save()
   }
 
   // 3. Find or create Company
@@ -112,6 +132,10 @@ export async function promoteToRecords(pi: any, userId: string) {
       productionCompany: companyId,
       venues: venueIds,
       ...(stageId && { stage: stageId }),
+      // Type prior (supporting discriminator): a comedy/improv/cabaret/etc.
+      // run almost always has a different lineup each night. The zero-overlap
+      // check below can still flip this later if the prior was wrong.
+      lineupPerPerformance: typeImpliesVariableLineup(effectiveTypes, venueDefaultType),
       ...(pi.startDate && { startDate: pi.startDate }),
       ...(pi.endDate && { endDate: pi.endDate }),
       submittedBy: userId,
@@ -120,18 +144,19 @@ export async function promoteToRecords(pi: any, userId: string) {
   }
 
   // 5. Create Performance (if date provided), dedup by run + date
+  let perf: any = null
   if (pi.date && venueIds.length > 0) {
     const dayStart = new Date(pi.date)
     dayStart.setHours(0, 0, 0, 0)
     const dayEnd = new Date(pi.date)
     dayEnd.setHours(23, 59, 59, 999)
-    const existingPerf = await PerformanceModel.findOne({
+    perf = await PerformanceModel.findOne({
       run: run._id,
       date: { $gte: dayStart, $lte: dayEnd }
     })
 
-    if (!existingPerf) {
-      await new PerformanceModel({
+    if (!perf) {
+      perf = await new PerformanceModel({
         run: run._id,
         date: pi.date,
         ...(pi.time?.trim() && { time: pi.time.trim() }),
@@ -155,9 +180,43 @@ export async function promoteToRecords(pi: any, userId: string) {
     await run.save()
   }
 
-  // 6. Create cast and crew (Person + Credit records) if provided
+  // 5b. Zero-overlap correction (primary discriminator). If the run isn't
+  // already flagged variable-lineup, compare this import's cast to the cast
+  // the run has already accumulated. A clean personnel break means the type
+  // prior was wrong (e.g. a recurring variety night tagged "theater") — flip
+  // the flag so future performances attribute per-night.
+  //
+  // Known limitation: credits already written at run level for *earlier*
+  // performances of a mis-prior'd run stay run-level (we no longer know which
+  // night each belonged to). Those earlier performances will over-list until
+  // an admin corrects them. Rare, and the flag is admin-overridable. The
+  // common case — comedy correctly caught by the type prior at run creation —
+  // never hits this path.
+  if (run && !run.lineupPerPerformance && pi.cast?.length) {
+    const incoming = new Set<string>(
+      pi.cast
+        .map((c: any) => (c?.name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''))
+        .filter(Boolean)
+    )
+    const runCastCredits = await CreditModel.find({ run: run._id, creditType: 'cast' }).populate('person')
+    const accumulated = new Set<string>(
+      runCastCredits.map((c: any) => c.person?.slug).filter(Boolean)
+    )
+    if (isCleanLineupBreak(incoming, accumulated)) {
+      run.lineupPerPerformance = true
+      await run.save()
+    }
+  }
+
+  // 6. Create cast and crew (Person + Credit records) if provided.
+  // Credits are always run-scoped (the Credit model requires a run). For a
+  // variable-lineup run we additionally pin each credit to *this* performance
+  // via creditOverrides.added — the effectiveCast resolver returns only those
+  // for variable-lineup runs, so each night shows just its own lineup.
   async function createCredits(entries: any[], creditType: 'cast' | 'crew', defaultRole: string) {
     if (!entries?.length || !run) return
+    const pinToPerformance = !!run.lineupPerPerformance && !!perf
+    const addedCreditIds: any[] = []
     for (let i = 0; i < entries.length; i++) {
       const { name, role, headshotUrl } = entries[i]
       if (!name?.trim()) continue
@@ -176,9 +235,9 @@ export async function promoteToRecords(pi: any, userId: string) {
         await person.save()
       }
 
-      const existingCredit = await CreditModel.findOne({ person: person._id, run: run._id })
-      if (!existingCredit) {
-        await new CreditModel({
+      let credit = await CreditModel.findOne({ person: person._id, run: run._id })
+      if (!credit) {
+        credit = await new CreditModel({
           person: person._id,
           run: run._id,
           creditType,
@@ -187,6 +246,16 @@ export async function promoteToRecords(pi: any, userId: string) {
           submittedBy: userId
         }).save()
       }
+      if (pinToPerformance) addedCreditIds.push(credit._id)
+    }
+
+    if (pinToPerformance && addedCreditIds.length) {
+      if (!perf.creditOverrides) perf.creditOverrides = { added: [], removed: [] }
+      const have = new Set((perf.creditOverrides.added || []).map((id: any) => id.toString()))
+      for (const id of addedCreditIds) {
+        if (!have.has(id.toString())) perf.creditOverrides.added.push(id)
+      }
+      await perf.save()
     }
   }
 

@@ -11,6 +11,11 @@ import { CreditModel } from '../../entities/credit/creditModel'
 import { ShowCreditModel } from '../../entities/showCredit/showCreditModel'
 import { ListModel, LIST_TYPES } from '../../entities/list/listModel'
 import { ListItemModel } from '../../entities/list/listItemModel'
+import {
+  typeImpliesVariableLineup,
+  resolvePerformanceTypes,
+  isCleanLineupBreak
+} from './lineupHeuristics'
 
 // --- Types ---
 
@@ -193,6 +198,7 @@ export async function processImportRows(
       const titleClean = row.title.trim()
       const titleRegex = new RegExp(`^${titleClean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')
       let show = await ShowModel.findOne({ title: titleRegex })
+      let showJustCreated = false
 
       if (show) {
         result.showsMatched++
@@ -243,6 +249,7 @@ export async function processImportRows(
           ...(sourceId && { source: sourceId })
         }).save()
         result.showsCreated++
+        showJustCreated = true
       }
 
       if (dryRun) continue
@@ -250,6 +257,7 @@ export async function processImportRows(
       // 2. Find or create Venue + Stage
       let venueIds: string[] = []
       let stageId: string | undefined
+      let resolvedVenue: any = null
       if (row.venueName?.trim()) {
         const venueSlug = toSlug(row.venueName.trim())
         let venue = await VenueModel.findOne({ slug: venueSlug })
@@ -274,6 +282,7 @@ export async function processImportRows(
         } else {
           result.venuesMatched++
         }
+        resolvedVenue = venue
         venueIds = [venue._id.toString()]
         const defaultStage = await ensureDefaultStage(venue._id, ctx.userId as any)
 
@@ -293,6 +302,19 @@ export async function processImportRows(
         } else {
           stageId = defaultStage._id.toString()
         }
+      }
+
+      // 2b. Venue default performance type — fallback only (never overrides
+      // an explicitly-typed row). Backfill a just-created Show left untyped.
+      // See [[Venue Default Performance Type]].
+      const venueDefaultType: string | undefined = resolvedVenue?.defaultPerformanceType
+      const rowTypes = row.performanceTypes
+        ? row.performanceTypes.split(',').map(t => normalizePerformanceType(t)).filter(Boolean) as string[]
+        : []
+      const effectiveTypes = resolvePerformanceTypes(rowTypes, venueDefaultType)
+      if (showJustCreated && (!show.performanceTypes || show.performanceTypes.length === 0) && effectiveTypes.length) {
+        show.performanceTypes = effectiveTypes as any
+        await show.save()
       }
 
       // 3. Find or create ProductionCompany
@@ -341,6 +363,8 @@ export async function processImportRows(
           productionCompany: companyId,
           venues: venueIds,
           ...(stageId && { stage: stageId }),
+          // Type prior (see lineupHeuristics + [[Per-Performance Cast Attribution]]).
+          lineupPerPerformance: typeImpliesVariableLineup(effectiveTypes, venueDefaultType),
           ...(row.intermissions?.trim() && { intermissions: parseInt(row.intermissions, 10) || 0 }),
           ...(runStartDate && !isNaN(runStartDate.getTime()) && { startDate: runStartDate }),
           ...(runEndDate && !isNaN(runEndDate.getTime()) && { endDate: runEndDate }),

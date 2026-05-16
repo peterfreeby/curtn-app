@@ -49,10 +49,19 @@ const RUN_FIELDS: FieldDef[] = [
   { key: "title", label: "Run Title", placeholder: "e.g. Original Broadway, 2024 Revival" },
   { key: "description", label: "Description", type: "textarea" },
   { key: "intermissions", label: "Intermissions", type: "number" },
+  { key: "lineupPerPerformance", label: "Lineup Varies Per Performance", type: "select", options: ["false", "true"] },
   { key: "startDate", label: "Start Date", type: "date" },
   { key: "endDate", label: "End Date", type: "date" },
   { key: "posterUrl", label: "Poster", type: "image", imageEntityType: "run-poster" },
   { key: "imageUrl", label: "Splash Image", type: "image", imageEntityType: "run" },
+];
+
+// Mirrors PERFORMANCE_TYPES on the server (showModel). Leading "" = unset
+// (mixed-discipline venues like BAM / REDCAT carry no single default).
+const PERFORMANCE_TYPE_OPTIONS = [
+  "", "theater", "play", "musical", "music", "dance", "opera", "comedy",
+  "improv", "spoken-word", "cabaret", "experimental", "immersive", "drag",
+  "burlesque", "happening", "other",
 ];
 
 const PERFORMANCE_FIELDS: FieldDef[] = [
@@ -66,6 +75,7 @@ const PERFORMANCE_FIELDS: FieldDef[] = [
 const VENUE_FIELDS: FieldDef[] = [
   { key: "name", label: "Name" },
   { key: "venueType", label: "Venue Type", type: "select", options: ["theater", "concert-hall", "dance-studio", "comedy-club", "multi-purpose", "outdoor", "other"] },
+  { key: "defaultPerformanceType", label: "Default Performance Type (fallback for untyped imports; blank = mixed)", type: "select", options: PERFORMANCE_TYPE_OPTIONS },
   { key: "address", label: "Address" },
   { key: "city", label: "City" },
   { key: "state", label: "State" },

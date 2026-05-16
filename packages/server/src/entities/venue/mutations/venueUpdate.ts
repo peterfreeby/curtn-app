@@ -2,6 +2,7 @@ import { GraphQLBoolean, GraphQLNonNull, GraphQLString } from 'graphql'
 import { mutationWithClientMutationId } from 'graphql-relay'
 import { venueType } from '../venueTypes'
 import { VenueModel } from '../venueModel'
+import { PERFORMANCE_TYPES } from '../../show/showModel'
 import { errorField } from '../../../graphql/errorField'
 import { canPerform } from '../../../permissions/canPerform'
 import { bumpForUnit } from '../../../services/claims/bumpClaimantActivity'
@@ -52,6 +53,10 @@ export const venueUpdate = mutationWithClientMutationId({
     venueType: {
       type: GraphQLString,
       description: 'Type of venue (theater, comedy-club, etc.)'
+    },
+    defaultPerformanceType: {
+      type: GraphQLString,
+      description: 'Default discipline for imported events with no type (a PERFORMANCE_TYPES value; empty string unsets it for mixed-discipline venues)'
     },
     website: {
       type: GraphQLString,
@@ -135,6 +140,16 @@ export const venueUpdate = mutationWithClientMutationId({
       if (input.zipCode !== undefined) updates.zipCode = input.zipCode
       if (input.capacity !== undefined && input.capacity !== '') updates.capacity = parseInt(input.capacity, 10) || 0
       if (input.venueType !== undefined) updates.venueType = input.venueType
+      if (input.defaultPerformanceType !== undefined) {
+        const v = (input.defaultPerformanceType || '').trim()
+        if (v === '') {
+          updates.defaultPerformanceType = null // explicit unset (mixed-discipline)
+        } else if ((PERFORMANCE_TYPES as readonly string[]).includes(v)) {
+          updates.defaultPerformanceType = v
+        } else {
+          return { error: `Invalid defaultPerformanceType "${v}". Must be one of: ${PERFORMANCE_TYPES.join(', ')}` }
+        }
+      }
       if (input.website !== undefined) updates.website = input.website
       if (input.phone !== undefined) updates.phone = input.phone
       if (input.email !== undefined) updates.email = input.email
