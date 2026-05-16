@@ -11,6 +11,7 @@ import { DetailHero } from "@/components/DetailHero";
 import { RunCard } from "@/components/runs/RunCard";
 import { ShowingsList } from "@/components/performances/ShowingsList";
 import { CreditsList } from "@/components/credits/CreditsList";
+import { LineupVariesNote } from "@/components/credits/LineupVariesNote";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { WatchlistButton } from "@/components/watchlist/WatchlistButton";
 import { AddToListButton } from "@/components/lists/AddToListButton";
@@ -231,7 +232,13 @@ export default function ShowDetailPage() {
           Log This Show
         </Link>
 
-        <CreditsList cast={singleRun.cast ?? []} crew={singleRun.crew ?? []} />
+        {/* Performance view: the cast of THIS performance. effectiveCast
+            resolves correctly for both fixed-cast plays (run cast + overrides)
+            and variable-lineup runs (only this night's lineup). */}
+        <CreditsList
+          cast={singlePerf.effectiveCast ?? singleRun.cast ?? []}
+          crew={singlePerf.effectiveCrew ?? singleRun.crew ?? []}
+        />
 
         <div className="hidden sm:block">
           {isAdmin && !editing && (
@@ -381,7 +388,11 @@ export default function ShowDetailPage() {
           Log This Show
         </Link>
 
-        <CreditsList cast={singleRun.cast ?? []} crew={singleRun.crew ?? []} />
+        {singleRun.lineupPerPerformance ? (
+          <LineupVariesNote cast={singleRun.cast} crew={singleRun.crew} />
+        ) : (
+          <CreditsList cast={singleRun.cast ?? []} crew={singleRun.crew ?? []} />
+        )}
 
         <div className="hidden sm:block">
           {isAdmin && !editing && (

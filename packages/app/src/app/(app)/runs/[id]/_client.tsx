@@ -12,8 +12,8 @@ import { RUN_REVIEWS_QUERY } from "@/lib/graphql/performances";
 import { DetailHero } from "@/components/DetailHero";
 import { ShowingsList } from "@/components/performances/ShowingsList";
 import { CreditsList } from "@/components/credits/CreditsList";
+import { LineupVariesNote } from "@/components/credits/LineupVariesNote";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
-import { Icon } from "@/components/icons/Icons";
 import { useAuth } from "@/lib/auth/useAuth";
 import { AddToListButton } from "@/components/lists/AddToListButton";
 import { Button } from "@/components/Button";
@@ -26,29 +26,6 @@ import { formatShowDate, formatShowTime } from "@/lib/format";
 
 function decodeId(globalId: string): string {
   return atob(globalId).split(":")[1];
-}
-
-// Variable-lineup runs (recurring showcases, comedy nights) have no shared
-// cast — the lineup changes each date. Showing an aggregate roster would be
-// the union of every night, which is wrong. Point people at the per-date
-// performances instead.
-function LineupVariesNote({ cast, crew }: { cast?: any[]; crew?: any[] }) {
-  // If the run somehow still has aggregate credits, fall back to showing them.
-  if ((cast?.length ?? 0) > 0 || (crew?.length ?? 0) > 0) {
-    return <CreditsList cast={cast ?? []} crew={crew ?? []} />;
-  }
-  return (
-    <div className="dog-ear dog-ear-dark border border-curtn-dark bg-curtn-surface px-4 py-3">
-      <div className="flex items-center gap-2 font-display text-xs font-bold uppercase tracking-wide text-curtn-cream">
-        <Icon name="users-three" weight="bold" />
-        Lineup varies by date
-      </div>
-      <p className="mt-1 font-sans text-xs text-curtn-muted">
-        This run has a different lineup each performance. See an individual date
-        below for that night&rsquo;s cast.
-      </p>
-    </div>
-  );
 }
 
 function ReviewFilters({

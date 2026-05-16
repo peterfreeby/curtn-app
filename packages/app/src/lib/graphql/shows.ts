@@ -152,6 +152,7 @@ export const SINGLE_SHOW_QUERY = gql`
               city
             }
             intermissions
+            lineupPerPerformance
             startDate
             endDate
             description
@@ -191,6 +192,16 @@ export const SINGLE_SHOW_QUERY = gql`
                   }
                   ticketUrl
                   soldOut
+                  effectiveCast {
+                    id
+                    role
+                    person { id name slug headshotUrl }
+                  }
+                  effectiveCrew {
+                    id
+                    role
+                    person { id name slug headshotUrl }
+                  }
                 }
               }
             }
