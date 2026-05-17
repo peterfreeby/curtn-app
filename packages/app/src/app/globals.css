@@ -186,7 +186,7 @@ h1, h2, h3, h4, h5, h6 {
 .dog-ear::after {
   content: '';
   position: absolute;
-  top: 0; right: 15%;
+  top: 0; right: 0;
   width: var(--ear-size); height: var(--ear-size);
   pointer-events: none;
   z-index: 3;
@@ -195,7 +195,7 @@ h1, h2, h3, h4, h5, h6 {
 .dog-ear::before {
   content: '';
   position: absolute;
-  top: 0; right: 15%;
+  top: 0; right: 0;
   width: calc(var(--ear-size) + 2px); height: calc(var(--ear-size) + 2px);
   pointer-events: none;
   z-index: 2;
