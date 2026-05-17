@@ -1,4 +1,4 @@
-import { GraphQLFieldConfig, GraphQLID, GraphQLNonNull, GraphQLString } from 'graphql'
+import { GraphQLFieldConfig, GraphQLFloat, GraphQLID, GraphQLNonNull, GraphQLString } from 'graphql'
 import { PerformanceConnection, performanceType } from '../performanceTypes'
 import { PerformanceModel } from '../performanceModel'
 import { RunModel } from '../../run/runModel'
@@ -95,13 +95,38 @@ export const performanceList: GraphQLFieldConfig<any, any, any> = {
     search: {
       type: GraphQLString,
       description: 'Search by show title or venue name'
-    }
+    },
+    swLat: { type: GraphQLFloat, description: 'Bounding box south-west latitude' },
+    swLng: { type: GraphQLFloat, description: 'Bounding box south-west longitude' },
+    neLat: { type: GraphQLFloat, description: 'Bounding box north-east latitude' },
+    neLng: { type: GraphQLFloat, description: 'Bounding box north-east longitude' },
+    startDate: { type: GraphQLString, description: 'Filter performances on or after this ISO date' },
+    endDate: { type: GraphQLString, description: 'Filter performances before this ISO date' },
   },
   resolve: async (_, args) => {
-    const { search, ...connArgs } = args
+    const { search, swLat, swLng, neLat, neLng, startDate, endDate, ...connArgs } = args
     const empty = { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null } }
     try {
       const baseFilter: any = {}
+
+      if (startDate) baseFilter.date = { ...baseFilter.date, $gte: new Date(startDate) }
+      if (endDate) baseFilter.date = { ...baseFilter.date, $lt: new Date(endDate) }
+
+      // Bbox filter — only when all four corners provided and no text search active
+      const hasBbox = swLat != null && swLng != null && neLat != null && neLng != null
+      if (hasBbox && !search) {
+        const venueIds = await VenueModel.find({
+          location: {
+            $geoWithin: {
+              $geometry: {
+                type: 'Polygon',
+                coordinates: [[[swLng, swLat], [neLng, swLat], [neLng, neLat], [swLng, neLat], [swLng, swLat]]]
+              }
+            }
+          }
+        }).distinct('_id')
+        baseFilter.venueId = { $in: venueIds }
+      }
 
       if (search) {
         const regex = new RegExp(search, 'i')
@@ -124,14 +149,16 @@ export const performanceList: GraphQLFieldConfig<any, any, any> = {
         ]
       }
 
+      const geoMaxLimit = hasBbox ? 500 : undefined
       const { filter, sort, limit } = applyCursorToQuery(baseFilter, {
         after: (connArgs as any).after,
         first: (connArgs as any).first,
         sortField: 'date',
-        sortDirection: -1
+        sortDirection: -1,
+        maxLimit: geoMaxLimit
       })
       const performances = await PerformanceModel.find(filter).sort(sort).limit(limit).lean()
-      return buildConnection(performances, { first: (connArgs as any).first, sortField: 'date' })
+      return buildConnection(performances, { first: (connArgs as any).first, sortField: 'date', maxLimit: geoMaxLimit })
     } catch {
       return empty
     }

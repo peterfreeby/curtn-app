@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, Suspense } from "react";
+import { useState, useMemo, useCallback, Suspense, useEffect, useRef } from "react";
 import { useQuery } from "urql";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -31,6 +31,8 @@ function UpcomingPageContent() {
   const searchParams = useSearchParams();
   const [view, setView] = useState<"map" | "list">("map");
   const [listExpanded, setListExpanded] = useState(false);
+  const [mapBounds, setMapBounds] = useState<{ swLat: number; swLng: number; neLat: number; neLng: number } | null>(null);
+  const handleBoundsChange = useCallback((b: typeof mapBounds) => { setMapBounds(b); }, []);
 
   const dateFilter = (searchParams.get("filter") as DateFilter | null) ?? "all";
   const activeFilter = getActiveFilter(dateFilter);
@@ -46,19 +48,28 @@ function UpcomingPageContent() {
     [router, searchParams]
   );
 
-  // Phase 1: lightweight venue pins (fast)
+  // Lightweight venue pins — paused until the map reports its initial bounds
   const [{ data: venueData }] = useQuery({
     query: VENUE_MAP_QUERY,
-    variables: { first: 200 },
+    variables: { first: 200, ...mapBounds },
+    pause: !mapBounds,
   });
 
-  // Phase 2: performance data for map (lightweight — no cast/descriptions)
-  const [{ data: mapPerfData }] = useQuery({
+  // Compute date range for the active filter and pass to the server
+  const dateRange = useMemo(() => getDateRange(dateFilter), [dateFilter]);
+  const dateVars = useMemo(() => ({
+    startDate: dateRange?.start.toISOString() ?? undefined,
+    endDate: dateRange?.end.toISOString() ?? undefined,
+  }), [dateRange]);
+
+  // Performance data for map (lightweight — no cast/descriptions)
+  const [{ data: mapPerfData, fetching: mapFetching }] = useQuery({
     query: MAP_PERFORMANCES_QUERY,
-    variables: { first: 200 },
+    variables: { first: 200, ...mapBounds, ...dateVars },
+    pause: !mapBounds,
   });
 
-  // Phase 3: full performance data for list view (heavier, fetched in parallel)
+  // Full performance data for list view (heavier, fetched only in list mode)
   const [{ data, fetching }] = useQuery({
     query: BROWSE_PERFORMANCES_QUERY,
     variables: { first: 200 },
@@ -69,25 +80,28 @@ function UpcomingPageContent() {
     return (venueData?.venueList?.edges ?? []).map((e: any) => e.node).filter((v: any) => v.coordinates?.lat);
   }, [venueData]);
 
-  // Map uses the lightweight query; list uses the full query
-  const mapPerformances = useMemo(() => {
-    return (mapPerfData?.performanceList?.edges ?? []).map((e: any) => e.node);
-  }, [mapPerfData]);
+  // Stable map pins — preserve last loaded set while a refetch is in flight
+  // so markers don't disappear on every pan/zoom
+  const stableMapPerfsRef = useRef<any[]>([]);
+  const freshMapPerfs = useMemo(
+    () => (mapPerfData?.performanceList?.edges ?? []).map((e: any) => e.node),
+    [mapPerfData]
+  );
+  useEffect(() => {
+    if (mapPerfData) stableMapPerfsRef.current = freshMapPerfs;
+  }, [mapPerfData, freshMapPerfs]);
+  // During initial load stableMapPerfsRef is empty; use fresh directly so the
+  // map isn't blank on first render when mapPerfData arrives
+  const mapPerformances = mapPerfData ? stableMapPerfsRef.current : freshMapPerfs;
+
+  const hasMapData = mapPerformances.length > 0;
+
+  // Date filtering is now server-side — mapPerformances is already filtered
+  const filteredMapPerformances = mapPerformances;
 
   const allPerformances = useMemo(() => {
     return (data?.performanceList?.edges ?? []).map((e: any) => e.node);
   }, [data]);
-
-  const hasMapData = mapPerformances.length > 0;
-
-  const filteredMapPerformances = useMemo(() => {
-    const range = getDateRange(dateFilter);
-    if (!range) return mapPerformances;
-    return mapPerformances.filter((p: any) => {
-      const d = new Date(p.date);
-      return d >= range.start && d < range.end;
-    });
-  }, [mapPerformances, dateFilter]);
 
   const performances = useMemo(() => {
     const range = getDateRange(dateFilter);
@@ -117,9 +131,15 @@ function UpcomingPageContent() {
       {view === "map" && (
         <div className="absolute inset-0">
           {hasMapData ? (
-            <PerformanceMap performances={filteredMapPerformances} />
+            <PerformanceMap performances={filteredMapPerformances} onBoundsChange={handleBoundsChange} />
           ) : (
-            <VenueOnlyMap venues={venues} />
+            <VenueOnlyMap venues={venues} onBoundsChange={handleBoundsChange} />
+          )}
+          {/* Subtle refetch indicator — doesn't block the map */}
+          {mapFetching && (
+            <div className="absolute bottom-4 right-4 z-[1000] pointer-events-none">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-curtn-muted/30 border-t-curtn-coral" />
+            </div>
           )}
         </div>
       )}

@@ -41,7 +41,10 @@ export function usePaginatedConnection<TData = any>({
   const connection = data ? getConnection(data) : undefined;
   const currentEdges = (connection?.edges ?? []).filter((e: any) => e?.node != null);
   const pageInfo = connection?.pageInfo;
-  const edges = after === null ? currentEdges : [...allEdges, ...currentEdges];
+  // While fetching the next page, currentEdges still holds the previous page's
+  // data (stale urql cache) — concatenating it would duplicate entries.
+  // Hold at allEdges until fresh data arrives.
+  const edges = after === null ? currentEdges : fetching ? allEdges : [...allEdges, ...currentEdges];
 
   const loadMore = useCallback(() => {
     if (pageInfo?.endCursor) {

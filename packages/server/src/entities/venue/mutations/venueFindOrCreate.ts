@@ -86,9 +86,9 @@ export const venueFindOrCreate = mutationWithClientMutationId({
         address: trimmedAddress,
         city: input.city,
         state: input.state,
-        coordinates: {
-          lat: input.latitude,
-          lng: input.longitude
+        location: {
+          type: 'Point',
+          coordinates: [input.longitude, input.latitude]
         },
         venueType: input.venueType || 'theater',
         website: input.website,

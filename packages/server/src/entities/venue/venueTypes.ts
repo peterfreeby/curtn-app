@@ -77,7 +77,9 @@ import {
       coordinates: {
         type: coordinatesType,
         description: 'Geographic coordinates',
-        resolve: venue => venue.coordinates
+        resolve: venue => venue.location
+          ? { lat: venue.location.coordinates[1], lng: venue.location.coordinates[0] }
+          : null
       },
       capacity: {
         type: GraphQLInt,

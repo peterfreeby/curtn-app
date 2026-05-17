@@ -128,8 +128,8 @@ export const VENUE_RUNS_QUERY = gql`
 `;
 
 export const VENUE_MAP_QUERY = gql`
-  query VenueMap($first: Int) {
-    venueList(first: $first) {
+  query VenueMap($first: Int, $swLat: Float, $swLng: Float, $neLat: Float, $neLng: Float) {
+    venueList(first: $first, swLat: $swLat, swLng: $swLng, neLat: $neLat, neLng: $neLng) {
       edges {
         node {
           id

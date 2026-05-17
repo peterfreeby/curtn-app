@@ -14,15 +14,35 @@ interface Venue {
   coordinates: { lat: number; lng: number };
 }
 
+interface MapBounds {
+  swLat: number; swLng: number; neLat: number; neLng: number;
+}
+
 interface VenueOnlyMapProps {
   venues: Venue[];
   className?: string;
+  onBoundsChange?: (bounds: MapBounds) => void;
 }
 
-export function VenueOnlyMap({ venues, className = "" }: VenueOnlyMapProps) {
+function reportBounds(map: L.Map, onBoundsChange: ((b: MapBounds) => void) | undefined) {
+  if (!onBoundsChange) return;
+  const b = map.getBounds();
+  const sw = b.getSouthWest();
+  const ne = b.getNorthEast();
+  const latPad = (ne.lat - sw.lat) * 0.5;
+  const lngPad = (ne.lng - sw.lng) * 0.5;
+  onBoundsChange({
+    swLat: sw.lat - latPad, swLng: sw.lng - lngPad,
+    neLat: ne.lat + latPad, neLng: ne.lng + lngPad,
+  });
+}
+
+export function VenueOnlyMap({ venues, className = "", onBoundsChange }: VenueOnlyMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const clusterRef = useRef<L.MarkerClusterGroup | null>(null);
+  const onBoundsChangeRef = useRef(onBoundsChange);
+  onBoundsChangeRef.current = onBoundsChange;
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -35,6 +55,10 @@ export function VenueOnlyMap({ venues, className = "" }: VenueOnlyMapProps) {
       maxZoom: 19,
     }).addTo(map);
     mapInstanceRef.current = map;
+
+    reportBounds(map, onBoundsChangeRef.current);
+    map.on('moveend', () => reportBounds(map, onBoundsChangeRef.current));
+
     return () => { map.remove(); mapInstanceRef.current = null; };
   }, []);
 
@@ -60,7 +84,6 @@ export function VenueOnlyMap({ venues, className = "" }: VenueOnlyMapProps) {
       },
     });
 
-    const bounds: L.LatLngExpression[] = [];
     const icon = L.divIcon({
       className: "curtn-marker",
       html: '<div style="width:10px;height:10px;background:#f84331;border:2px solid #111;border-radius:50%;opacity:0.6;"></div>',
@@ -71,7 +94,6 @@ export function VenueOnlyMap({ venues, className = "" }: VenueOnlyMapProps) {
     for (const venue of venues) {
       if (!venue.coordinates?.lat) continue;
       const { lat, lng } = venue.coordinates;
-      bounds.push([lat, lng]);
 
       const marker = L.marker([lat, lng], { icon });
       marker.on("click", () => {
@@ -92,8 +114,6 @@ export function VenueOnlyMap({ venues, className = "" }: VenueOnlyMapProps) {
     map.addLayer(cluster);
     clusterRef.current = cluster;
 
-    if (bounds.length > 1) map.fitBounds(bounds as L.LatLngBoundsExpression, { padding: [40, 40] });
-    else if (bounds.length === 1) map.setView(bounds[0] as L.LatLngExpression, 15);
   }, [venues]);
 
   return <div ref={mapRef} className={`w-full h-full ${className}`} />;

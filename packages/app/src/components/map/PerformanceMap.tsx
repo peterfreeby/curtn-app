@@ -31,9 +31,14 @@ interface Performance {
   } | null;
 }
 
+interface MapBounds {
+  swLat: number; swLng: number; neLat: number; neLng: number;
+}
+
 interface PerformanceMapProps {
   performances: Performance[];
   className?: string;
+  onBoundsChange?: (bounds: MapBounds) => void;
 }
 
 function groupByVenue(performances: Performance[]) {
@@ -106,10 +111,26 @@ function buildPopup(venue: NonNullable<Performance["venue"]>, performances: Perf
   </div>`;
 }
 
-export function PerformanceMap({ performances, className = "" }: PerformanceMapProps) {
+function reportBounds(map: L.Map, onBoundsChange: ((b: MapBounds) => void) | undefined) {
+  if (!onBoundsChange) return;
+  const b = map.getBounds();
+  const sw = b.getSouthWest();
+  const ne = b.getNorthEast();
+  // Expand by 50% in each direction so small pans don't trigger a refetch
+  const latPad = (ne.lat - sw.lat) * 0.5;
+  const lngPad = (ne.lng - sw.lng) * 0.5;
+  onBoundsChange({
+    swLat: sw.lat - latPad, swLng: sw.lng - lngPad,
+    neLat: ne.lat + latPad, neLng: ne.lng + lngPad,
+  });
+}
+
+export function PerformanceMap({ performances, className = "", onBoundsChange }: PerformanceMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const clusterRef = useRef<L.MarkerClusterGroup | null>(null);
+  const onBoundsChangeRef = useRef(onBoundsChange);
+  onBoundsChangeRef.current = onBoundsChange;
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -122,6 +143,11 @@ export function PerformanceMap({ performances, className = "" }: PerformanceMapP
       maxZoom: 19,
     }).addTo(map);
     mapInstanceRef.current = map;
+
+    // Report bounds immediately and on every pan/zoom settle
+    reportBounds(map, onBoundsChangeRef.current);
+    map.on('moveend', () => reportBounds(map, onBoundsChangeRef.current));
+
     return () => { map.remove(); mapInstanceRef.current = null; };
   }, []);
 
@@ -150,7 +176,6 @@ export function PerformanceMap({ performances, className = "" }: PerformanceMapP
     });
 
     const groups = groupByVenue(performances);
-    const bounds: L.LatLngExpression[] = [];
     const icon = L.divIcon({
       className: "curtn-marker",
       html: '<div style="width:12px;height:12px;background:#f84331;border:2px solid #111;border-radius:50%;box-shadow:0 0 6px rgba(248,67,49,0.5);"></div>',
@@ -161,7 +186,6 @@ export function PerformanceMap({ performances, className = "" }: PerformanceMapP
     for (const { venue, performances: venuePerfs } of groups) {
       if (!venue?.coordinates) continue;
       const { lat, lng } = venue.coordinates;
-      bounds.push([lat, lng]);
 
       // Lazy popup: build HTML only when marker is clicked
       const marker = L.marker([lat, lng], { icon });
@@ -181,8 +205,6 @@ export function PerformanceMap({ performances, className = "" }: PerformanceMapP
     map.addLayer(cluster);
     clusterRef.current = cluster;
 
-    if (bounds.length > 1) map.fitBounds(bounds as L.LatLngBoundsExpression, { padding: [40, 40] });
-    else if (bounds.length === 1) map.setView(bounds[0] as L.LatLngExpression, 15);
   }, [performances]);
 
   return <div ref={mapRef} className={`w-full h-full ${className}`} />;

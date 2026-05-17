@@ -260,8 +260,8 @@ export const BROWSE_PERFORMANCES_QUERY = gql`
 
 // Lightweight version for map view — skips cast, description, and other heavy fields
 export const MAP_PERFORMANCES_QUERY = gql`
-  query MapPerformances($first: Int) {
-    performanceList(first: $first) {
+  query MapPerformances($first: Int, $swLat: Float, $swLng: Float, $neLat: Float, $neLng: Float, $startDate: String, $endDate: String) {
+    performanceList(first: $first, swLat: $swLat, swLng: $swLng, neLat: $neLat, neLng: $neLng, startDate: $startDate, endDate: $endDate) {
       edges {
         node {
           id

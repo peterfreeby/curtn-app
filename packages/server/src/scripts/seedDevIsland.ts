@@ -196,7 +196,7 @@ async function getOrCreateVenue(submittedBy: mongoose.Types.ObjectId) {
     city: 'NYC',
     state: 'NY',
     zipCode: '10002',
-    coordinates: { lat: 40.7185, lng: -73.9868 },
+    location: { type: 'Point', coordinates: [-73.9868, 40.7185] },
     capacity: 75,
     venueType: 'theater',
     verificationStatus: 'verified',

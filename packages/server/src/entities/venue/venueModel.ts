@@ -16,9 +16,9 @@ export interface IVenue extends IClaimableFields {
   city?: string
   state?: string
   zipCode?: string
-  coordinates?: {
-    lat?: number
-    lng?: number
+  location?: {
+    type: 'Point'
+    coordinates: [number, number]  // [longitude, latitude] — GeoJSON order
   }
 
   // Venue details
@@ -87,16 +87,13 @@ const venueSchema = new Schema<IVenue>({
     type: String,
     trim: true
   },
-  coordinates: {
-    lat: {
-      type: Number,
-      min: -90,
-      max: 90
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
     },
-    lng: {
-      type: Number,
-      min: -180,
-      max: 180
+    coordinates: {
+      type: [Number],  // [longitude, latitude] — GeoJSON order
     }
   },
   capacity: {
@@ -166,10 +163,7 @@ venueSchema.index({ name: 'text', description: 'text' }) // Text search
 venueSchema.index({ name: 1, _id: 1 }) // cursor pagination
 venueSchema.index({ slug: 1 }, { unique: true }) // URL lookups
 venueSchema.index({ city: 1 }) // Filter by city
-// 2dsphere index intentionally removed: coordinates are stored as `{lat, lng}`,
-// which 2dsphere can't project into a spherical CRS — and no code queries by
-// geo anyway. Reinstate as a real GeoJSON Point field if/when geo queries are
-// actually needed.
+venueSchema.index({ location: '2dsphere' }) // Geospatial queries (bbox, near)
 venueSchema.index({ venueType: 1 }) // Filter by venue type
 
 // Pre-save middleware to generate slug from name

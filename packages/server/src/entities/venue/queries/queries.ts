@@ -1,4 +1,4 @@
-import { GraphQLFieldConfig, GraphQLFieldConfigArgumentMap, GraphQLID, GraphQLNonNull, GraphQLString, GraphQLFloat } from 'graphql'
+import { GraphQLFieldConfig, GraphQLID, GraphQLNonNull, GraphQLString, GraphQLFloat } from 'graphql'
 import { VenueConnection, venueType } from '../venueTypes'
 import { VenueModel } from '../venueModel'
 import { connectionArgs, connectionFromArray, fromGlobalId } from 'graphql-relay'
@@ -50,6 +50,10 @@ type VenueListArgs = ConnectionArguments & {
   city?: string
   venueType?: string
   search?: string
+  swLat?: number
+  swLng?: number
+  neLat?: number
+  neLng?: number
 }
 
 export const venueList: GraphQLFieldConfig<any, any, VenueListArgs> = {
@@ -67,10 +71,14 @@ export const venueList: GraphQLFieldConfig<any, any, VenueListArgs> = {
     search: {
       type: GraphQLString,
       description: 'Search by name or description'
-    }
+    },
+    swLat: { type: GraphQLFloat, description: 'Bounding box south-west latitude' },
+    swLng: { type: GraphQLFloat, description: 'Bounding box south-west longitude' },
+    neLat: { type: GraphQLFloat, description: 'Bounding box north-east latitude' },
+    neLng: { type: GraphQLFloat, description: 'Bounding box north-east longitude' },
   },
   resolve: async (_, args) => {
-    const { city, venueType, search, ...connectionArgs } = args
+    const { city, venueType, search, swLat, swLng, neLat, neLng, ...connectionArgs } = args
 
     // Build filter object
     const filter: any = {}
@@ -87,6 +95,20 @@ export const venueList: GraphQLFieldConfig<any, any, VenueListArgs> = {
       filter.$text = { $search: search }
     }
 
+    // Bbox filter — only when all four corners are provided and no text search
+    // (MongoDB can't combine a text index and 2dsphere index in one query)
+    const hasBbox = swLat != null && swLng != null && neLat != null && neLng != null
+    if (hasBbox && !search) {
+      filter.location = {
+        $geoWithin: {
+          $geometry: {
+            type: 'Polygon',
+            coordinates: [[[swLng!, swLat!], [neLng!, swLat!], [neLng!, neLat!], [swLng!, neLat!], [swLng!, swLat!]]]
+          }
+        }
+      }
+    }
+
     const empty = { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null } }
     try {
       if (search) {
@@ -98,14 +120,16 @@ export const venueList: GraphQLFieldConfig<any, any, VenueListArgs> = {
         return connectionFromArrayLean(venues, connectionArgs)
       }
 
+      const geoMaxLimit = hasBbox ? 500 : undefined
       const { filter: cursorFilter, sort, limit } = applyCursorToQuery(filter, {
         after: (connectionArgs as any).after,
         first: (connectionArgs as any).first,
         sortField: 'name',
-        sortDirection: 1
+        sortDirection: 1,
+        maxLimit: geoMaxLimit
       })
       const venues = await VenueModel.find(cursorFilter).sort(sort).limit(limit).lean()
-      return buildConnection(venues, { first: (connectionArgs as any).first, sortField: 'name' })
+      return buildConnection(venues, { first: (connectionArgs as any).first, sortField: 'name', maxLimit: geoMaxLimit })
     } catch (error) {
       console.error('Error fetching venues:', error)
       return empty
@@ -142,11 +166,11 @@ export const venuesNear: GraphQLFieldConfig<any, any, VenuesNearArgs> = {
 
     try {
       const venues = await VenueModel.find({
-        coordinates: {
+        location: {
           $near: {
             $geometry: {
               type: 'Point',
-              coordinates: [longitude, latitude] // Note: MongoDB uses [lng, lat]
+              coordinates: [longitude, latitude] // GeoJSON: [lng, lat]
             },
             $maxDistance: maxDistance
           }

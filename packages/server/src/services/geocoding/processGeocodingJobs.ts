@@ -87,7 +87,7 @@ export async function processGeocodingJobs(
     if (geocodeResult) {
       await VenueModel.updateOne(
         { _id: job.venueId },
-        { $set: { coordinates: { lat: geocodeResult.lat, lng: geocodeResult.lng } } }
+        { $set: { location: { type: 'Point', coordinates: [geocodeResult.lng, geocodeResult.lat] } } }
       )
       await GeocodingJobModel.updateOne(
         { _id: job._id },
