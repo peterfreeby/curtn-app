@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, Suspense, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, Suspense, useRef } from "react";
 import { useQuery } from "urql";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -80,19 +80,15 @@ function UpcomingPageContent() {
     return (venueData?.venueList?.edges ?? []).map((e: any) => e.node).filter((v: any) => v.coordinates?.lat);
   }, [venueData]);
 
-  // Stable map pins — preserve last loaded set while a refetch is in flight
-  // so markers don't disappear on every pan/zoom
+  // Stable map pins — update ref when fresh data arrives, hold last value while
+  // a pan/zoom refetch is in flight. Updating during render is intentional: the
+  // ref must be current before hasMapData is computed below so PerformanceMap
+  // never unmounts (which would reset the Leaflet viewport to NYC center).
   const stableMapPerfsRef = useRef<any[]>([]);
-  const freshMapPerfs = useMemo(
-    () => (mapPerfData?.performanceList?.edges ?? []).map((e: any) => e.node),
-    [mapPerfData]
-  );
-  useEffect(() => {
-    if (mapPerfData) stableMapPerfsRef.current = freshMapPerfs;
-  }, [mapPerfData, freshMapPerfs]);
-  // During initial load stableMapPerfsRef is empty; use fresh directly so the
-  // map isn't blank on first render when mapPerfData arrives
-  const mapPerformances = mapPerfData ? stableMapPerfsRef.current : freshMapPerfs;
+  if (mapPerfData) {
+    stableMapPerfsRef.current = (mapPerfData.performanceList?.edges ?? []).map((e: any) => e.node);
+  }
+  const mapPerformances = stableMapPerfsRef.current;
 
   const hasMapData = mapPerformances.length > 0;
 
