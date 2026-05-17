@@ -358,12 +358,14 @@ export const wikidataImport = mutationWithClientMutationId({
             }
 
             // Replace default placeholder coordinates with real ones
+            const existingLat = venue.location?.coordinates[1]
+            const existingLng = venue.location?.coordinates[0]
             const isPlaceholder = (
-              (venue.coordinates?.lat === 40.7128 && venue.coordinates?.lng === -74.0060) ||
-              (venue.coordinates?.lat === 0 && venue.coordinates?.lng === 0)
+              (existingLat === 40.7128 && existingLng === -74.0060) ||
+              (existingLat === 0 && existingLng === 0)
             )
             if (coords && isPlaceholder) {
-              venue.coordinates = coords
+              venue.location = { type: 'Point', coordinates: [coords.lng, coords.lat] }
               changed = true
             }
 

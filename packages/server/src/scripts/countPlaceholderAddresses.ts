@@ -39,7 +39,7 @@ async function main() {
   for (const v of sample) {
     console.log(
       `  ${v.name}  |  addr="${v.address}"  city="${v.city}"  state="${v.state}"  coords=${
-        v.coordinates ? `${v.coordinates.lat},${v.coordinates.lng}` : 'none'
+        v.location ? `${v.location.coordinates[1]},${v.location.coordinates[0]}` : 'none'
       }`
     )
   }
