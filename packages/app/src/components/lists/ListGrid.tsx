@@ -62,8 +62,9 @@ export function ListGrid({ lists, loading, emptyMessage = "No lists found." }: L
 
   if (lists.length === 0) {
     return (
-      <div className="py-16 text-center">
-        <p className="text-curtn-muted text-sm">{emptyMessage}</p>
+      <div className="empty-state">
+        <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">No Lists</p>
+        <p className="text-xs text-curtn-muted max-w-[260px] mx-auto">{emptyMessage}</p>
       </div>
     );
   }

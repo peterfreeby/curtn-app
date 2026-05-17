@@ -255,6 +255,30 @@ export default function RunDetailPage() {
           { label: run.title || company?.name || run.venues?.[0]?.name || "Production" },
         ]} />
         <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
+        {editing ? (
+          <InlineEditor
+            entityType="run"
+            entityId={decodeId(id)}
+            runId={id}
+            venueId={run.venues?.[0]?.id}
+            showId={show.id}
+            effectiveCast={(run.cast ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
+            effectiveCrew={(run.crew ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
+            initialValues={{
+              title: run.title || "",
+              description: run.description || "",
+              intermissions: run.intermissions ?? 0,
+              lineupPerPerformance: run.lineupPerPerformance ? "true" : "false",
+              startDate: run.startDate || "",
+              endDate: run.endDate || "",
+              posterUrl: run.posterUrl || "",
+              imageUrl: run.imageUrl || "",
+            }}
+            initialVenues={(run.venues || []).map((v: any) => ({ id: v.id, name: v.name }))}
+            onSaved={() => { setEditing(false); window.location.reload(); }}
+            onCancel={() => setEditing(false)}
+          />
+        ) : (
         <DetailHero
           title={show.title}
           description={run.description || show.description}
@@ -276,6 +300,7 @@ export default function RunDetailPage() {
           onEdit={isAdmin ? () => setEditing(true) : undefined}
           entityType={forceView === "run" ? "Run" : "Performance"}
         />
+        )}
 
         <div className="hidden sm:block">
           {isAuthenticated && (
@@ -313,37 +338,10 @@ export default function RunDetailPage() {
 
         {isAdmin && !editing && !batchCreating && (
           <div className="flex gap-2">
-            <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing(true)}>
-              Edit Run
-            </Button>
             <Button variant="tertiary" size="sm" icon="plus" onClick={() => setBatchCreating(true)}>
               Add Performances
             </Button>
           </div>
-        )}
-        {editing && (
-          <InlineEditor
-            entityType="run"
-            entityId={decodeId(id)}
-            runId={id}
-            venueId={run.venues?.[0]?.id}
-            showId={show.id}
-            effectiveCast={(run.cast ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
-            effectiveCrew={(run.crew ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
-            initialValues={{
-              title: run.title || "",
-              description: run.description || "",
-              intermissions: run.intermissions ?? 0,
-              lineupPerPerformance: run.lineupPerPerformance ? "true" : "false",
-              startDate: run.startDate || "",
-              endDate: run.endDate || "",
-              posterUrl: run.posterUrl || "",
-              imageUrl: run.imageUrl || "",
-            }}
-            initialVenues={(run.venues || []).map((v: any) => ({ id: v.id, name: v.name }))}
-            onSaved={() => { setEditing(false); window.location.reload(); }}
-            onCancel={() => setEditing(false)}
-          />
         )}
         {batchCreating && (
           <BatchPerformanceCreator
@@ -425,6 +423,30 @@ export default function RunDetailPage() {
         { label: run.title || company?.name || run.venues?.[0]?.name || "Production" },
       ]} />
       <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
+      {editing ? (
+        <InlineEditor
+          entityType="run"
+          entityId={decodeId(id)}
+          runId={id}
+          venueId={run.venues?.[0]?.id}
+          showId={show.id}
+          effectiveCast={(run.cast ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
+          effectiveCrew={(run.crew ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
+          initialValues={{
+            title: run.title || "",
+            description: run.description || "",
+            intermissions: run.intermissions ?? 0,
+            lineupPerPerformance: run.lineupPerPerformance ? "true" : "false",
+            startDate: run.startDate || "",
+            endDate: run.endDate || "",
+            posterUrl: run.posterUrl || "",
+            imageUrl: run.imageUrl || "",
+          }}
+          initialVenues={(run.venues || []).map((v: any) => ({ id: v.id, name: v.name }))}
+          onSaved={() => { setEditing(false); window.location.reload(); }}
+          onCancel={() => setEditing(false)}
+        />
+      ) : (
       <DetailHero
         title={show.title}
         description={run.description || show.description}
@@ -445,6 +467,7 @@ export default function RunDetailPage() {
         onEdit={isAdmin ? () => setEditing(true) : undefined}
         entityType="Run"
       />
+      )}
 
       <div className="hidden sm:block">
         {isAuthenticated && <AddToListButton listType="runs" itemId={id} />}
@@ -484,37 +507,10 @@ export default function RunDetailPage() {
 
       {isAdmin && !editing && !batchCreating && (
         <div className="hidden sm:flex gap-2">
-          <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing(true)}>
-            Edit Run
-          </Button>
           <Button variant="tertiary" size="sm" icon="plus" onClick={() => setBatchCreating(true)}>
             Add Performances
           </Button>
         </div>
-      )}
-      {editing && (
-        <InlineEditor
-          entityType="run"
-          entityId={decodeId(id)}
-          runId={id}
-          venueId={run.venues?.[0]?.id}
-          showId={show.id}
-          effectiveCast={(run.cast ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
-          effectiveCrew={(run.crew ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
-          initialValues={{
-            title: run.title || "",
-            description: run.description || "",
-            intermissions: run.intermissions ?? 0,
-            lineupPerPerformance: run.lineupPerPerformance ? "true" : "false",
-            startDate: run.startDate || "",
-            endDate: run.endDate || "",
-            posterUrl: run.posterUrl || "",
-            imageUrl: run.imageUrl || "",
-          }}
-          initialVenues={(run.venues || []).map((v: any) => ({ id: v.id, name: v.name }))}
-          onSaved={() => { setEditing(false); window.location.reload(); }}
-          onCancel={() => setEditing(false)}
-        />
       )}
       {batchCreating && (
         <BatchPerformanceCreator

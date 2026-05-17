@@ -187,67 +187,7 @@ export default function ShowDetailPage() {
           ]}
         />
         <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
-        <DetailHero
-          title={show.title}
-          description={singleRun.description || show.description}
-          performanceTypes={show.performanceTypes}
-          duration={show.duration}
-          intermissions={singleRun.intermissions}
-          languages={show.languages}
-          imageUrl={show.imageUrl}
-          posterUrl={show.posterUrl}
-          creators={creators}
-          companyName={company?.name}
-          companySlug={company?.slug}
-          venues={venues.map((v: any) => ({
-            name: v.name,
-            slug: v.slug,
-            city: v.city,
-          }))}
-          startDate={singlePerf.date}
-          endDate={null}
-          averageRating={singleRun.averageRating}
-          reviewCount={singleRun.reviewCount}
-          performanceDate={singlePerf.date}
-          performanceTime={singlePerf.time}
-          ticketUrl={singlePerf.ticketUrl}
-          soldOut={isSoldOut}
-          onEdit={isAdmin ? () => setEditing("show") : undefined}
-          entityType={forceView === "show" ? "Show" : "Performance"}
-        />
-
-        <div className="hidden sm:flex items-center gap-3">
-          <WatchlistButton
-            showId={show.id}
-            initialIsOnWatchlist={show.isOnMyWatchlist ?? false}
-            initialWatchlistCount={show.watchlistCount ?? 0}
-          />
-          <AddToListButton itemId={show.id} listType="shows" />
-        </div>
-
-        <Link
-          href={`/log?run=${singleRun.id}`}
-          className="hidden sm:block w-full dog-ear dog-ear-dark bg-curtn-coral py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-curtn-deep transition-colors hover:bg-curtn-red"
-        >
-          Log This Show
-        </Link>
-
-        {/* Performance view: the cast of THIS performance. effectiveCast
-            resolves correctly for both fixed-cast plays (run cast + overrides)
-            and variable-lineup runs (only this night's lineup). */}
-        <CreditsList
-          cast={singlePerf.effectiveCast ?? singleRun.cast ?? []}
-          crew={singlePerf.effectiveCrew ?? singleRun.crew ?? []}
-        />
-
-        <div className="hidden sm:block">
-          {isAdmin && !editing && (
-            <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
-              Edit
-            </Button>
-          )}
-        </div>
-        {editing && (
+        {editing ? (
           <div className="space-y-4">
             <InlineEditor
               entityType="show"
@@ -301,7 +241,68 @@ export default function ShowDetailPage() {
               onCancel={() => setEditing(null)}
             />
           </div>
+        ) : (
+        <DetailHero
+          title={show.title}
+          description={singleRun.description || show.description}
+          performanceTypes={show.performanceTypes}
+          duration={show.duration}
+          intermissions={singleRun.intermissions}
+          languages={show.languages}
+          imageUrl={show.imageUrl}
+          posterUrl={show.posterUrl}
+          creators={creators}
+          companyName={company?.name}
+          companySlug={company?.slug}
+          venues={venues.map((v: any) => ({
+            name: v.name,
+            slug: v.slug,
+            city: v.city,
+          }))}
+          startDate={singlePerf.date}
+          endDate={null}
+          averageRating={singleRun.averageRating}
+          reviewCount={singleRun.reviewCount}
+          performanceDate={singlePerf.date}
+          performanceTime={singlePerf.time}
+          ticketUrl={singlePerf.ticketUrl}
+          soldOut={isSoldOut}
+          onEdit={isAdmin ? () => setEditing("show") : undefined}
+          entityType={forceView === "show" ? "Show" : "Performance"}
+        />
         )}
+
+        <div className="hidden sm:flex items-center gap-3">
+          <WatchlistButton
+            showId={show.id}
+            initialIsOnWatchlist={show.isOnMyWatchlist ?? false}
+            initialWatchlistCount={show.watchlistCount ?? 0}
+          />
+          <AddToListButton itemId={show.id} listType="shows" />
+        </div>
+
+        <Link
+          href={`/log?run=${singleRun.id}`}
+          className="hidden sm:block w-full dog-ear dog-ear-dark bg-curtn-coral py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-curtn-deep transition-colors hover:bg-curtn-red"
+        >
+          Log This Show
+        </Link>
+
+        {/* Performance view: the cast of THIS performance. effectiveCast
+            resolves correctly for both fixed-cast plays (run cast + overrides)
+            and variable-lineup runs (only this night's lineup). */}
+        <CreditsList
+          cast={singlePerf.effectiveCast ?? singleRun.cast ?? []}
+          crew={singlePerf.effectiveCrew ?? singleRun.crew ?? []}
+        />
+
+        <div className="hidden sm:block">
+          {isAdmin && !editing && (
+            <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
+              Edit
+            </Button>
+          )}
+        </div>
 
         <ReviewsSection
           edges={displayReviewEdges}
@@ -343,6 +344,28 @@ export default function ShowDetailPage() {
           ]}
         />
         <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
+        {editing ? (
+          <InlineEditor
+            entityType="run"
+            entityId={decodeId(singleRun.id)}
+            runId={singleRun.id}
+            venueId={venues[0]?.id}
+            showId={show.id}
+            effectiveCast={(singleRun.cast ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
+            effectiveCrew={(singleRun.crew ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
+            initialValues={{
+              title: singleRun.title || "",
+              description: singleRun.description || "",
+              intermissions: singleRun.intermissions ?? 0,
+              startDate: singleRun.startDate || "",
+              endDate: singleRun.endDate || "",
+              posterUrl: singleRun.posterUrl || "",
+              imageUrl: singleRun.imageUrl || "",
+            }}
+            onSaved={() => { setEditing(null); window.location.reload(); }}
+            onCancel={() => setEditing(null)}
+          />
+        ) : (
         <DetailHero
           title={show.title}
           description={singleRun.description || show.description}
@@ -367,6 +390,7 @@ export default function ShowDetailPage() {
           onEdit={isAdmin ? () => setEditing("run") : undefined}
           entityType={forceView === "show" ? "Show" : "Run"}
         />
+        )}
 
         <div className="hidden sm:flex items-center gap-3">
           <WatchlistButton
@@ -401,28 +425,6 @@ export default function ShowDetailPage() {
             </Button>
           )}
         </div>
-        {editing && (
-          <InlineEditor
-            entityType="run"
-            entityId={decodeId(singleRun.id)}
-            runId={singleRun.id}
-            venueId={venues[0]?.id}
-            showId={show.id}
-            effectiveCast={(singleRun.cast ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
-            effectiveCrew={(singleRun.crew ?? []).map((c: any) => ({ id: c.id, role: c.role, person: c.person }))}
-            initialValues={{
-              title: singleRun.title || "",
-              description: singleRun.description || "",
-              intermissions: singleRun.intermissions ?? 0,
-              startDate: singleRun.startDate || "",
-              endDate: singleRun.endDate || "",
-              posterUrl: singleRun.posterUrl || "",
-              imageUrl: singleRun.imageUrl || "",
-            }}
-            onSaved={() => { setEditing(null); window.location.reload(); }}
-            onCancel={() => setEditing(null)}
-          />
-        )}
 
         <ReviewsSection
           edges={displayReviewEdges}
@@ -447,36 +449,7 @@ export default function ShowDetailPage() {
   return (
     <div className="relative">
       <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
-        <DetailHero
-          title={show.title}
-          description={show.description}
-          performanceTypes={show.performanceTypes}
-          duration={show.duration}
-          languages={show.languages}
-          imageUrl={show.imageUrl}
-          posterUrl={show.posterUrl}
-          creators={creators}
-          averageRating={show.averageRating}
-          reviewCount={show.reviewCount}
-          onEdit={isAdmin ? () => setEditing("show") : undefined}
-        />
-
-        <div className="hidden sm:block">
-          <WatchlistButton
-            showId={show.id}
-            initialIsOnWatchlist={show.isOnMyWatchlist ?? false}
-            initialWatchlistCount={show.watchlistCount ?? 0}
-          />
-        </div>
-
-        <div className="hidden sm:block">
-          {isAdmin && !editing && (
-            <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
-              Edit
-            </Button>
-          )}
-        </div>
-        {editing && (
+        {editing ? (
           <InlineEditor
             entityType="show"
             entityId={decodeId(show.id)}
@@ -493,7 +466,37 @@ export default function ShowDetailPage() {
             onSaved={() => { setEditing(null); window.location.reload(); }}
             onCancel={() => setEditing(null)}
           />
+        ) : (
+        <DetailHero
+          title={show.title}
+          description={show.description}
+          performanceTypes={show.performanceTypes}
+          duration={show.duration}
+          languages={show.languages}
+          imageUrl={show.imageUrl}
+          posterUrl={show.posterUrl}
+          creators={creators}
+          averageRating={show.averageRating}
+          reviewCount={show.reviewCount}
+          onEdit={isAdmin ? () => setEditing("show") : undefined}
+        />
         )}
+
+        <div className="hidden sm:block">
+          <WatchlistButton
+            showId={show.id}
+            initialIsOnWatchlist={show.isOnMyWatchlist ?? false}
+            initialWatchlistCount={show.watchlistCount ?? 0}
+          />
+        </div>
+
+        <div className="hidden sm:block">
+          {isAdmin && !editing && (
+            <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing("show")}>
+              Edit
+            </Button>
+          )}
+        </div>
 
         <div className="relative">
           <h2 className="mb-3 text-xs uppercase tracking-widest text-curtn-muted">

@@ -31,8 +31,8 @@ export function PerformanceGrid({ performances, loading }: PerformanceGridProps)
 
   if (performances.length === 0) {
     return (
-      <div className="py-16 text-center">
-        <p className="text-curtn-muted text-sm">No performances found.</p>
+      <div className="empty-state">
+        <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">No Performances Found</p>
       </div>
     );
   }

@@ -34,8 +34,8 @@ export function VenueGrid({ venues, loading }: VenueGridProps) {
 
   if (venues.length === 0) {
     return (
-      <div className="py-16 text-center">
-        <p className="text-curtn-muted text-sm">No venues found.</p>
+      <div className="empty-state">
+        <p className="font-display text-base font-bold uppercase mb-1.5 text-curtn-cream">No Venues Found</p>
       </div>
     );
   }
