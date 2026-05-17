@@ -34,6 +34,7 @@ export const SINGLE_PERFORMANCE_QUERY = gql`
           title
           performanceTypes
           duration
+          languages
           imageUrl
           posterUrl
         }

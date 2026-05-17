@@ -23,7 +23,7 @@ interface ShowingsListProps {
 
 const INITIAL_COUNT = 5;
 
-export function ShowingsList({ showings, label, runId, onAdd }: ShowingsListProps) {
+export function ShowingsList({ showings, label, onAdd }: ShowingsListProps) {
   const [showAll, setShowAll] = useState(false);
 
   if (showings.length === 0) return null;
@@ -97,7 +97,10 @@ export function ShowingsList({ showings, label, runId, onAdd }: ShowingsListProp
             return (
               <Link
                 key={`${showing.date}-${i}`}
-                href={runId ? `/runs/${encodeURIComponent(runId)}` : `/showings/${encodeURIComponent(showing.id)}`}
+                // Always drill into the specific performance — it shows that
+                // night's lineup. (Previously looped back to the run, which
+                // for variable-lineup runs has no per-night cast.)
+                href={`/showings/${encodeURIComponent(showing.id)}`}
                 className="card-ticket transition-colors hover:border-curtn-muted/50"
               >
                 {cardContent}
