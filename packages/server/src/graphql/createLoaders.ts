@@ -65,6 +65,7 @@ export function createLoaders() {
     stageLoader: createByIdLoader(StageModel),
     dataSourceLoader: createByIdLoader(DataSourceModel),
     commentLoader: createByIdLoader(CommentModel),
+    creditLoader: createByIdLoader(CreditModel),
 
     // === By-foreign-key loaders ===
     creditsByRunLoader: createByForeignKeyLoader(CreditModel, 'run', { order: 1 }),

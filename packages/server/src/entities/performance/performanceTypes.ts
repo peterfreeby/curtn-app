@@ -153,7 +153,8 @@ export const performanceType = new GraphQLObjectType({
             const added = ctx.loaders
               ? await Promise.all(performance.creditOverrides.added.map((id: any) => ctx.loaders.creditLoader.load(id.toString())))
               : await CreditModel.find({ _id: { $in: performance.creditOverrides.added } })
-            result = [...result, ...added.filter(Boolean)]
+            // Only the cast-typed added credits belong in effectiveCast.
+            result = [...result, ...added.filter((c: any) => c && c.creditType === 'cast')]
           }
 
           return result
@@ -186,7 +187,8 @@ export const performanceType = new GraphQLObjectType({
             const added = ctx.loaders
               ? await Promise.all(performance.creditOverrides.added.map((id: any) => ctx.loaders.creditLoader.load(id.toString())))
               : await CreditModel.find({ _id: { $in: performance.creditOverrides.added } })
-            result = [...result, ...added.filter(Boolean)]
+            // Only the crew-typed added credits belong in effectiveCrew.
+            result = [...result, ...added.filter((c: any) => c && c.creditType === 'crew')]
           }
 
           return result
