@@ -318,9 +318,18 @@ async function runDetailFetches(
   detailConfig: DetailFetchConfig,
   startUrl: string
 ): Promise<{ rows: CsvRowInput[]; stats: DetailStats }> {
-  const detailExtractor = makeTemplateExtractor(detailConfig.template)
+  const templateExtractor = detailConfig.template ? makeTemplateExtractor(detailConfig.template) : null
   const stats: DetailStats = { detailFetched: 0, detailCacheHits: 0, detailFailed: 0 }
   const out: CsvRowInput[] = []
+
+  // Combined detail extraction: JSON-LD (for SPA/CMS sites with rich Event
+  // schema), the CSS template, or both layered (template over the JSON-LD base).
+  const extractDetail = async (detailUrl: string): Promise<Partial<CsvRowInput>[]> => {
+    const ld = detailConfig.jsonLd ? await jsonLdExtractor.extract(page, detailUrl) : []
+    const tpl = templateExtractor ? await templateExtractor.extract(page, detailUrl) : []
+    if (ld.length && tpl.length) return tpl.map(t => ({ ...ld[0], ...t }))
+    return ld.length ? ld : tpl
+  }
 
   for (const row of rows) {
     const detailUrlRaw = (row as any)[detailConfig.fromField]
@@ -341,7 +350,7 @@ async function runDetailFetches(
         stats.detailCacheHits++
       } else {
         await politeNavigate(page, detailUrl, { useCache: false, hydrationDelayMs: 3_000 })
-        fragments = await detailExtractor.extract(page, detailUrl)
+        fragments = await extractDetail(detailUrl)
         await writeDetailCache(detailUrl, fingerprint, fragments)
         stats.detailFetched++
       }

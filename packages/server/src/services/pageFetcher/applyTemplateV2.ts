@@ -2,6 +2,7 @@ import * as cheerio from 'cheerio'
 import { V2ParsingTemplate, TemplateNode, FieldNode, ContainerNode } from './v2Types'
 import { extractJsonLd } from './extractJsonLd'
 import { applyCleanupRules } from '../feedParser/shared'
+import { parseDateRange } from './dateRange'
 import type { CsvRowInput } from '../importEngine'
 
 // A flat row matching CsvRowInput shape — all string values
@@ -96,6 +97,12 @@ function extractFieldValue(
           }
           value = parsed.toISOString()
         }
+        break
+      }
+      case 'date-range-start':
+      case 'date-range-end': {
+        const d = parseDateRange(value, field.transform === 'date-range-start' ? 'start' : 'end')
+        if (d) value = d.toISOString()
         break
       }
       case 'time':

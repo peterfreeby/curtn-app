@@ -39,7 +39,11 @@ export interface ScraperDataSourceConfig {
 // precedence over listing fields on conflict.
 export interface DetailFetchConfig {
   fromField: string                 // listing template captures the URL into this field
-  template: AnyParsingTemplate      // applied to the detail page response
+  template?: AnyParsingTemplate     // CSS template applied to the detail page (optional if jsonLd)
+  jsonLd?: boolean                  // extract the detail page's schema.org Event JSON-LD into fields
+                                    //   (for SPA/CMS sites whose detail pages carry rich JSON-LD but
+                                    //   inconsistent DOM). When both are set, template fragments are
+                                    //   layered over the JSON-LD base (template wins on conflict).
   cacheTtlMs?: number               // default: 7 days
   fingerprint?: string[]            // listing fields hashed into the cache key (default: ['title', 'date'])
 }

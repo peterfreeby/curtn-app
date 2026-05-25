@@ -10,6 +10,7 @@
     "seed:island:reset": "tsnd --clear --transpile-only src/scripts/seedDevIsland.ts -- --reset",
     "reset:user": "tsnd --clear --transpile-only src/scripts/resetUser.ts --",
     "scrape:cycle": "tsnd --clear --transpile-only src/scripts/scrapeCycle.ts --",
+    "og:cycle": "tsnd --clear --transpile-only src/scripts/ogFallbackCycle.ts --",
     "test": "jest --runInBand --detectOpenHandles",
     "schema": "tsnd --clear --transpile-only src/scripts/printSchema.ts"
   },

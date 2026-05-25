@@ -4,7 +4,7 @@ export interface SelectorRule {
   selector: string
   attribute?: string   // e.g., 'href', 'src', 'datetime' — defaults to textContent
   regex?: string       // optional regex to extract a substring from matched text
-  transform?: 'date' | 'time' | 'datetime' | 'currency' | 'trim'
+  transform?: 'date' | 'time' | 'datetime' | 'currency' | 'trim' | 'date-range-start' | 'date-range-end'
 }
 
 export interface CreditSelectorRule {

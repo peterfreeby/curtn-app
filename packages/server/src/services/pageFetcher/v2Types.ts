@@ -7,7 +7,7 @@ export interface FieldNode {
   selector?: string             // CSS selector (for magic select / manual CSS mode)
   attribute?: string            // e.g., 'href', 'src', 'datetime'
   regex?: string                // regex to extract substring from matched text
-  transform?: 'date' | 'time' | 'datetime' | 'currency' | 'trim'
+  transform?: 'date' | 'time' | 'datetime' | 'currency' | 'trim' | 'date-range-start' | 'date-range-end'
   staticValue?: string          // for static mode — hardcoded value
   presetValue?: string          // for preset mode — entity name from database
 }

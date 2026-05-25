@@ -2,6 +2,7 @@ import * as cheerio from 'cheerio'
 import { ParsedEvent, applyCleanupRules, extractTimeFromDate } from '../feedParser/shared'
 import { ParsingTemplate, SelectorRule, CreditSelectorRule } from './types'
 import { extractJsonLd, JsonLdEvent } from './extractJsonLd'
+import { parseDateRange } from './dateRange'
 
 const DEFAULT_JSON_LD_FIELD_MAP: Record<string, string> = {
   name: 'title',
@@ -41,6 +42,10 @@ function applyTransform(value: string, transform: SelectorRule['transform']): st
       const parsed = new Date(value)
       return isNaN(parsed.getTime()) ? undefined : parsed as any
     }
+    case 'date-range-start':
+      return parseDateRange(value, 'start')
+    case 'date-range-end':
+      return parseDateRange(value, 'end')
     case 'time':
       return value.trim()
     case 'currency':
