@@ -51,6 +51,8 @@ export default function IncomingEventsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFields, setEditFields] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Anchor for shift-click range selection across pending rows
+  const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
   // Per-row in-flight tracking. id → action being performed
   const [rowBusy, setRowBusy] = useState<Record<string, RowAction>>({});
   // Per-row error messages set by the latest action on that row
@@ -271,6 +273,27 @@ export default function IncomingEventsPage() {
     });
   }
 
+  function handleRowCheckboxClick(
+    e: React.MouseEvent<HTMLInputElement>,
+    id: string
+  ) {
+    if (e.shiftKey && lastSelectedId && lastSelectedId !== id) {
+      const a = selectableIds.indexOf(lastSelectedId);
+      const b = selectableIds.indexOf(id);
+      if (a !== -1 && b !== -1) {
+        e.preventDefault();
+        const [start, end] = a < b ? [a, b] : [b, a];
+        const range = selectableIds.slice(start, end + 1);
+        setSelected((prev) => {
+          const next = new Set(prev);
+          for (const r of range) next.add(r);
+          return next;
+        });
+      }
+    }
+    setLastSelectedId(id);
+  }
+
   function toggleSelectAll() {
     if (allSelected) {
       setSelected(new Set());
@@ -363,6 +386,7 @@ export default function IncomingEventsPage() {
             onClick={() => {
               setStatusFilter(s);
               setSelected(new Set());
+              setLastSelectedId(null);
             }}
             className={`px-3 py-1.5 text-xs uppercase tracking-wider transition ${
               statusFilter === s
@@ -434,6 +458,7 @@ export default function IncomingEventsPage() {
                     isSelected={isSelected}
                     editFields={editFields}
                     onToggle={() => toggleSelect(item.id)}
+                    onCheckboxClick={(e) => handleRowCheckboxClick(e, item.id)}
                     onApprove={() => handleApprove(item)}
                     onReject={() => handleReject(item)}
                     onEdit={() => startEditing(item)}
@@ -464,6 +489,7 @@ function RowGroup(props: {
   isSelected: boolean;
   editFields: Record<string, string>;
   onToggle: () => void;
+  onCheckboxClick: (e: React.MouseEvent<HTMLInputElement>) => void;
   onApprove: () => void;
   onReject: () => void;
   onEdit: () => void;
@@ -482,6 +508,7 @@ function RowGroup(props: {
     isSelected,
     editFields,
     onToggle,
+    onCheckboxClick,
     onApprove,
     onReject,
     onEdit,
@@ -500,9 +527,11 @@ function RowGroup(props: {
             <input
               type="checkbox"
               checked={isSelected}
+              onClick={onCheckboxClick}
               onChange={onToggle}
               className="cursor-pointer accent-curtn-coral"
               aria-label={`Select ${item.title}`}
+              title="Shift-click to select a range"
             />
           )}
         </td>
