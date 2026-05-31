@@ -295,7 +295,11 @@ export function SmartLogForm() {
   // ── Submit ──────────────────────────────────────────────────────────────
 
   const hasDate = !!(parsed.date || manualDate);
-  const isFullReview = hasDate && rating > 0;
+  // A rating always implies a full review. The date defaults to today
+  // (effectiveDateStr) when the user didn't explicitly set one — the form
+  // already displays "today" as a fallback, so gating the review write on an
+  // explicit date silently discarded the rating + review.
+  const isFullReview = rating > 0;
   const canSubmit =
     (resolvedShow?.title || parsed.showName) && !submitting;
 
@@ -350,7 +354,7 @@ export function SmartLogForm() {
       const runInput: any = {
         showId,
         ...(venueId ? { venueIds: [venueId] } : {}),
-        ...(hasDate ? { startDate: effectiveDateStr } : {}),
+        ...(hasDate || isFullReview ? { startDate: effectiveDateStr } : {}),
       };
       const runResult = await runFindOrCreate({ input: runInput });
       if (runResult.data?.runFindOrCreate?.error) {
