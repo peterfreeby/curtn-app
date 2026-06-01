@@ -21,6 +21,7 @@ export function StarRating({
   readOnly = false,
 }: StarRatingProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const pointerActiveRef = useRef(false);
   const startXRef = useRef(0);
   // Set true mid-drag; persists through the trailing click so the tap handler
   // knows the drag already committed a value. Reset on the next pointerdown.
@@ -39,20 +40,23 @@ export function StarRating({
     return Math.max(0.5, Math.round(raw * 2) / 2); // nearest half, min 0.5
   }, [value]);
 
+  // NOTE: we deliberately do NOT setPointerCapture here — capturing on the
+  // container redirects the synthesized click away from the star <button>,
+  // which would break plain taps. Tracking with a ref is enough: a drag stays
+  // within the strip, so pointermove keeps firing on the container subtree.
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       if (readOnly || !onChange) return;
+      pointerActiveRef.current = true;
       startXRef.current = e.clientX;
       didDragRef.current = false;
-      containerRef.current?.setPointerCapture?.(e.pointerId);
     },
     [readOnly, onChange]
   );
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
-      if (readOnly || !onChange) return;
-      if (!containerRef.current?.hasPointerCapture?.(e.pointerId)) return;
+      if (!pointerActiveRef.current || readOnly || !onChange) return;
       if (!didDragRef.current && Math.abs(e.clientX - startXRef.current) < DRAG_THRESHOLD) return;
       didDragRef.current = true;
       setPreview(valueFromX(e.clientX));
@@ -60,12 +64,12 @@ export function StarRating({
     [readOnly, onChange, valueFromX]
   );
 
-  const handlePointerUp = useCallback(
+  const endPointer = useCallback(
     (e: React.PointerEvent) => {
       if (readOnly || !onChange) return;
       if (didDragRef.current) onChange(valueFromX(e.clientX)); // drag → half-granular
+      pointerActiveRef.current = false;
       setPreview(null);
-      containerRef.current?.releasePointerCapture?.(e.pointerId);
     },
     [readOnly, onChange, valueFromX]
   );
@@ -99,7 +103,8 @@ export function StarRating({
       aria-label={`Rating: ${displayValue} out of 5 stars`}
       onPointerDown={readOnly ? undefined : handlePointerDown}
       onPointerMove={readOnly ? undefined : handlePointerMove}
-      onPointerUp={readOnly ? undefined : handlePointerUp}
+      onPointerUp={readOnly ? undefined : endPointer}
+      onPointerCancel={readOnly ? undefined : endPointer}
     >
       {Array.from({ length: 5 }).map((_, i) => {
         if (readOnly) {
