@@ -84,8 +84,15 @@ export function DetailHero({
 
   const dateRange = (() => {
     if (!startDate) return null;
+    // Dates are stored as UTC midnight; format in UTC so they don't shift back a
+    // day for viewers west of UTC (see formatShowDate in lib/format.ts).
     const fmt = (d: string) =>
-      new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      new Date(d).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        timeZone: "UTC",
+      });
     if (!endDate || startDate === endDate) return fmt(startDate);
     return `${fmt(startDate)} – ${fmt(endDate)}`;
   })();

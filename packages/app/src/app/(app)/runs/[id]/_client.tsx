@@ -291,7 +291,10 @@ export default function RunDetailPage() {
           creators={creators}
           companyName={company?.name}
           companySlug={company?.slug}
-          venues={run.venues.map((v: any) => ({ name: v.name, slug: v.slug, city: v.city }))}
+          venues={(singlePerf.venue
+            ? run.venues.filter((v: any) => v.id === singlePerf.venue.id)
+            : run.venues
+          ).map((v: any) => ({ name: v.name, slug: v.slug, city: v.city }))}
           startDate={singlePerf.date}
           endDate={null}
           averageRating={run.averageRating}
