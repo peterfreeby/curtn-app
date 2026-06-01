@@ -28,6 +28,19 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+// Build a repeated-letter + separator-tolerant regex source from the query.
+// From the normalized query (alnum, repeats collapsed) allow each char to
+// repeat (`+`) and permit non-alphanumeric separators between chars. So a
+// 2-a "raatscraps" matches the 4-a "RAAAATSCRAPS", and the raw substring
+// regex (which can't bridge the repeated-letter gap) isn't the only net.
+// Returns null for queries too short to be useful (avoids over-broad scans).
+function looseRegexSource(query: string): string | null {
+  const nq = normalizeTitle(query)
+  if (nq.length < 2) return null
+  // normalizeTitle already stripped to [a-z0-9], so no escaping needed.
+  return nq.split('').map(c => `${c}+`).join('[^a-z0-9]*')
+}
+
 // Rank a candidate title against the query. Higher score = better match.
 // Priority: exact normalized equality > normalized startsWith > normalized
 // substring (either direction) > raw text score (fallback, kept small so the
@@ -84,8 +97,21 @@ async function tolerantTitleSearch(query: string, first: number, extraFilter: Re
     .limit(REGEX_CANDIDATE_LIMIT)
     .lean()
 
+  // (c) Repeated-letter / separator-tolerant regex from the normalized query.
+  // This is what catches the misremembered-spelling case (e.g. "raatscraps"
+  // → "RAAAATSCRAPS") that raw substring (b) and word-token text (a) miss.
+  const looseSrc = looseRegexSource(query)
+  const looseResults = looseSrc
+    ? await ShowModel.find({
+        ...extraFilter,
+        title: { $regex: looseSrc, $options: 'i' }
+      })
+        .limit(REGEX_CANDIDATE_LIMIT)
+        .lean()
+    : []
+
   // Union + dedupe by _id.
-  const candidates = dedupeById(textResults, regexResults)
+  const candidates = dedupeById(textResults, regexResults, looseResults)
 
   // Rank by best match against the query, then take `first`.
   return candidates
