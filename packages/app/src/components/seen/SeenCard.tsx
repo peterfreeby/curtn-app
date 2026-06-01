@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
+import { ShowThumb } from "@/components/ShowThumb";
 
 interface SeenCardProps {
   seen: {
@@ -82,16 +83,9 @@ export function SeenCard({ seen, showUser = false }: SeenCardProps) {
 
       {/* Show info */}
       <div className="flex items-center gap-2">
-        {showImageUrl && (
-          <Link
-            href={`/runs/${encodeURIComponent(run.id)}`}
-            className="w-8 shrink-0"
-          >
-            <div className="aspect-[2/3] overflow-hidden rounded-sm bg-curtn-dark/30">
-              <img src={showImageUrl} alt={showTitle} className="h-full w-full object-cover" />
-            </div>
-          </Link>
-        )}
+        <Link href={`/runs/${encodeURIComponent(run.id)}`}>
+          <ShowThumb imageUrl={showImageUrl} title={showTitle} />
+        </Link>
         <div className="flex-1 min-w-0">
           <Link
             href={`/runs/${encodeURIComponent(run.id)}`}

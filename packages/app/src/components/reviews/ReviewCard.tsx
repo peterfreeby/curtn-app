@@ -5,6 +5,7 @@ import Link from "next/link";
 import { StarRating } from "@/components/StarRating";
 import { Icon } from "@/components/icons/Icons";
 import { Avatar } from "@/components/Avatar";
+import { ShowThumb } from "@/components/ShowThumb";
 import { REVIEW_DELETE_MUTATION } from "@/lib/graphql/reviews";
 import { useAuth } from "@/lib/auth/useAuth";
 
@@ -60,16 +61,9 @@ export function ReviewCard({ review, showPerformanceLink = false, onDeleted }: R
       {/* Show link when in feed/profile context */}
       {showPerformanceLink && showTitle && runId && (
         <div className="flex items-center gap-2 mb-2">
-          {showImageUrl && (
-            <Link
-              href={`/runs/${encodeURIComponent(runId)}`}
-              className="w-8 shrink-0"
-            >
-              <div className="aspect-[2/3] overflow-hidden rounded-sm bg-curtn-dark/30">
-                <img src={showImageUrl} alt={showTitle} className="h-full w-full object-cover" />
-              </div>
-            </Link>
-          )}
+          <Link href={`/runs/${encodeURIComponent(runId)}`}>
+            <ShowThumb imageUrl={showImageUrl} title={showTitle} />
+          </Link>
           <Link
             href={`/runs/${encodeURIComponent(runId)}`}
             className="text-sm font-medium text-curtn-cream hover:text-curtn-coral transition-colors truncate"

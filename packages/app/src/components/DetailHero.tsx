@@ -71,10 +71,15 @@ export function DetailHero({
   const effectiveImage = backdropFailed ? null : imageUrl;
   const hasHeroMedia = !!(effectiveImage || effectivePoster);
 
-  const metaParts: string[] = [formatDuration(duration)];
-  if (intermissions === 0) metaParts.push("No intermission");
-  else if (intermissions && intermissions > 0)
-    metaParts.push(`${intermissions} intermission${intermissions > 1 ? "s" : ""}`);
+  const metaParts: string[] = [];
+  // Only show runtime/intermission when we actually know the duration —
+  // don't fabricate "0m" or assert "No intermission" for a metadata-less show.
+  if (duration > 0) {
+    metaParts.push(formatDuration(duration));
+    if (intermissions === 0) metaParts.push("No intermission");
+    else if (intermissions && intermissions > 0)
+      metaParts.push(`${intermissions} intermission${intermissions > 1 ? "s" : ""}`);
+  }
   if (languages && languages.length > 0) metaParts.push(languages.join(", "));
 
   const dateRange = (() => {
@@ -240,8 +245,12 @@ export function DetailHero({
                 <span className="dinn-value capitalize">{performanceTypes.join(", ")}</span>
               </>
             )}
-            <span className="dinn-label">Duration</span>
-            <span className="dinn-value">{metaParts.join(" · ")}</span>
+            {metaParts.length > 0 && (
+              <>
+                <span className="dinn-label">Duration</span>
+                <span className="dinn-value">{metaParts.join(" · ")}</span>
+              </>
+            )}
             {companyName && (
               <>
                 <span className="dinn-label">Company</span>

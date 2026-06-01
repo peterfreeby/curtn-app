@@ -69,7 +69,7 @@ export const showFindOrCreate = mutationWithClientMutationId({
         description: input.description || '',
         performanceTypes: input.performanceTypes || [],
         duration: input.duration || 0,
-        languages: input.languages || ['English'],
+        languages: input.languages || [],
         url: input.url,
         verificationStatus: 'community',
         submittedBy: ctx.user.id

@@ -27,16 +27,21 @@ export const seenType = new GraphQLObjectType({
         }
       },
       run: {
-        type: new GraphQLNonNull(runType),
+        // Nullable: a seen can outlive its run (e.g. the run was deleted).
+        // Returning null lets the client skip the orphan instead of a dangling
+        // ref nulling the whole edge node and crashing the list.
+        type: runType,
         resolve: async (seen: any, _args: any, ctx: any) => {
+          if (!seen.run) return null
           if (ctx.loaders) return ctx.loaders.runLoader.load(seen.run.toString())
           const { RunModel } = require('../run/runModel')
           return RunModel.findById(seen.run)
         }
       },
       show: {
-        type: new GraphQLNonNull(showType),
+        type: showType,
         resolve: async (seen: any, _args: any, ctx: any) => {
+          if (!seen.show) return null
           if (ctx.loaders) return ctx.loaders.showLoader.load(seen.show.toString())
           const { ShowModel } = require('../show/showModel')
           return ShowModel.findById(seen.show)

@@ -22,8 +22,8 @@ export const performanceCreate = mutationWithClientMutationId({
       description: 'Performance time (e.g. "7:30 PM")'
     },
     venueId: {
-      type: new GraphQLNonNull(GraphQLString),
-      description: 'Venue global ID'
+      type: GraphQLString,
+      description: 'Venue global ID (optional — a performance can be logged without a venue)'
     },
     ticketUrl: {
       type: GraphQLString,
@@ -48,14 +48,14 @@ export const performanceCreate = mutationWithClientMutationId({
 
     try {
       const runObjectId = fromGlobalId(input.runId).id
-      const venueObjectId = fromGlobalId(input.venueId).id
+      const venueObjectId = input.venueId ? fromGlobalId(input.venueId).id : undefined
       const perfDate = new Date(input.date)
 
       const performance = await new PerformanceModel({
         run: runObjectId,
         date: perfDate,
         time: input.time,
-        venueId: venueObjectId,
+        ...(venueObjectId ? { venueId: venueObjectId } : {}),
         ticketUrl: input.ticketUrl,
         soldOut: input.soldOut || false,
         submittedBy: ctx.user.id

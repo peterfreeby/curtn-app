@@ -136,7 +136,7 @@ export default function FeedPage() {
           </p>
           <p className="text-xs text-curtn-muted max-w-[260px] mx-auto mb-4">
             {filter === "yours"
-              ? "Activity on your claims and units will show up here."
+              ? "Updates about your claims and edit requests will show up here."
               : "Follow people to see their activity here."}
           </p>
           {filter !== "yours" && (

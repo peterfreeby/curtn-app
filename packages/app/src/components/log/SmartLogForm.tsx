@@ -19,8 +19,10 @@ import { PERFORMANCE_CREATE_MUTATION } from "@/lib/graphql/performances";
 import { VENUE_FIND_OR_CREATE_MUTATION } from "@/lib/graphql/venues";
 import { REVIEW_CREATE_MUTATION } from "@/lib/graphql/reviews";
 import { SEEN_CREATE_MUTATION } from "@/lib/graphql/seen";
+import { CREDIT_ADD_MUTATION } from "@/lib/graphql/credits";
 import { saveRecentLog } from "@/lib/recentLog";
 import { StarRating } from "@/components/StarRating";
+import { LogCastSection, type CastEntry } from "@/components/log/LogCastSection";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -130,6 +132,9 @@ export function SmartLogForm() {
   const [reviewText, setReviewText] = useState("");
   const [showReviewField, setShowReviewField] = useState(false);
 
+  // Cast & crew tagging (collected locally; credits created after the run)
+  const [cast, setCast] = useState<CastEntry[]>([]);
+
   // Submission state
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -144,6 +149,7 @@ export function SmartLogForm() {
   const [, venueFindOrCreate] = useMutation(VENUE_FIND_OR_CREATE_MUTATION);
   const [, createReview] = useMutation(REVIEW_CREATE_MUTATION);
   const [, createSeen] = useMutation(SEEN_CREATE_MUTATION);
+  const [, creditAdd] = useMutation(CREDIT_ADD_MUTATION);
 
   // ── Parse input on change ───────────────────────────────────────────────
 
@@ -292,6 +298,19 @@ export function SmartLogForm() {
     setEditingField(null);
   }, []);
 
+  // ── Keyboard activation for the tappable preview rows (a11y) ─────────────
+  // The preview rows are divs (they host inline edit inputs), so when they're
+  // acting as a tap target we give them a button role + keyboard handling.
+  const keyActivate = useCallback(
+    (fn: () => void) => (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        fn();
+      }
+    },
+    []
+  );
+
   // ── Submit ──────────────────────────────────────────────────────────────
 
   const hasDate = !!(parsed.date || manualDate);
@@ -365,6 +384,24 @@ export function SmartLogForm() {
       if (!runId) {
         setError("Failed to create run.");
         return;
+      }
+
+      // Tag cast & crew (applies whether this is a full review or a seen-only
+      // log). Best-effort — a credit failure shouldn't sink the log itself.
+      if (cast.length > 0) {
+        await Promise.all(
+          cast.map((c, i) =>
+            creditAdd({
+              input: {
+                runId,
+                creditType: c.creditType,
+                role: c.role || (c.creditType === "cast" ? "Performer" : "Crew"),
+                order: i,
+                ...(c.personId ? { personId: c.personId } : { personName: c.name }),
+              },
+            })
+          )
+        );
       }
 
       // Branch: full review (has date + rating) vs. seen-only
@@ -445,6 +482,8 @@ export function SmartLogForm() {
     effectiveTime,
     rating,
     reviewText,
+    cast,
+    creditAdd,
     showFindOrCreate,
     venueFindOrCreate,
     runFindOrCreate,
@@ -545,6 +584,9 @@ export function SmartLogForm() {
           <div
             className="cursor-pointer group"
             onClick={() => setEditingField(editingField === "show" ? null : "show")}
+            {...(editingField !== "show"
+              ? { role: "button", tabIndex: 0, "aria-label": "Edit show", onKeyDown: keyActivate(() => setEditingField("show")) }
+              : {})}
           >
             <span className="text-xs uppercase tracking-widest text-curtn-muted">
               Show
@@ -592,6 +634,9 @@ export function SmartLogForm() {
           <div
             className="cursor-pointer group"
             onClick={() => setEditingField(editingField === "venue" ? null : "venue")}
+            {...(editingField !== "venue"
+              ? { role: "button", tabIndex: 0, "aria-label": "Add or edit venue", onKeyDown: keyActivate(() => setEditingField("venue")) }
+              : {})}
           >
             <span className="text-xs uppercase tracking-widest text-curtn-muted">
               Venue
@@ -646,6 +691,9 @@ export function SmartLogForm() {
             <div
               className="cursor-pointer group"
               onClick={() => setEditingField(editingField === "date" ? null : "date")}
+              {...(editingField !== "date"
+                ? { role: "button", tabIndex: 0, "aria-label": "Edit date", onKeyDown: keyActivate(() => setEditingField("date")) }
+                : {})}
             >
               <span className="text-xs uppercase tracking-widest text-curtn-muted">
                 Date
@@ -677,6 +725,9 @@ export function SmartLogForm() {
             <div
               className="cursor-pointer group"
               onClick={() => setEditingField(editingField === "time" ? null : "time")}
+              {...(editingField !== "time"
+                ? { role: "button", tabIndex: 0, "aria-label": "Add or edit time", onKeyDown: keyActivate(() => setEditingField("time")) }
+                : {})}
             >
               <span className="text-xs uppercase tracking-widest text-curtn-muted">
                 Time
@@ -713,8 +764,8 @@ export function SmartLogForm() {
         </div>
       )}
 
-      {/* ── Review (optional, expandable) ─────────────────────────────── */}
-      {hasParsedAnything && rating > 0 && (
+      {/* ── Review (optional, expandable — available with or without a rating) ── */}
+      {hasParsedAnything && (
         <div>
           {!showReviewField ? (
             <button
@@ -744,6 +795,11 @@ export function SmartLogForm() {
             </div>
           )}
         </div>
+      )}
+
+      {/* ── Cast & crew (optional) ────────────────────────────────────── */}
+      {hasParsedAnything && (
+        <LogCastSection cast={cast} onChange={setCast} />
       )}
 
       {/* ── Error ─────────────────────────────────────────────────────── */}

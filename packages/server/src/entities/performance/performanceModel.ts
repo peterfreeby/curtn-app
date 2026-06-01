@@ -41,9 +41,10 @@ const performanceSchema = new Schema<IPerformance>({
     trim: true
   },
   venueId: {
+    // Optional — a performance can be logged without a venue (e.g. a quick
+    // mobile log where the user only set a rating + review).
     type: Schema.Types.ObjectId,
-    ref: 'venue',
-    required: true
+    ref: 'venue'
   },
   ticketUrl: String,
   eventbriteId: String,

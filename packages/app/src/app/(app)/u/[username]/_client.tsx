@@ -201,7 +201,7 @@ export default function ProfilePage() {
       </div>
 
       {activeTab === "reviews" && (() => {
-        const seenEdges = seenData?.seenList?.edges ?? [];
+        const seenEdges = (seenData?.seenList?.edges ?? []).filter((e: any) => e.node != null);
         const hasReviews = displayEdges.length > 0;
         const hasSeen = seenEdges.length > 0;
         const hasAnything = hasReviews || hasSeen;
