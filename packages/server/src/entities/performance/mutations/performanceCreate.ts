@@ -51,15 +51,37 @@ export const performanceCreate = mutationWithClientMutationId({
       const venueObjectId = input.venueId ? fromGlobalId(input.venueId).id : undefined
       const perfDate = new Date(input.date)
 
-      const performance = await new PerformanceModel({
-        run: runObjectId,
-        date: perfDate,
-        time: input.time,
-        ...(venueObjectId ? { venueId: venueObjectId } : {}),
-        ticketUrl: input.ticketUrl,
-        soldOut: input.soldOut || false,
-        submittedBy: ctx.user.id
-      }).save()
+      // Find-or-create: a performance is uniquely identified by
+      // run + calendar date (UTC) + time + venue. Without this, every log of
+      // the same showing spawns a duplicate performance (and SmartLogForm logs
+      // always go through here). Match the whole day in UTC since dates are
+      // stored as UTC midnight.
+      const dayStart = new Date(Date.UTC(
+        perfDate.getUTCFullYear(), perfDate.getUTCMonth(), perfDate.getUTCDate()
+      ))
+      const dayEnd = new Date(dayStart)
+      dayEnd.setUTCDate(dayEnd.getUTCDate() + 1)
+
+      const performance = await PerformanceModel.findOneAndUpdate(
+        {
+          run: runObjectId,
+          date: { $gte: dayStart, $lt: dayEnd },
+          time: input.time,
+          venueId: venueObjectId ?? null
+        },
+        {
+          $setOnInsert: {
+            run: runObjectId,
+            date: perfDate,
+            time: input.time,
+            ...(venueObjectId ? { venueId: venueObjectId } : {}),
+            ticketUrl: input.ticketUrl,
+            soldOut: input.soldOut || false,
+            submittedBy: ctx.user.id
+          }
+        },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      )
 
       // Update Run's date range if this performance extends it
       const run = await RunModel.findById(runObjectId)
