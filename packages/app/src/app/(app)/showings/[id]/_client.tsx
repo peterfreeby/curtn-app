@@ -1,11 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "urql";
 import { SINGLE_PERFORMANCE_QUERY } from "@/lib/graphql/performances";
 import { DetailHero } from "@/components/DetailHero";
 import { DetailBreadcrumb } from "@/components/nav/DetailBreadcrumb";
 import { CreditsList } from "@/components/credits/CreditsList";
+import { InlineEditor } from "@/components/admin/InlineEditor";
+import { useAuth } from "@/lib/auth/useAuth";
+
+function decodeId(globalId: string): string {
+  return atob(globalId).split(":")[1];
+}
 
 // Real single-performance detail page. A performance is one specific date —
 // it ALWAYS shows that night's lineup via effectiveCast (which resolves
@@ -15,6 +22,10 @@ import { CreditsList } from "@/components/credits/CreditsList";
 export default function PerformanceDetailPage() {
   const params = useParams();
   const id = decodeURIComponent(params.id as string);
+
+  const { user } = useAuth();
+  const isAdmin = !!user?.isAdmin;
+  const [editing, setEditing] = useState(false);
 
   const [{ data, fetching }] = useQuery({
     query: SINGLE_PERFORMANCE_QUERY,
@@ -75,32 +86,56 @@ export default function PerformanceDetailPage() {
         />
       )}
       <div className="px-2 sm:px-6 py-8 max-w-[var(--content-width)] mx-auto space-y-8">
-        <DetailHero
-          title={show?.title ?? "Performance"}
-          description={performance.effectiveDescription || ""}
-          performanceTypes={show?.performanceTypes}
-          duration={show?.duration}
-          intermissions={run?.intermissions}
-          languages={show?.languages ?? []}
-          imageUrl={show?.imageUrl}
-          posterUrl={performance.effectivePosterUrl || show?.posterUrl}
-          companyName={company?.name}
-          companySlug={company?.slug}
-          venues={venues.map((v: any) => ({
-            name: v.name,
-            slug: v.slug,
-            city: v.city,
-          }))}
-          startDate={performance.date}
-          endDate={null}
-          averageRating={run?.averageRating}
-          reviewCount={run?.reviewCount}
-          performanceDate={performance.date}
-          performanceTime={performance.time}
-          ticketUrl={performance.ticketUrl}
-          soldOut={isSoldOut}
-          entityType="Performance"
-        />
+        {editing ? (
+          <InlineEditor
+            entityType="performance"
+            entityId={decodeId(id)}
+            initialValues={{
+              date: performance.date
+                ? new Date(performance.date).toISOString().slice(0, 10)
+                : "",
+              time: performance.time || "",
+              ticketUrl: performance.ticketUrl || "",
+              soldOut: String(isSoldOut),
+              imageUrl: performance.metadataOverrides?.imageUrl || "",
+            }}
+            effectiveCast={performance.effectiveCast ?? []}
+            effectiveCrew={performance.effectiveCrew ?? []}
+            onSaved={() => {
+              setEditing(false);
+              window.location.reload();
+            }}
+            onCancel={() => setEditing(false)}
+          />
+        ) : (
+          <DetailHero
+            title={show?.title ?? "Performance"}
+            description={performance.effectiveDescription || ""}
+            performanceTypes={show?.performanceTypes}
+            duration={show?.duration}
+            intermissions={run?.intermissions}
+            languages={show?.languages ?? []}
+            imageUrl={show?.imageUrl}
+            posterUrl={performance.effectivePosterUrl || show?.posterUrl}
+            companyName={company?.name}
+            companySlug={company?.slug}
+            venues={venues.map((v: any) => ({
+              name: v.name,
+              slug: v.slug,
+              city: v.city,
+            }))}
+            startDate={performance.date}
+            endDate={null}
+            averageRating={run?.averageRating}
+            reviewCount={run?.reviewCount}
+            performanceDate={performance.date}
+            performanceTime={performance.time}
+            ticketUrl={performance.ticketUrl}
+            soldOut={isSoldOut}
+            entityType="Performance"
+            onEdit={isAdmin ? () => setEditing(true) : undefined}
+          />
+        )}
 
         {/* A performance is one date — always its own lineup, never an
             aggregate or a "varies by date" note. */}
