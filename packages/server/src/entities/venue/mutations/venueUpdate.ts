@@ -1,4 +1,4 @@
-import { GraphQLBoolean, GraphQLNonNull, GraphQLString } from 'graphql'
+import { GraphQLBoolean, GraphQLFloat, GraphQLNonNull, GraphQLString } from 'graphql'
 import { mutationWithClientMutationId } from 'graphql-relay'
 import { venueType } from '../venueTypes'
 import { VenueModel } from '../venueModel'
@@ -45,6 +45,14 @@ export const venueUpdate = mutationWithClientMutationId({
     zipCode: {
       type: GraphQLString,
       description: 'ZIP/postal code'
+    },
+    latitude: {
+      type: GraphQLFloat,
+      description: 'Latitude from address verification. Set with longitude to place the map pin directly (skips the async geocoding queue).'
+    },
+    longitude: {
+      type: GraphQLFloat,
+      description: 'Longitude from address verification. Set with latitude to place the map pin directly.'
     },
     capacity: {
       type: GraphQLString,
@@ -157,7 +165,10 @@ export const venueUpdate = mutationWithClientMutationId({
       if (input.permanentlyClosed !== undefined) updates.permanentlyClosed = input.permanentlyClosed
       if (input.closedDate !== undefined) updates.closedDate = input.closedDate ? new Date(input.closedDate) : null
 
-      if (Object.keys(updates).length === 0) {
+      const hasCoords =
+        typeof input.latitude === 'number' && typeof input.longitude === 'number'
+
+      if (Object.keys(updates).length === 0 && !hasCoords) {
         return { venue }
       }
 
@@ -172,6 +183,17 @@ export const venueUpdate = mutationWithClientMutationId({
           isCommunityReview: !!decision.isCommunityReview,
         })
         return { queued: true, proposalId: result.proposalId, venue, isCommunityReview: !!decision.isCommunityReview }
+      }
+
+      // Verified coordinates place the pin directly. Applied only on the
+      // direct-publish path (derived geo isn't community-reviewable, so it
+      // stays out of the proposal diff above) and after it, so it doesn't
+      // need to round-trip through the async geocoding queue.
+      if (hasCoords) {
+        updates.location = {
+          type: 'Point',
+          coordinates: [input.longitude, input.latitude] // GeoJSON: [lng, lat]
+        }
       }
 
       const oldDoc = venue.toObject()
