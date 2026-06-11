@@ -1,11 +1,16 @@
 import { GeocodingJobModel, IGeocodingJob } from '../../entities/geocodingJob/geocodingJobModel'
 import { VenueModel } from '../../entities/venue/venueModel'
-import { geocodeViaNominatim } from './nominatim'
+import { geocodeAddress } from './geocodeAddress'
 
 const THROTTLE_MS = 1100           // Nominatim: max 1 req/sec; 1.1s for headroom
 const MAX_ATTEMPTS = 5
 const MAX_BATCH = 10
 const DEFAULT_TIME_BUDGET_MS = 8000 // stay under Vercel Hobby 10s function limit
+// A job claimed (status -> 'processing') but never resolved — because the
+// function timed out or crashed mid-tick — would otherwise be stranded forever,
+// since the worker only ever queries for 'pending'. Reclaim anything stuck in
+// 'processing' past this age back into the queue.
+const STUCK_PROCESSING_MS = 5 * 60_000 // 5 min
 
 // Exponential backoff schedule (in ms). Index = attemptCount after failure.
 const BACKOFF_SCHEDULE_MS = [
@@ -36,6 +41,7 @@ export interface ProcessResult {
   succeeded: number
   failed: number
   retryScheduled: number
+  reaped: number
   timedOut: boolean
 }
 
@@ -50,8 +56,19 @@ export async function processGeocodingJobs(
     succeeded: 0,
     failed: 0,
     retryScheduled: 0,
+    reaped: 0,
     timedOut: false
   }
+
+  // Reaper: reclaim jobs stranded in 'processing' by a crashed/timed-out tick.
+  const reap = await GeocodingJobModel.updateMany(
+    {
+      status: 'processing',
+      lastAttemptAt: { $lte: new Date(Date.now() - STUCK_PROCESSING_MS) }
+    },
+    { $set: { status: 'pending', nextAttemptAt: new Date() } }
+  )
+  result.reaped = reap.modifiedCount ?? 0
 
   for (let i = 0; i < MAX_BATCH; i++) {
     if (Date.now() >= deadline) {
@@ -80,8 +97,16 @@ export async function processGeocodingJobs(
 
     const query = composeAddress(job.addressSnapshot)
     let geocodeResult: { lat: number; lng: number } | null = null
+    let usedNominatim = false
     if (query) {
-      geocodeResult = await geocodeViaNominatim(query)
+      // Census first (free/unlimited). Only pause for the 1 req/sec Nominatim
+      // limit if we actually fall through to it.
+      geocodeResult = await geocodeAddress(query, {
+        onNominatimFallback: async () => {
+          usedNominatim = true
+          await sleep(THROTTLE_MS)
+        }
+      })
     }
 
     if (geocodeResult) {
@@ -137,7 +162,10 @@ export async function processGeocodingJobs(
       result.timedOut = true
       break
     }
-    await sleep(THROTTLE_MS)
+    // Census carries no rate limit, so only throttle between iterations when a
+    // job actually reached Nominatim (the fallback already slept before its
+    // own call; this guards the *next* iteration).
+    if (usedNominatim) await sleep(THROTTLE_MS)
   }
 
   return result

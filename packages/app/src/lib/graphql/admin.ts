@@ -435,6 +435,7 @@ export const ADMIN_VENUE_LIST_QUERY = gql`
           permanentlyClosed
           closedDate
           createdAt
+          coordinates { lat lng }
         }
       }
       pageInfo {
@@ -620,6 +621,7 @@ export const VENUE_UPDATE_MUTATION = gql`
         imageUrl
         permanentlyClosed
         closedDate
+        coordinates { lat lng }
       }
       error
     }

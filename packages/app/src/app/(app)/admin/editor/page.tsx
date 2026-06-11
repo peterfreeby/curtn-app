@@ -41,6 +41,7 @@ import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { RelationPicker, type RelationOption } from "@/components/admin/RelationPicker";
 import { EntityDataSourcesPanel } from "@/components/admin/EntityDataSourcesPanel";
+import { AddressVerify, type VerifiedCoords } from "@/components/admin/AddressVerify";
 
 const PAGE_SIZE = 50;
 
@@ -355,7 +356,7 @@ function RunsSection({
 
   async function handleCreateVenue(name: string) {
     const result = await executeVenueCreate({
-      input: { name, address: "TBD", city: "NYC", state: "NY", latitude: 40.7128, longitude: -74.006 },
+      input: { name },
     });
     if (result.data?.venueFindOrCreate?.venue?.id) {
       setNewVenueIds((prev) => [...prev, result.data.venueFindOrCreate.venue.id]);
@@ -714,6 +715,12 @@ function VenuesEditor() {
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
+  // Verified map coordinates for the venue being edited; sent on save so the
+  // pin is placed immediately instead of round-tripping the async geocoder.
+  const [verifiedCoords, setVerifiedCoords] = useState<VerifiedCoords | null>(null);
+  // Address fields as loaded, to detect when the admin has changed the address
+  // (and therefore must re-verify before saving).
+  const [loadedAddr, setLoadedAddr] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<any | null>(null);
   const [mergeSource, setMergeSource] = useState<any | null>(null);
@@ -761,7 +768,7 @@ function VenuesEditor() {
     if (!newName.trim()) return;
     setMessage(null);
     const result = await executeCreate({
-      input: { name: newName.trim(), address: "TBD", city: "NYC", state: "NY", latitude: 40.7128, longitude: -74.006 },
+      input: { name: newName.trim() },
     });
     if (result.data?.venueFindOrCreate?.error) {
       setMessage(result.data.venueFindOrCreate.error);
@@ -777,6 +784,16 @@ function VenuesEditor() {
 
   function startEdit(venue: any) {
     setEditingId(venue.id);
+    setVerifiedCoords(
+      venue.coordinates?.lat != null && venue.coordinates?.lng != null
+        ? { lat: venue.coordinates.lat, lng: venue.coordinates.lng }
+        : null
+    );
+    setLoadedAddr(
+      [venue.address, venue.city, venue.state, venue.zipCode]
+        .map((s: string) => (s || "").trim())
+        .join("|")
+    );
     setFields({
       name: venue.name || "",
       description: venue.description || "",
@@ -798,6 +815,20 @@ function VenuesEditor() {
   async function handleSave() {
     if (!editingId) return;
     setMessage(null);
+
+    // Require verification when the address has been changed. A changed address
+    // with no verified pin is exactly how "TBD / wrong-state" garbage used to
+    // get saved — block it at the source.
+    const currentAddr = [fields.address, fields.city, fields.state, fields.zipCode]
+      .map((s) => (s || "").trim())
+      .join("|");
+    const addressChanged = currentAddr !== loadedAddr;
+    const hasAnyAddress = currentAddr.replace(/\|/g, "").length > 0;
+    if (addressChanged && hasAnyAddress && !verifiedCoords) {
+      setMessage("Verify the address before saving (click “Verify address”).");
+      return;
+    }
+
     const { permanentlyClosed, closedDate, ...rest } = fields;
     const result = await executeUpdate({
       input: {
@@ -805,6 +836,9 @@ function VenuesEditor() {
         ...rest,
         permanentlyClosed: permanentlyClosed === "true",
         closedDate: closedDate || null,
+        ...(verifiedCoords
+          ? { latitude: verifiedCoords.lat, longitude: verifiedCoords.lng }
+          : {}),
       },
     });
     if (result.data?.venueUpdate?.error) {
@@ -895,6 +929,16 @@ function VenuesEditor() {
                     <FieldEditor label="City" value={fields.city} onChange={(v) => setFields((f) => ({ ...f, city: v }))} />
                     <FieldEditor label="State" value={fields.state} onChange={(v) => setFields((f) => ({ ...f, state: v }))} />
                     <FieldEditor label="ZIP Code" value={fields.zipCode} onChange={(v) => setFields((f) => ({ ...f, zipCode: v }))} />
+                    <div className="sm:col-span-2">
+                      <AddressVerify
+                        address={fields.address || ""}
+                        city={fields.city || ""}
+                        state={fields.state || ""}
+                        zipCode={fields.zipCode || ""}
+                        initialCoords={verifiedCoords}
+                        onResolved={setVerifiedCoords}
+                      />
+                    </div>
                     <FieldEditor label="Capacity" value={fields.capacity} onChange={(v) => setFields((f) => ({ ...f, capacity: v }))} type="number" />
                     <FieldEditor label="Website" value={fields.website} onChange={(v) => setFields((f) => ({ ...f, website: v }))} />
                     <FieldEditor label="Phone" value={fields.phone} onChange={(v) => setFields((f) => ({ ...f, phone: v }))} />
@@ -1270,7 +1314,7 @@ function RunsEditor() {
 
   async function handleCreateVenue(name: string) {
     const result = await executeVenueCreate({
-      input: { name, address: "TBD", city: "NYC", state: "NY", latitude: 40.7128, longitude: -74.006 },
+      input: { name },
     });
     if (result.data?.venueFindOrCreate?.venue?.id) {
       const newId = result.data.venueFindOrCreate.venue.id;
@@ -1606,7 +1650,7 @@ function PerformancesEditor() {
 
   async function handleCreateVenue(name: string) {
     const result = await executeVenueCreate({
-      input: { name, address: "TBD", city: "NYC", state: "NY", latitude: 40.7128, longitude: -74.006 },
+      input: { name },
     });
     if (result.data?.venueFindOrCreate?.venue?.id) {
       setRelVenueId(result.data.venueFindOrCreate.venue.id);
@@ -1644,7 +1688,7 @@ function PerformancesEditor() {
 
   async function handleCreateVenueForAdd(name: string) {
     const result = await executeVenueCreate({
-      input: { name, address: "TBD", city: "NYC", state: "NY", latitude: 40.7128, longitude: -74.006 },
+      input: { name },
     });
     if (result.data?.venueFindOrCreate?.venue?.id) {
       setAddVenueId(result.data.venueFindOrCreate.venue.id);

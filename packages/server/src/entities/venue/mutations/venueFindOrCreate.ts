@@ -18,24 +18,24 @@ export const venueFindOrCreate = mutationWithClientMutationId({
       description: 'Venue name (case-insensitive match)'
     },
     address: {
-      type: new GraphQLNonNull(GraphQLString),
-      description: 'Street address'
+      type: GraphQLString,
+      description: 'Street address (optional — omit for a name-only stub to be verified later)'
     },
     city: {
-      type: new GraphQLNonNull(GraphQLString),
+      type: GraphQLString,
       description: 'City (NYC, Minneapolis, LA)'
     },
     state: {
-      type: new GraphQLNonNull(GraphQLString),
+      type: GraphQLString,
       description: 'State (NY, MN, CA)'
     },
     latitude: {
-      type: new GraphQLNonNull(GraphQLFloat),
-      description: 'Latitude coordinate'
+      type: GraphQLFloat,
+      description: 'Latitude coordinate (set with longitude to place the pin)'
     },
     longitude: {
-      type: new GraphQLNonNull(GraphQLFloat),
-      description: 'Longitude coordinate'
+      type: GraphQLFloat,
+      description: 'Longitude coordinate (set with latitude to place the pin)'
     },
     venueType: {
       type: GraphQLString,
@@ -78,23 +78,30 @@ export const venueFindOrCreate = mutationWithClientMutationId({
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '')
 
-      const trimmedAddress = input.address.trim()
-
-      const venue = await new VenueModel({
+      // Build only the fields actually supplied. A name-only stub gets no
+      // address and no location — avoiding the old "TBD / NYC default pin"
+      // garbage. Coordinates are written only when both are present, and the
+      // address is verified at edit time.
+      const venueDoc: Record<string, any> = {
         name,
         slug,
-        address: trimmedAddress,
-        city: input.city,
-        state: input.state,
-        location: {
-          type: 'Point',
-          coordinates: [input.longitude, input.latitude]
-        },
         venueType: input.venueType || 'theater',
         website: input.website,
         verificationStatus: 'community',
         submittedBy: ctx.user.id
-      }).save()
+      }
+      const trimmedAddress = input.address?.trim()
+      if (trimmedAddress) venueDoc.address = trimmedAddress
+      if (input.city) venueDoc.city = input.city
+      if (input.state) venueDoc.state = input.state
+      if (typeof input.latitude === 'number' && typeof input.longitude === 'number') {
+        venueDoc.location = {
+          type: 'Point',
+          coordinates: [input.longitude, input.latitude]
+        }
+      }
+
+      const venue = await new VenueModel(venueDoc).save()
 
       return { venue, created: true }
     } catch (err) {
