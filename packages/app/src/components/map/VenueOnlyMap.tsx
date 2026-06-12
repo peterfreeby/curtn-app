@@ -71,7 +71,8 @@ export function VenueOnlyMap({ venues, className = "", onBoundsChange }: VenueOn
     }
 
     const cluster = L.markerClusterGroup({
-      maxClusterRadius: 40,
+      // 80px default — see PerformanceMap; 40 left close venues unclustered.
+      maxClusterRadius: 80,
       showCoverageOnHover: false,
       iconCreateFunction: (c) => {
         const count = c.getChildCount();
