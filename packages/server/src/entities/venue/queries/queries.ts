@@ -117,7 +117,9 @@ export const venueList: GraphQLFieldConfig<any, any, VenueListArgs> = {
         return connectionFromArrayLean(venues, connectionArgs)
       }
 
-      const geoMaxLimit = hasBbox ? 500 : undefined
+      // High ceiling for the map — venue pins cluster, and there are only a few
+      // hundred venues, so no need to cap tightly (see performance query).
+      const geoMaxLimit = hasBbox ? 3000 : undefined
       const { filter: cursorFilter, sort, limit } = applyCursorToQuery(filter, {
         after: (connectionArgs as any).after,
         first: (connectionArgs as any).first,

@@ -51,7 +51,7 @@ function UpcomingPageContent() {
   // Lightweight venue pins — paused until the map reports its initial bounds
   const [{ data: venueData }] = useQuery({
     query: VENUE_MAP_QUERY,
-    variables: { first: 200, ...mapBounds },
+    variables: { first: 3000, ...mapBounds },
     pause: !mapBounds,
   });
 
@@ -65,7 +65,7 @@ function UpcomingPageContent() {
   // Performance data for map (lightweight — no cast/descriptions)
   const [{ data: mapPerfData, fetching: mapFetching }] = useQuery({
     query: MAP_PERFORMANCES_QUERY,
-    variables: { first: 200, ...mapBounds, ...dateVars },
+    variables: { first: 3000, ...mapBounds, ...dateVars },
     pause: !mapBounds,
   });
 
