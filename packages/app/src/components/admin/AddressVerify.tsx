@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { getStoredAccessToken } from "@/lib/auth/token";
+import { auth } from "@/lib/firebase/config";
 
 const AddressPreviewMap = dynamic(
   () => import("./AddressPreviewMap").then((m) => m.AddressPreviewMap),
@@ -73,7 +73,7 @@ export function AddressVerify({
     setStatus("loading");
     setMessage(null);
     try {
-      const token = getStoredAccessToken();
+      const token = await auth?.currentUser?.getIdToken();
       const res = await fetch("/api/geocode", {
         method: "POST",
         headers: {
