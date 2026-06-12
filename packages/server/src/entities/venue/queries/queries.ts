@@ -3,6 +3,7 @@ import { VenueConnection, venueType } from '../venueTypes'
 import { VenueModel } from '../venueModel'
 import { connectionArgs, connectionFromArray, fromGlobalId } from 'graphql-relay'
 import { applyCursorToQuery, buildConnection, connectionFromArrayLean } from '../../../graphql/cursorPagination'
+import { buildBboxLocationFilter } from '../../../services/geo/bboxFilter'
 
 // Get a single venue by ID
 export const singleVenue: GraphQLFieldConfig<any, any, { id: string }> = {
@@ -97,16 +98,12 @@ export const venueList: GraphQLFieldConfig<any, any, VenueListArgs> = {
 
     // Bbox filter — only when all four corners are provided and no text search
     // (MongoDB can't combine a text index and 2dsphere index in one query)
+    // A world-ish / wrapped box yields null → no geo filter, so far-zoom returns
+    // all venues (capped) to cluster instead of a blank map.
     const hasBbox = swLat != null && swLng != null && neLat != null && neLng != null
     if (hasBbox && !search) {
-      filter.location = {
-        $geoWithin: {
-          $geometry: {
-            type: 'Polygon',
-            coordinates: [[[swLng!, swLat!], [neLng!, swLat!], [neLng!, neLat!], [swLng!, neLat!], [swLng!, swLat!]]]
-          }
-        }
-      }
+      const locationFilter = buildBboxLocationFilter(swLat!, swLng!, neLat!, neLng!)
+      if (locationFilter) filter.location = locationFilter
     }
 
     const empty = { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null } }

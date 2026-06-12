@@ -5,6 +5,7 @@ import { RunModel } from '../../run/runModel'
 import { VenueModel } from '../../venue/venueModel'
 import { connectionArgs, connectionFromArray, fromGlobalId } from 'graphql-relay'
 import { applyCursorToQuery, buildConnection } from '../../../graphql/cursorPagination'
+import { buildBboxLocationFilter } from '../../../services/geo/bboxFilter'
 
 export const singlePerformance: GraphQLFieldConfig<any, any, { id: string }> = {
   type: performanceType,
@@ -112,20 +113,16 @@ export const performanceList: GraphQLFieldConfig<any, any, any> = {
       if (startDate) baseFilter.date = { ...baseFilter.date, $gte: new Date(startDate) }
       if (endDate) baseFilter.date = { ...baseFilter.date, $lt: new Date(endDate) }
 
-      // Bbox filter — only when all four corners provided and no text search active
+      // Bbox filter — only when all four corners provided and no text search active.
+      // A world-ish / wrapped box yields null → no venue filter, so far-zoom
+      // returns all performances (capped) to cluster instead of a blank map.
       const hasBbox = swLat != null && swLng != null && neLat != null && neLng != null
       if (hasBbox && !search) {
-        const venueIds = await VenueModel.find({
-          location: {
-            $geoWithin: {
-              $geometry: {
-                type: 'Polygon',
-                coordinates: [[[swLng, swLat], [neLng, swLat], [neLng, neLat], [swLng, neLat], [swLng, swLat]]]
-              }
-            }
-          }
-        }).distinct('_id')
-        baseFilter.venueId = { $in: venueIds }
+        const locationFilter = buildBboxLocationFilter(swLat, swLng, neLat, neLng)
+        if (locationFilter) {
+          const venueIds = await VenueModel.find({ location: locationFilter }).distinct('_id')
+          baseFilter.venueId = { $in: venueIds }
+        }
       }
 
       if (search) {
