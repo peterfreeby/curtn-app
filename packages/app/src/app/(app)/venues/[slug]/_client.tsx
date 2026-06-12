@@ -117,6 +117,11 @@ export default function VenueDetailPage() {
             description: venue.description || "",
             imageUrl: venue.imageUrl || "",
           }}
+          initialCoords={
+            venue.coordinates?.lat != null && venue.coordinates?.lng != null
+              ? { lat: venue.coordinates.lat, lng: venue.coordinates.lng }
+              : null
+          }
           onSaved={() => { setEditing(false); window.location.reload(); }}
           onCancel={() => setEditing(false)}
         />
