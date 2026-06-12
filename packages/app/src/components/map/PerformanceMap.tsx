@@ -161,7 +161,10 @@ export function PerformanceMap({ performances, className = "", onBoundsChange }:
     }
 
     const cluster = L.markerClusterGroup({
-      maxClusterRadius: 40,
+      // 80px (markercluster's default). 40 was too tight: venues only a few
+      // hundred metres apart (e.g. the Lower East Side trio) stayed as separate
+      // dots until zoomed way out instead of merging at city-level zoom.
+      maxClusterRadius: 80,
       spiderfyOnMaxZoom: true,
       showCoverageOnHover: false,
       iconCreateFunction: (c) => {
