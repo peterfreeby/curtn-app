@@ -146,7 +146,12 @@ export const performanceList: GraphQLFieldConfig<any, any, any> = {
         ]
       }
 
-      const geoMaxLimit = hasBbox ? 500 : undefined
+      // Map pins collapse to one marker per venue client-side (and cluster), so
+      // a high ceiling is cheap and avoids high-volume venues (Broadway houses
+      // with ~26 showings each) crowding smaller venues out of the result and
+      // making them vanish when zoomed out. Effectively uncapped for today's
+      // data (~1.3k upcoming) while bounding a pathological payload.
+      const geoMaxLimit = hasBbox ? 3000 : undefined
       const { filter, sort, limit } = applyCursorToQuery(baseFilter, {
         after: (connArgs as any).after,
         first: (connArgs as any).first,
