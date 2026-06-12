@@ -10,6 +10,19 @@ interface AddressPreviewMapProps {
   className?: string;
 }
 
+// Leaflet's default marker icon references bundled PNG paths that 404 under
+// Next/webpack. Use an image-free divIcon (a coral pin dot) instead — also
+// keeps the print-glass palette.
+const pinIcon = L.divIcon({
+  className: "",
+  html:
+    '<div style="width:14px;height:14px;border-radius:9999px;' +
+    "background:oklch(0.65 0.22 30);border:2px solid #111;" +
+    'box-shadow:0 0 0 1px oklch(0.65 0.22 30);"></div>',
+  iconSize: [14, 14],
+  iconAnchor: [7, 7],
+});
+
 // Small single-pin preview map for verified venue addresses. Loaded via
 // next/dynamic with ssr:false (leaflet touches window at import time).
 export function AddressPreviewMap({ lat, lng, className = "" }: AddressPreviewMapProps) {
@@ -29,8 +42,13 @@ export function AddressPreviewMap({ lat, lng, className = "" }: AddressPreviewMa
     L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
       maxZoom: 19,
     }).addTo(map);
-    markerRef.current = L.marker([lat, lng]).addTo(map);
+    markerRef.current = L.marker([lat, lng], { icon: pinIcon }).addTo(map);
     mapInstanceRef.current = map;
+
+    // The container is revealed only after verification, so it may have had
+    // zero size at init — Leaflet then renders blank tiles. Recompute once the
+    // layout settles.
+    requestAnimationFrame(() => map.invalidateSize());
 
     return () => {
       map.remove();
