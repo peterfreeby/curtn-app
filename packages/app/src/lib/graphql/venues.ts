@@ -63,6 +63,7 @@ export const VENUE_BY_SLUG_QUERY = gql`
       city
       state
       zipCode
+      coordinates { lat lng }
       capacity
       venueType
       defaultPerformanceType

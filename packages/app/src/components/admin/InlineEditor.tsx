@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Fragment, type ReactNode } from "react";
 import { useMutation, useQuery } from "urql";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
@@ -18,6 +18,7 @@ import { RunCreditEditor } from "@/components/admin/RunCreditEditor";
 import { PerformanceCreditEditor } from "@/components/admin/PerformanceCreditEditor";
 import { ImageUpload } from "@/components/admin/ImageUpload";
 import { RelationPicker, RelationOption } from "@/components/admin/RelationPicker";
+import { AddressVerify, type VerifiedCoords } from "@/components/admin/AddressVerify";
 
 function decodeGlobalId(globalId: string): string {
   return atob(globalId).split(":")[1];
@@ -118,19 +119,23 @@ function EditorFields({
   values,
   onChange,
   entityId,
+  extraAfter,
 }: {
   fields: FieldDef[];
   values: Record<string, string>;
   onChange: (key: string, value: string) => void;
   entityId: string;
+  // Optional node rendered immediately after a given field key (e.g. the
+  // address-verify control after ZIP).
+  extraAfter?: Record<string, ReactNode>;
 }) {
   return (
     <div className="space-y-3">
       {fields.map((field) => {
+        let el: ReactNode;
         if (field.type === "image") {
-          return (
+          el = (
             <ImageUpload
-              key={field.key}
               label={field.label}
               entityType={field.imageEntityType || "image"}
               entityId={entityId}
@@ -138,11 +143,9 @@ function EditorFields({
               onUploaded={(url) => onChange(field.key, url)}
             />
           );
-        }
-
-        if (field.type === "textarea") {
-          return (
-            <div key={field.key} className="flex flex-col gap-[var(--spacing-1)]">
+        } else if (field.type === "textarea") {
+          el = (
+            <div className="flex flex-col gap-[var(--spacing-1)]">
               <label className="font-mono text-[10px] uppercase tracking-[1px] text-curtn-muted">
                 {field.label}
               </label>
@@ -155,11 +158,9 @@ function EditorFields({
               />
             </div>
           );
-        }
-
-        if (field.type === "select" && field.options) {
-          return (
-            <div key={field.key} className="flex flex-col gap-[var(--spacing-1)]">
+        } else if (field.type === "select" && field.options) {
+          el = (
+            <div className="flex flex-col gap-[var(--spacing-1)]">
               <label className="font-mono text-[10px] uppercase tracking-[1px] text-curtn-muted">
                 {field.label}
               </label>
@@ -174,17 +175,23 @@ function EditorFields({
               </select>
             </div>
           );
+        } else {
+          el = (
+            <Input
+              label={field.label}
+              type={field.type || "text"}
+              value={values[field.key]}
+              onChange={(e) => onChange(field.key, e.target.value)}
+              placeholder={field.placeholder}
+            />
+          );
         }
 
         return (
-          <Input
-            key={field.key}
-            label={field.label}
-            type={field.type || "text"}
-            value={values[field.key]}
-            onChange={(e) => onChange(field.key, e.target.value)}
-            placeholder={field.placeholder}
-          />
+          <Fragment key={field.key}>
+            {el}
+            {extraAfter?.[field.key]}
+          </Fragment>
         );
       })}
     </div>
@@ -203,6 +210,8 @@ interface InlineEditorProps {
   entityType: "show" | "run" | "performance" | "venue";
   entityId: string; // MongoDB ObjectId
   initialValues: Record<string, any>;
+  /** Venue only: existing map coordinates, so the saved pin shows on open. */
+  initialCoords?: VerifiedCoords | null;
   /** For run editing: currently selected venues (with global IDs) so the picker can prefill. */
   initialVenues?: { id: string; name: string }[];
   // Child creation props
@@ -220,6 +229,7 @@ export function InlineEditor({
   entityType,
   entityId,
   initialValues,
+  initialCoords,
   initialVenues,
   showId,
   runId,
@@ -247,6 +257,20 @@ export function InlineEditor({
     }
     return init;
   });
+
+  // Venue address verification: resolved coordinates sent on save so the map
+  // pin is placed immediately. Mirrors the admin editor's Verify + map preview.
+  const [verifiedCoords, setVerifiedCoords] = useState<VerifiedCoords | null>(
+    initialCoords ?? null
+  );
+  const loadedAddr = [
+    initialValues.address,
+    initialValues.city,
+    initialValues.state,
+    initialValues.zipCode,
+  ]
+    .map((s) => String(s ?? "").trim())
+    .join("|");
 
   const [venueIds, setVenueIds] = useState<string[]>(
     () => initialVenues?.map((v) => v.id) || []
@@ -289,7 +313,7 @@ export function InlineEditor({
 
   async function handleSave() {
     setError(null);
-    const input: Record<string, string> = { [idField]: entityId };
+    const input: Record<string, any> = { [idField]: entityId };
 
     for (const field of fields) {
       const original = Array.isArray(initialValues[field.key])
@@ -302,6 +326,24 @@ export function InlineEditor({
 
     if (entityType === "run" && venueIds.join(",") !== initialVenueIdsKey) {
       input.venueIds = JSON.stringify(venueIds.map(decodeGlobalId));
+    }
+
+    // Venue address verification gate. A changed address must be verified so a
+    // pin lands correctly instead of defaulting; verified coords ride along.
+    if (entityType === "venue") {
+      const currentAddr = [values.address, values.city, values.state, values.zipCode]
+        .map((s) => String(s ?? "").trim())
+        .join("|");
+      const addressChanged = currentAddr !== loadedAddr;
+      const hasAnyAddress = currentAddr.replace(/\|/g, "").length > 0;
+      if (addressChanged && hasAnyAddress && !verifiedCoords) {
+        setError('Verify the address before saving (click “Verify address”).');
+        return;
+      }
+      if (addressChanged && verifiedCoords) {
+        input.latitude = verifiedCoords.lat;
+        input.longitude = verifiedCoords.lng;
+      }
     }
 
     if (Object.keys(input).length === 1) {
@@ -425,7 +467,28 @@ export function InlineEditor({
               placeholder="Search venues..."
             />
           )}
-          <EditorFields fields={fields} values={values} onChange={handleChange} entityId={entityId} />
+          <EditorFields
+            fields={fields}
+            values={values}
+            onChange={handleChange}
+            entityId={entityId}
+            extraAfter={
+              entityType === "venue"
+                ? {
+                    zipCode: (
+                      <AddressVerify
+                        address={values.address || ""}
+                        city={values.city || ""}
+                        state={values.state || ""}
+                        zipCode={values.zipCode || ""}
+                        initialCoords={verifiedCoords}
+                        onResolved={setVerifiedCoords}
+                      />
+                    ),
+                  }
+                : undefined
+            }
+          />
           {error && <p className="text-xs text-curtn-red">{error}</p>}
           <div className="flex gap-2">
             <Button variant="primary" size="sm" onClick={handleSave} disabled={fetching}>
