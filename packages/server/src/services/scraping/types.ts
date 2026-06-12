@@ -31,6 +31,14 @@ export interface ScraperDataSourceConfig {
   // empty — admin can fill in if needed, or the data flows through to a
   // Performance with no time (Performance.time is optional).
   fanOutByDateRange?: boolean
+  // Post-extraction text cleanup, applied to each final row just before
+  // staging. Each pattern is a regex (string form) stripped from the field;
+  // a description reduced to empty becomes undefined. Use to peel promo
+  // prefixes off titles ("JUST ADDED:") or boilerplate off descriptions.
+  cleanup?: {
+    titleStripPatterns?: string[]
+    descriptionStripPatterns?: string[]
+  }
 }
 
 // Optional second-pass extraction: after the listing template produces rows,
@@ -46,6 +54,11 @@ export interface DetailFetchConfig {
                                     //   layered over the JSON-LD base (template wins on conflict).
   cacheTtlMs?: number               // default: 7 days
   fingerprint?: string[]            // listing fields hashed into the cache key (default: ['title', 'date'])
+  // csvFields that merge from the detail page ONLY when the listing row's
+  // value is empty (gap-fill, not override). Other detail fields override the
+  // listing as usual. Use for JSON-LD sources that occasionally drop a field
+  // (e.g. image) on a single event while the listing has it.
+  fillIfEmpty?: string[]
 }
 
 export interface Extractor {

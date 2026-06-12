@@ -95,6 +95,60 @@ function mergeAndValidate(
   return { rows, dropped, filtered }
 }
 
+function isEmptyValue(v: unknown): boolean {
+  return v === undefined || v === null || (typeof v === 'string' && v.trim() === '')
+}
+
+// Merge a detail fragment onto a listing row. Detail fields override the
+// listing, EXCEPT keys listed in fillIfEmpty, which only fill when the
+// listing value is empty (gap-fill). Returns a new row; does not mutate base.
+function mergeFragment(
+  base: CsvRowInput,
+  fragment: Partial<CsvRowInput>,
+  fillIfEmpty: string[] = []
+): CsvRowInput {
+  const out = { ...base } as Record<string, any>
+  const gapOnly = new Set(fillIfEmpty)
+  for (const [k, v] of Object.entries(fragment)) {
+    if (v === undefined) continue
+    if (gapOnly.has(k) && !isEmptyValue(out[k])) continue
+    out[k] = v
+  }
+  return out as CsvRowInput
+}
+
+function stripPatterns(value: string, patterns: string[]): string {
+  let out = value
+  for (const p of patterns) {
+    try {
+      out = out.replace(new RegExp(p, 'g'), '')
+    } catch {
+      // invalid pattern — leave the value untouched
+    }
+  }
+  return out.trim()
+}
+
+// Post-extraction text cleanup. Peels promo prefixes / boilerplate off titles
+// and descriptions per the source's `cleanup` config. A description reduced to
+// empty becomes undefined so staging treats it as absent.
+function applyRowCleanup(
+  rows: CsvRowInput[],
+  cleanup: NonNullable<ScraperDataSourceConfig['cleanup']>
+): void {
+  const titlePats = cleanup.titleStripPatterns ?? []
+  const descPats = cleanup.descriptionStripPatterns ?? []
+  for (const row of rows) {
+    const r = row as any
+    if (titlePats.length && typeof r.title === 'string') {
+      r.title = stripPatterns(r.title, titlePats)
+    }
+    if (descPats.length && typeof r.showDescription === 'string') {
+      r.showDescription = stripPatterns(r.showDescription, descPats) || undefined
+    }
+  }
+}
+
 export async function runScraper(opts: RunScraperOptions): Promise<RunScraperResult> {
   const mode: RunMode = opts.mode ?? 'pending'
   const force = opts.force ?? false
@@ -220,6 +274,11 @@ export async function runScraper(opts: RunScraperOptions): Promise<RunScraperRes
       }
     } else {
       result.rowsValid = fannedRows.length
+    }
+
+    // Source-level text cleanup, applied to the final rows just before staging.
+    if (config.cleanup) {
+      applyRowCleanup(workingRows, config.cleanup)
     }
 
     if (mode === 'dry-run') {
@@ -375,15 +434,15 @@ async function runDetailFetches(
     }
 
     if (fragments.length === 1) {
-      // Single-row detail: merge into listing row in place
-      Object.assign(row, fragments[0])
-      out.push(row)
+      // Single-row detail: merge detail fields onto the listing row, honoring
+      // fillIfEmpty (gap-fill vs override).
+      out.push(mergeFragment(row, fragments[0], detailConfig.fillIfEmpty))
     } else {
       // Multi-row detail: fan out — each fragment becomes a row with listing
       // fields as base. The staging helper will group them by (title, date)
       // and gather personName/personRole/personHeadshotUrl into a cast array.
       for (const f of fragments) {
-        out.push({ ...row, ...f })
+        out.push(mergeFragment(row, f, detailConfig.fillIfEmpty))
       }
     }
   }

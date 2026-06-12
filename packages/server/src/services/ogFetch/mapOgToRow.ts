@@ -18,6 +18,13 @@ export interface OgSourceConfig {
    * before the generic "| venueName" trailing-segment strip.
    */
   titleSuffixes?: string[]
+  /**
+   * Regex patterns (string form) stripped in sequence from og:description.
+   * FB-generated OG descriptions dump page text (credits, date range, image
+   * filename, CTA buttons) ahead of the real synopsis; these peel that off.
+   * A description reduced to empty becomes undefined.
+   */
+  descriptionStripPatterns?: string[]
 }
 
 const SEP = /\s*[|–—]\s*/ // pipe, en-dash, em-dash
@@ -47,6 +54,24 @@ export function cleanTitle(rawTitle: string, config: OgSourceConfig): string {
 }
 
 /**
+ * Strip configured boilerplate patterns from an OG description in sequence.
+ * Returns undefined when nothing usable remains.
+ */
+export function cleanDescription(raw: string | undefined, config: OgSourceConfig): string | undefined {
+  if (!raw) return undefined
+  let d = raw
+  for (const p of config.descriptionStripPatterns ?? []) {
+    try {
+      d = d.replace(new RegExp(p), '')
+    } catch {
+      // invalid pattern — leave as-is
+    }
+  }
+  d = d.trim()
+  return d || undefined
+}
+
+/**
  * Map an OG stub to a single CsvRowInput. Yields title + description + poster
  * + the source URL (as both showUrl and ticketUrl); venue fields come from
  * config. No date/time/cast — that's the known stub limitation (rung 4).
@@ -58,7 +83,7 @@ export function mapOgToRow(og: OpenGraphResult, config: OgSourceConfig): CsvRowI
 
   return {
     title,
-    showDescription: og.description,
+    showDescription: cleanDescription(og.description, config),
     showImageUrl: og.imageUrl,
     showUrl: og.url,
     ticketUrl: og.url,

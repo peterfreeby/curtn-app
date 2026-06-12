@@ -129,6 +129,30 @@ function stripHtml(s: string | undefined): string | undefined {
   return out || undefined
 }
 
+// Flatten Markdown to plain text. Some CMSs (Contentful) store Markdown in
+// JSON-LD descriptions. Emphasis stripping is boundary-guarded for underscores
+// so snake_case identifiers in copy survive.
+function stripMarkdown(s: string | undefined): string | undefined {
+  if (!s) return undefined
+  let out = s
+  // Images ![alt](url) → alt ; links [text](url) → text
+  out = out.replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+  out = out.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+  // Asterisk emphasis — safe to strip globally (asterisks aren't in identifiers)
+  out = out.replace(/\*\*([^*]+)\*\*/g, '$1')
+  out = out.replace(/\*([^*\n]+)\*/g, '$1')
+  // Underscore emphasis — boundary-guarded so my_snake_case stays intact
+  out = out.replace(/(^|[^\w])__([^_]+)__(?=[^\w]|$)/g, '$1$2')
+  out = out.replace(/(^|[^\w])_([^_\n]+)_(?=[^\w]|$)/g, '$1$2')
+  // Inline code, headings, blockquotes, list markers
+  out = out.replace(/`([^`]+)`/g, '$1')
+  out = out.replace(/^[ \t]*#{1,6}[ \t]+/gm, '')
+  out = out.replace(/^[ \t]*>[ \t]?/gm, '')
+  out = out.replace(/^[ \t]*[-*+][ \t]+/gm, '')
+  out = out.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
+  return out || undefined
+}
+
 // Schema.org @type names that some JSON-LD emitters mistakenly write as
 // performer.name string values (Wordpress event plugins, particularly).
 // When we see a performer whose name is one of these, it's a placeholder
@@ -232,14 +256,20 @@ function extractPerformer(performer: unknown): { personName?: string; creditType
 }
 
 function eventToRows(event: any, baseUrl: string | undefined): Partial<CsvRowInput>[] {
-  const title = asString(event.name)
-  if (!title) return []
+  const rawTitle = asString(event.name)
+  if (!rawTitle) return []
+  // Entity-decode titles (e.g. "Cansu&#038;Friends" → "Cansu&Friends").
+  let title = decodeEntitiesOnce(rawTitle)
+  if (/&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z]+);/.test(title)) title = decodeEntitiesOnce(title)
 
   const { date, time } = extractDate(event.startDate)
   const venue = extractVenue(event.location)
   const ticketUrl = resolveUrl(extractOffers(event.offers) || asUrl(event.url), baseUrl)
+  // The event's own canonical URL — the detail page. Exposed as _detailUrl so
+  // JSON-LD sources can run a detail fetch (e.g. for a poster the listing lacks).
+  const detailUrl = resolveUrl(asUrl(event.url), baseUrl)
   const image = resolveUrl(asImage(event.image), baseUrl)
-  const description = stripHtml(asString(event.description))
+  const description = stripMarkdown(stripHtml(asString(event.description)))
 
   // Map @type to performance type
   let performanceType: string | undefined
@@ -265,6 +295,9 @@ function eventToRows(event: any, baseUrl: string | undefined): Partial<CsvRowInp
     performanceImageUrl: image,
     ...venue
   }
+  // Transient field consumed by DetailFetchConfig.fromField and stripped before
+  // staging; not part of CsvRowInput, so attach off-type.
+  if (detailUrl) (baseRow as any)._detailUrl = detailUrl
 
   const performers = extractPerformer(event.performer)
   if (performers.length === 0) return [baseRow]

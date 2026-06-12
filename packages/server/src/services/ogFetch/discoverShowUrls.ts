@@ -5,7 +5,11 @@ export interface DiscoveryConfig {
   /** A reachable light page (homepage / season nav) that links to detail pages. */
   url: string
   /** Substring matched against each anchor href to keep only detail links. */
-  linkPattern: string
+  linkPattern?: string
+  /** Regex (string form) matched against each href — an alternative to
+   *  linkPattern for venues whose detail URLs follow a pattern (e.g. a
+   *  "/2024-2025/<slug>" season path) rather than a fixed substring. */
+  linkRegex?: string
   /** Optional cap on discovered URLs. */
   maxUrls?: number
 }
@@ -36,7 +40,11 @@ export async function discoverShowUrls(config: DiscoveryConfig): Promise<string[
       try {
         const title = await page.title()
         if (!CHALLENGE_RE.test(title) && title.trim()) {
-          const hasLinks = await page.$(`a[href*="${config.linkPattern}"]`)
+          // With a substring pattern we can wait on a CSS attribute selector;
+          // with a regex (or neither) just confirm the page has links.
+          const hasLinks = config.linkPattern
+            ? await page.$(`a[href*="${config.linkPattern}"]`)
+            : await page.$('a[href]')
           if (hasLinks) break
         }
       } catch {
@@ -50,14 +58,19 @@ export async function discoverShowUrls(config: DiscoveryConfig): Promise<string[
       /* best-effort */
     }
 
-    const urls = await page.evaluate((pattern: string) => {
-      const out = new Set<string>()
-      document.querySelectorAll('a[href]').forEach(a => {
-        const href = (a as HTMLAnchorElement).href
-        if (href.includes(pattern)) out.add(href.split('#')[0])
-      })
-      return Array.from(out)
-    }, config.linkPattern)
+    const urls = await page.evaluate(
+      ({ pattern, regex }: { pattern?: string; regex?: string }) => {
+        const re = regex ? new RegExp(regex) : null
+        const out = new Set<string>()
+        document.querySelectorAll('a[href]').forEach(a => {
+          const href = (a as HTMLAnchorElement).href
+          const match = re ? re.test(href) : pattern ? href.includes(pattern) : false
+          if (match) out.add(href.split('#')[0])
+        })
+        return Array.from(out)
+      },
+      { pattern: config.linkPattern, regex: config.linkRegex }
+    )
 
     return config.maxUrls ? urls.slice(0, config.maxUrls) : urls
   } finally {
