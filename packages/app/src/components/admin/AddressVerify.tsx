@@ -136,7 +136,7 @@ export function AddressVerify({
       )}
 
       {status === "found" && !isStale && coords && (
-        <div className="overflow-hidden border border-curtn-dark">
+        <div className="relative z-0 isolate overflow-hidden border border-curtn-dark">
           <AddressPreviewMap lat={coords.lat} lng={coords.lng} className="h-40 w-full" />
         </div>
       )}
