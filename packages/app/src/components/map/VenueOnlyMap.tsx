@@ -5,6 +5,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster";
 import "leaflet.markercluster/dist/MarkerCluster.css";
+import { centerOnUserLocation } from "./geolocate";
 
 interface Venue {
   id: string;
@@ -58,6 +59,12 @@ export function VenueOnlyMap({ venues, className = "", onBoundsChange }: VenueOn
 
     reportBounds(map, onBoundsChangeRef.current);
     map.on('moveend', () => reportBounds(map, onBoundsChangeRef.current));
+
+    // Auto-center on the user's location if they grant permission. Skip if
+    // they've already dragged the map by the time the position resolves.
+    let userMoved = false;
+    map.on("dragstart", () => { userMoved = true; });
+    centerOnUserLocation(map, () => userMoved);
 
     return () => { map.remove(); mapInstanceRef.current = null; };
   }, []);
