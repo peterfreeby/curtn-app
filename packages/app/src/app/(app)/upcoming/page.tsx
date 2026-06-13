@@ -15,6 +15,7 @@ import {
   getDateRange,
   type DateFilter,
 } from "@/lib/mapFilters";
+import { useUserLocation } from "@/components/map/geolocate";
 
 const PerformanceMap = dynamic(
   () => import("@/components/map/PerformanceMap").then((m) => m.PerformanceMap),
@@ -33,6 +34,10 @@ function UpcomingPageContent() {
   const [listExpanded, setListExpanded] = useState(false);
   const [mapBounds, setMapBounds] = useState<{ swLat: number; swLng: number; neLat: number; neLng: number } | null>(null);
   const handleBoundsChange = useCallback((b: typeof mapBounds) => { setMapBounds(b); }, []);
+
+  // Resolved once for the whole page so the VenueOnly → Performance map swap
+  // doesn't re-prompt or fight the user's pan/zoom.
+  const userLocation = useUserLocation();
 
   const dateFilter = (searchParams.get("filter") as DateFilter | null) ?? "all";
   const activeFilter = getActiveFilter(dateFilter);
@@ -127,9 +132,9 @@ function UpcomingPageContent() {
       {view === "map" && (
         <div className="absolute inset-0">
           {hasMapData ? (
-            <PerformanceMap performances={filteredMapPerformances} onBoundsChange={handleBoundsChange} />
+            <PerformanceMap performances={filteredMapPerformances} onBoundsChange={handleBoundsChange} initialCenter={userLocation} />
           ) : (
-            <VenueOnlyMap venues={venues} onBoundsChange={handleBoundsChange} />
+            <VenueOnlyMap venues={venues} onBoundsChange={handleBoundsChange} initialCenter={userLocation} />
           )}
           {/* Subtle refetch indicator — doesn't block the map */}
           {mapFetching && (
