@@ -95,7 +95,13 @@ function UpcomingPageContent() {
   }
   const mapPerformances = stableMapPerfsRef.current;
 
-  const hasMapData = mapPerformances.length > 0;
+  // Sticky: once PerformanceMap has shown, never swap back to VenueOnlyMap.
+  // A region with zero performances would otherwise flip this false, unmount
+  // the map, and remount fresh at initialCenter — yanking the user's viewport
+  // back to origin on zoom-out. Empty regions just show no pins instead.
+  const hasEverHadMapDataRef = useRef(false);
+  if (mapPerformances.length > 0) hasEverHadMapDataRef.current = true;
+  const hasMapData = hasEverHadMapDataRef.current;
 
   // Date filtering is now server-side — mapPerformances is already filtered
   const filteredMapPerformances = mapPerformances;
