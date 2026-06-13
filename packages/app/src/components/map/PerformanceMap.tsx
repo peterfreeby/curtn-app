@@ -5,7 +5,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster";
 import "leaflet.markercluster/dist/MarkerCluster.css";
-import { centerOnUserLocation } from "./geolocate";
+import { NYC_CENTER, DEFAULT_ZOOM, autoCenterOnce } from "./geolocate";
 
 interface Performance {
   id: string;
@@ -40,6 +40,7 @@ interface PerformanceMapProps {
   performances: Performance[];
   className?: string;
   onBoundsChange?: (bounds: MapBounds) => void;
+  initialCenter?: [number, number] | null;
 }
 
 function groupByVenue(performances: Performance[]) {
@@ -126,16 +127,24 @@ function reportBounds(map: L.Map, onBoundsChange: ((b: MapBounds) => void) | und
   });
 }
 
-export function PerformanceMap({ performances, className = "", onBoundsChange }: PerformanceMapProps) {
+export function PerformanceMap({ performances, className = "", onBoundsChange, initialCenter }: PerformanceMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const clusterRef = useRef<L.MarkerClusterGroup | null>(null);
   const onBoundsChangeRef = useRef(onBoundsChange);
   onBoundsChangeRef.current = onBoundsChange;
+  // Auto-center guards: skip once the user interacts, and only ever center once.
+  const interactedRef = useRef(false);
+  const centeredRef = useRef(false);
+  const initialCenterRef = useRef(initialCenter);
+  initialCenterRef.current = initialCenter;
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
-    const map = L.map(mapRef.current, { zoomControl: false }).setView([40.7580, -73.9855], 13);
+    // If we already know the user's location at mount, open there directly.
+    const start = initialCenterRef.current ?? NYC_CENTER;
+    if (initialCenterRef.current) centeredRef.current = true;
+    const map = L.map(mapRef.current, { zoomControl: false }).setView(start, DEFAULT_ZOOM);
     if (window.matchMedia("(min-width: 768px)").matches) {
       L.control.zoom({ position: "bottomright" }).addTo(map);
     }
@@ -149,14 +158,21 @@ export function PerformanceMap({ performances, className = "", onBoundsChange }:
     reportBounds(map, onBoundsChangeRef.current);
     map.on('moveend', () => reportBounds(map, onBoundsChangeRef.current));
 
-    // Auto-center on the user's location if they grant permission. Skip if
-    // they've already dragged the map by the time the position resolves.
-    let userMoved = false;
-    map.on("dragstart", () => { userMoved = true; });
-    centerOnUserLocation(map, () => userMoved);
+    // Any user-initiated pan or zoom disables auto-centering for good.
+    const markInteracted = () => { interactedRef.current = true; };
+    map.on("dragstart", markInteracted);
+    map.on("zoomstart", markInteracted);
 
     return () => { map.remove(); mapInstanceRef.current = null; };
   }, []);
+
+  // Auto-center when the user's location resolves after mount (once, and only
+  // if they haven't started interacting with the map yet).
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    autoCenterOnce(map, initialCenter ?? null, interactedRef, centeredRef);
+  }, [initialCenter]);
 
   useEffect(() => {
     const map = mapInstanceRef.current;
