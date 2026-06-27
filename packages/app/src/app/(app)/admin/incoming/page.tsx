@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "urql";
 import {
   PENDING_IMPORTS_QUERY,
@@ -9,6 +9,8 @@ import {
   EDIT_PENDING_IMPORT_MUTATION,
   AUTO_VALIDATE_MUTATION,
   APPROVE_ALL_MUTATION,
+  FLAG_SCRAPER_ISSUE_MUTATION,
+  SCRAPER_ISSUE_CATEGORIES,
 } from "@/lib/graphql/admin";
 import { Button } from "@/components/Button";
 
@@ -43,7 +45,7 @@ interface PendingImportNode {
   dataSource: { id: string; name: string };
 }
 
-type StatusFilter = "pending" | "approved" | "rejected" | "all";
+type StatusFilter = "pending" | "approved" | "rejected" | "flagged" | "all";
 type RowAction = "approve" | "reject";
 
 export default function IncomingEventsPage() {
@@ -53,6 +55,9 @@ export default function IncomingEventsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   // Anchor for shift-click range selection across pending rows
   const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
+  // Shift-key state captured from the checkbox's onClick (fires just before its
+  // onChange), so onChange can do range-vs-single selection deterministically.
+  const shiftKeyRef = useRef(false);
   // Per-row in-flight tracking. id → action being performed
   const [rowBusy, setRowBusy] = useState<Record<string, RowAction>>({});
   // Per-row error messages set by the latest action on that row
@@ -61,6 +66,12 @@ export default function IncomingEventsPage() {
   const [bulkMessage, setBulkMessage] = useState<string | null>(null);
   // Bulk reject loops the single-reject mutation, so track in-flight here
   const [rejectingSelected, setRejectingSelected] = useState(false);
+  // Scraper-issue flag modal state (bulk: applies to the current selection)
+  const [flaggingBulk, setFlaggingBulk] = useState(false);
+  const [flagCats, setFlagCats] = useState<Set<string>>(new Set());
+  const [flagNote, setFlagNote] = useState("");
+  const [flagBusy, setFlagBusy] = useState(false);
+  const [flagMsg, setFlagMsg] = useState<string | null>(null);
 
   const [{ data, fetching }, reexecuteQuery] = useQuery({
     query: PENDING_IMPORTS_QUERY,
@@ -79,6 +90,61 @@ export default function IncomingEventsPage() {
   const [{ fetching: approvingAll }, executeApproveAll] = useMutation(
     APPROVE_ALL_MUTATION
   );
+  const [, executeFlag] = useMutation(FLAG_SCRAPER_ISSUE_MUTATION);
+
+  function openBulkFlag() {
+    if (selected.size === 0) {
+      setBulkMessage("No items selected to flag.");
+      return;
+    }
+    setFlaggingBulk(true);
+    setFlagCats(new Set());
+    setFlagNote("");
+    setFlagMsg(null);
+  }
+
+  function toggleFlagCat(value: string) {
+    setFlagCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  }
+
+  async function submitFlag() {
+    const ids = Array.from(selected);
+    if (ids.length === 0) {
+      setFlaggingBulk(false);
+      return;
+    }
+    if (flagCats.size === 0 && !flagNote.trim()) {
+      setFlagMsg("Pick at least one category or add a note.");
+      return;
+    }
+    setFlagBusy(true);
+    setFlagMsg(null);
+    const categories = Array.from(flagCats);
+    const note = flagNote.trim() || undefined;
+    let flagged = 0;
+    let errors = 0;
+    for (const id of ids) {
+      const result = await executeFlag({
+        input: { pendingImportId: decodeGlobalId(id), categories, note },
+      });
+      if (result.error || result.data?.flagScraperIssue?.error) errors += 1;
+      else flagged += 1;
+    }
+    setFlagBusy(false);
+    setFlaggingBulk(false);
+    setSelected(new Set());
+    setBulkMessage(
+      `Flagged ${flagged}${errors ? `, ${errors} error${errors === 1 ? "" : "s"}` : ""}.`
+    );
+    // Flagged rows move to the 'flagged' status — refetch so they drop out of
+    // the pending list.
+    reexecuteQuery({ requestPolicy: "network-only" });
+  }
 
   const items: PendingImportNode[] =
     data?.pendingImports?.edges?.map((e: { node: PendingImportNode }) => e.node) || [];
@@ -273,15 +339,22 @@ export default function IncomingEventsPage() {
     });
   }
 
-  function handleRowCheckboxClick(
-    e: React.MouseEvent<HTMLInputElement>,
-    id: string
-  ) {
-    if (e.shiftKey && lastSelectedId && lastSelectedId !== id) {
+  // onClick fires just before onChange — only record whether shift was held.
+  function handleRowCheckboxClick(e: React.MouseEvent<HTMLInputElement>) {
+    shiftKeyRef.current = e.shiftKey;
+  }
+
+  // Single source of truth for row selection (wired to the checkbox onChange).
+  // Shift held → select the inclusive range from the anchor to this row; else
+  // toggle just this row. No preventDefault / no split across handlers, so the
+  // range endpoint can't be double-toggled off.
+  function handleSelectToggle(id: string) {
+    const shift = shiftKeyRef.current;
+    shiftKeyRef.current = false;
+    if (shift && lastSelectedId && lastSelectedId !== id) {
       const a = selectableIds.indexOf(lastSelectedId);
       const b = selectableIds.indexOf(id);
       if (a !== -1 && b !== -1) {
-        e.preventDefault();
         const [start, end] = a < b ? [a, b] : [b, a];
         const range = selectableIds.slice(start, end + 1);
         setSelected((prev) => {
@@ -289,8 +362,11 @@ export default function IncomingEventsPage() {
           for (const r of range) next.add(r);
           return next;
         });
+        setLastSelectedId(id);
+        return;
       }
     }
+    toggleSelect(id);
     setLastSelectedId(id);
   }
 
@@ -348,6 +424,13 @@ export default function IncomingEventsPage() {
                   ? "Rejecting..."
                   : `Reject ${selected.size} Selected`}
               </Button>
+              <Button
+                variant="tertiary"
+                onClick={openBulkFlag}
+                disabled={validating || approvingAll || rejectingSelected || flagBusy}
+              >
+                {flagBusy ? "Flagging..." : `Flag ${selected.size} Selected`}
+              </Button>
             </>
           )}
           <Button
@@ -380,7 +463,7 @@ export default function IncomingEventsPage() {
 
       {/* Status filter tabs */}
       <div className="flex gap-1 bg-curtn-surface p-1">
-        {(["pending", "approved", "rejected", "all"] as StatusFilter[]).map((s) => (
+        {(["pending", "approved", "rejected", "flagged", "all"] as StatusFilter[]).map((s) => (
           <button
             key={s}
             onClick={() => {
@@ -457,8 +540,8 @@ export default function IncomingEventsPage() {
                     canSelect={canSelect}
                     isSelected={isSelected}
                     editFields={editFields}
-                    onToggle={() => toggleSelect(item.id)}
-                    onCheckboxClick={(e) => handleRowCheckboxClick(e, item.id)}
+                    onToggle={() => handleSelectToggle(item.id)}
+                    onCheckboxClick={(e) => handleRowCheckboxClick(e)}
                     onApprove={() => handleApprove(item)}
                     onReject={() => handleReject(item)}
                     onEdit={() => startEditing(item)}
@@ -474,6 +557,63 @@ export default function IncomingEventsPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {flaggingBulk && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => !flagBusy && setFlaggingBulk(false)}
+        >
+          <div
+            className="w-full max-w-md bg-curtn-surface border border-curtn-dark p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-medium text-curtn-cream">
+              Flag {selected.size} selected{" "}
+              {selected.size === 1 ? "event" : "events"}
+            </h3>
+            <p className="mb-3 text-xs text-curtn-muted">
+              Logs a scraper-quality issue (does not reject). Applied to all
+              selected.
+            </p>
+            <div className="mb-3 grid grid-cols-2 gap-1.5">
+              {SCRAPER_ISSUE_CATEGORIES.map((c) => (
+                <label
+                  key={c.value}
+                  className="flex cursor-pointer items-center gap-2 text-sm text-curtn-cream"
+                >
+                  <input
+                    type="checkbox"
+                    checked={flagCats.has(c.value)}
+                    onChange={() => toggleFlagCat(c.value)}
+                    className="accent-curtn-coral"
+                  />
+                  {c.label}
+                </label>
+              ))}
+            </div>
+            <textarea
+              value={flagNote}
+              onChange={(e) => setFlagNote(e.target.value)}
+              placeholder="Optional note…"
+              rows={3}
+              className="mb-2 w-full border border-curtn-dark bg-curtn-surface-2 p-2 text-sm text-curtn-cream"
+            />
+            {flagMsg && <p className="mb-2 text-xs text-curtn-coral">{flagMsg}</p>}
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="tertiary"
+                onClick={() => setFlaggingBulk(false)}
+                disabled={flagBusy}
+              >
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={submitFlag} disabled={flagBusy}>
+                {flagBusy ? "Saving…" : "Log issue"}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

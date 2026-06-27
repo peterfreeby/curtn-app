@@ -10,7 +10,7 @@ import type { ScraperDataSourceConfig } from '../services/scraping/types'
 // posts upcoming shows; the root page redirects there. rowDefaults inject the
 // physical address because Pangea's JSON-LD typically omits the venue schema.
 
-const CONFIG: ScraperDataSourceConfig = {
+export const CONFIG: ScraperDataSourceConfig = {
   startUrl: 'https://pangeanyc.com/music/',
   strategy: { mode: 'json-ld' },
   rowDefaults: {
@@ -20,6 +20,39 @@ const CONFIG: ScraperDataSourceConfig = {
     venueState: 'NY',
     venueZipCode: '10003',
     performanceTypes: 'cabaret'
+  },
+  // Titles carry a trailing showtime ("Show Name, 7:00pm–8:30pm, no cover");
+  // descriptions lead/trail with reservation + venue boilerplate.
+  cleanup: {
+    titleStripPatterns: [
+      ',\\s*\\d{1,2}:\\d{2}\\s*[ap]m(\\s*[-\\u2013]\\s*\\d{1,2}:\\d{2}\\s*[ap]m)?(\\s*,\\s*no cover)?\\s*$'
+    ],
+    descriptionStripPatterns: [
+      '^\\s*BUY TICKETS\\s*',
+      'To make a reservation call:[\\s\\S]*?\\(click here\\)\\s*',
+      'VENUE DETAILS[\\s\\S]*$',
+      '\\s*Click here for more information\\.?\\s*$'
+    ]
+  },
+  // JSON-LD omits the poster; pull it from the detail page (the full-size show
+  // image, not the header logo).
+  detail: {
+    fromField: '_detailUrl',
+    fingerprint: ['title'],
+    template: {
+      version: 2,
+      nodes: [
+        {
+          type: 'container',
+          id: 'detail',
+          label: 'Show poster',
+          selector: 'body',
+          children: [
+            { type: 'field', id: 'poster', csvField: 'showImageUrl', selector: 'img.size-full', attribute: 'src', transform: 'trim' }
+          ]
+        }
+      ]
+    }
   }
 }
 
@@ -63,4 +96,4 @@ async function main() {
   }
 }
 
-main().catch(err => { console.error(err); process.exit(1) })
+if (require.main === module) main().catch(err => { console.error(err); process.exit(1) })

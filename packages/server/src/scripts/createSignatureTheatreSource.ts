@@ -13,7 +13,7 @@ import type { ScraperDataSourceConfig } from '../services/scraping/types'
 // useful as a fallback ticketing link. Per-show detail URL via a[href*="/show/"].
 // waitFor: '.wp-block-post' — page is JS-rendered.
 
-const CONFIG: ScraperDataSourceConfig = {
+export const CONFIG: ScraperDataSourceConfig = {
   startUrl: 'https://www.signaturetheatre.org/productions/',
   waitFor: '.wp-block-post',
   strategy: {
@@ -44,13 +44,6 @@ const CONFIG: ScraperDataSourceConfig = {
             },
             {
               type: 'field',
-              id: 'showDescription',
-              csvField: 'showDescription',
-              selector: '.wp-block-paragraph',
-              transform: 'trim'
-            },
-            {
-              type: 'field',
               id: 'ticketUrl',
               csvField: 'ticketUrl',
               selector: 'a[href*="signaturetheatre.org/show/"]',
@@ -58,12 +51,54 @@ const CONFIG: ScraperDataSourceConfig = {
               transform: 'trim'
             },
             {
+              // Per-show detail page — drives the detail fetch below.
+              type: 'field',
+              id: 'detailUrl',
+              csvField: '_detailUrl',
+              selector: 'a[href*="signaturetheatre.org/show/"]',
+              attribute: 'href',
+              transform: 'trim'
+            },
+            {
+              // ExactDN/Jetpack CDN appends ?strip=all&webp=… that breaks on
+              // HTML-escape; regex keeps just the path, dropping the query.
               type: 'field',
               id: 'showImageUrl',
               csvField: 'showImageUrl',
               selector: 'img.attachment-full',
               attribute: 'src',
+              regex: '^([^?]+)',
               transform: 'trim'
+            }
+          ]
+        }
+      ]
+    }
+  },
+  // Listing .wp-block-paragraph was blank/credit text — synopsis comes from the
+  // detail page's .hero-about, and cast fans out from .cast-member.
+  detail: {
+    fromField: '_detailUrl',
+    fingerprint: ['title'],
+    template: {
+      version: 2,
+      nodes: [
+        {
+          type: 'container',
+          id: 'detail',
+          label: 'Show detail',
+          selector: 'body',
+          children: [
+            { type: 'field', id: 'desc', csvField: 'showDescription', selector: '.hero-about', transform: 'trim' },
+            {
+              type: 'container',
+              id: 'cast',
+              label: 'Cast',
+              selector: '.cast-member',
+              children: [
+                { type: 'field', id: 'name', csvField: 'personName', selector: '.cast-member-name', transform: 'trim' },
+                { type: 'field', id: 'headshot', csvField: 'personHeadshotUrl', selector: 'img', attribute: 'src', transform: 'trim' }
+              ]
             }
           ]
         }
@@ -122,7 +157,7 @@ async function main() {
   }
 }
 
-main().catch(err => {
+if (require.main === module) main().catch(err => {
   console.error(err)
   process.exit(1)
 })

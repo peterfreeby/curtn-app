@@ -1,4 +1,4 @@
-import { chromium, type Browser, type Page } from 'playwright'
+import { chromium, type Browser, type BrowserContext, type Page } from 'playwright'
 import { DataSourceModel } from '../../entities/dataSource/dataSourceModel'
 import { processImportRows, type CsvRowInput, type ImportResult } from '../importEngine'
 import { stageRowsAsPendingImports, type StageResult } from '../pendingImport/stage'
@@ -7,11 +7,12 @@ import { jsonLdExtractor } from './extractors/jsonLd'
 import { makeTemplateExtractor } from './extractors/template'
 import { politeNavigate, RobotsBlockedError, USER_AGENT } from './politeNavigate'
 import { getScraper } from './registry'
+import { rehostRowImages } from '../images/rehostImage'
 import type { DetailFetchConfig, ScraperDataSourceConfig, Extractor } from './types'
 
-const NAV_TIMEOUT_MS = 30_000
-const DEFAULT_MAX_ITEMS = 500
-const DEFAULT_COOLDOWN_HOURS = 24
+export const NAV_TIMEOUT_MS = 30_000
+export const DEFAULT_MAX_ITEMS = 500
+export const DEFAULT_COOLDOWN_HOURS = 24
 const FAILURE_THRESHOLD = 3 // disable source after this many consecutive failures
 
 export type RunMode = 'pending' | 'direct' | 'dry-run'
@@ -51,7 +52,7 @@ export class SourceDisabledError extends Error {
   }
 }
 
-function pickExtractor(config: ScraperDataSourceConfig): Extractor {
+export function pickExtractor(config: ScraperDataSourceConfig): Extractor {
   switch (config.strategy.mode) {
     case 'json-ld':
       return jsonLdExtractor
@@ -65,7 +66,7 @@ function pickExtractor(config: ScraperDataSourceConfig): Extractor {
   }
 }
 
-function mergeAndValidate(
+export function mergeAndValidate(
   fragments: Partial<CsvRowInput>[],
   defaults: Partial<CsvRowInput> = {},
   filters: { excludeUrlPatterns?: string[]; includeUrlPatterns?: string[] } = {}
@@ -93,6 +94,60 @@ function mergeAndValidate(
     rows.push(merged as CsvRowInput)
   }
   return { rows, dropped, filtered }
+}
+
+function isEmptyValue(v: unknown): boolean {
+  return v === undefined || v === null || (typeof v === 'string' && v.trim() === '')
+}
+
+// Merge a detail fragment onto a listing row. Detail fields override the
+// listing, EXCEPT keys listed in fillIfEmpty, which only fill when the
+// listing value is empty (gap-fill). Returns a new row; does not mutate base.
+export function mergeFragment(
+  base: CsvRowInput,
+  fragment: Partial<CsvRowInput>,
+  fillIfEmpty: string[] = []
+): CsvRowInput {
+  const out = { ...base } as Record<string, any>
+  const gapOnly = new Set(fillIfEmpty)
+  for (const [k, v] of Object.entries(fragment)) {
+    if (v === undefined) continue
+    if (gapOnly.has(k) && !isEmptyValue(out[k])) continue
+    out[k] = v
+  }
+  return out as CsvRowInput
+}
+
+function stripPatterns(value: string, patterns: string[]): string {
+  let out = value
+  for (const p of patterns) {
+    try {
+      out = out.replace(new RegExp(p, 'g'), '')
+    } catch {
+      // invalid pattern — leave the value untouched
+    }
+  }
+  return out.trim()
+}
+
+// Post-extraction text cleanup. Peels promo prefixes / boilerplate off titles
+// and descriptions per the source's `cleanup` config. A description reduced to
+// empty becomes undefined so staging treats it as absent.
+export function applyRowCleanup(
+  rows: CsvRowInput[],
+  cleanup: NonNullable<ScraperDataSourceConfig['cleanup']>
+): void {
+  const titlePats = cleanup.titleStripPatterns ?? []
+  const descPats = cleanup.descriptionStripPatterns ?? []
+  for (const row of rows) {
+    const r = row as any
+    if (titlePats.length && typeof r.title === 'string') {
+      r.title = stripPatterns(r.title, titlePats)
+    }
+    if (descPats.length && typeof r.showDescription === 'string') {
+      r.showDescription = stripPatterns(r.showDescription, descPats) || undefined
+    }
+  }
 }
 
 export async function runScraper(opts: RunScraperOptions): Promise<RunScraperResult> {
@@ -207,19 +262,33 @@ export async function runScraper(opts: RunScraperOptions): Promise<RunScraperRes
     // page does not abort the run.
     let workingRows: CsvRowInput[] = fannedRows
     if (config.detail && fannedRows.length > 0) {
-      const detailPage = await context.newPage()
-      try {
-        const { rows: enriched, stats: detailStats } = await runDetailFetches(
-          detailPage, fannedRows, config.detail, config.startUrl
-        )
-        workingRows = enriched
-        Object.assign(result, detailStats)
-        result.rowsValid = enriched.length
-      } finally {
-        await detailPage.close()
-      }
+      const { rows: enriched, stats: detailStats } = await runDetailFetches(
+        context, fannedRows, config.detail, config.startUrl
+      )
+      workingRows = enriched
+      Object.assign(result, detailStats)
+      result.rowsValid = enriched.length
     } else {
       result.rowsValid = fannedRows.length
+    }
+
+    // Source-level text cleanup, applied to the final rows just before staging.
+    if (config.cleanup) {
+      applyRowCleanup(workingRows, config.cleanup)
+    }
+
+    // Ticket-URL fallback (final): any row still missing a ticket link falls back
+    // to the source listing URL — "wherever we got the event from". Detail-fetch
+    // rows already fell back to their own detail page; this catches listing-only
+    // sources and genuinely link-less rows.
+    for (const r of workingRows) {
+      if (!r.ticketUrl || !String(r.ticketUrl).trim()) r.ticketUrl = config.startUrl
+    }
+
+    // Rehost hotlink-protected images into R2 (opt-in per source).
+    if (config.rehostImages && mode !== 'dry-run') {
+      const n = await rehostRowImages(workingRows, opts.dataSourceId)
+      if (n) console.log(`[runScraper] rehosted ${n} image(s) to R2`)
     }
 
     if (mode === 'dry-run') {
@@ -260,7 +329,7 @@ export async function runScraper(opts: RunScraperOptions): Promise<RunScraperRes
 const ONE_DAY_MS = 24 * 60 * 60 * 1000
 const MAX_FAN_OUT_DAYS = 60 // safety cap; nothing legit runs longer than ~2 months
 
-function expandRowsByDateRange(rows: CsvRowInput[]): CsvRowInput[] {
+export function expandRowsByDateRange(rows: CsvRowInput[]): CsvRowInput[] {
   const out: CsvRowInput[] = []
   for (const row of rows) {
     const startStr = (row as any).runStartDate
@@ -290,7 +359,7 @@ function expandRowsByDateRange(rows: CsvRowInput[]): CsvRowInput[] {
 
 // Resolve a possibly-relative URL against the source's startUrl. Handles
 // "/events/foo" → "https://caveat.nyc/events/foo" without breaking absolute URLs.
-function resolveDetailUrl(maybeRelative: string, startUrl: string): string {
+export function resolveDetailUrl(maybeRelative: string, startUrl: string): string {
   try {
     return new URL(maybeRelative, startUrl).toString()
   } catch {
@@ -313,7 +382,7 @@ interface DetailStats {
 // Per-row try/catch protects 19 good rows from 1 bad detail page (timeout,
 // 404, selector rot). Cache hits short-circuit the network entirely.
 async function runDetailFetches(
-  page: Page,
+  context: BrowserContext,
   rows: CsvRowInput[],
   detailConfig: DetailFetchConfig,
   startUrl: string
@@ -322,15 +391,21 @@ async function runDetailFetches(
   const stats: DetailStats = { detailFetched: 0, detailCacheHits: 0, detailFailed: 0 }
   const out: CsvRowInput[] = []
 
+  const fresh = detailConfig.freshContextPerFetch === true
+  // Default (reuse) mode keeps one page for the whole batch — cheap, unchanged.
+  const sharedPage: Page | null = fresh ? null : await context.newPage()
+  const browser = context.browser()
+
   // Combined detail extraction: JSON-LD (for SPA/CMS sites with rich Event
   // schema), the CSS template, or both layered (template over the JSON-LD base).
-  const extractDetail = async (detailUrl: string): Promise<Partial<CsvRowInput>[]> => {
+  const extractDetail = async (page: Page, detailUrl: string): Promise<Partial<CsvRowInput>[]> => {
     const ld = detailConfig.jsonLd ? await jsonLdExtractor.extract(page, detailUrl) : []
     const tpl = templateExtractor ? await templateExtractor.extract(page, detailUrl) : []
     if (ld.length && tpl.length) return tpl.map(t => ({ ...ld[0], ...t }))
     return ld.length ? ld : tpl
   }
 
+  try {
   for (const row of rows) {
     const detailUrlRaw = (row as any)[detailConfig.fromField]
     if (!detailUrlRaw) {
@@ -349,8 +424,23 @@ async function runDetailFetches(
         fragments = cached.fragments
         stats.detailCacheHits++
       } else {
-        await politeNavigate(page, detailUrl, { useCache: false, hydrationDelayMs: 3_000 })
-        fragments = await extractDetail(detailUrl)
+        // Fresh context per fetch isolates cookies/anti-bot state across rows;
+        // otherwise reuse the shared page. Legit CurtnBot UA either way.
+        const dctx = fresh && browser
+          ? await browser.newContext({ userAgent: USER_AGENT })
+          : null
+        const page = dctx ? await dctx.newPage() : sharedPage!
+        try {
+          await politeNavigate(page, detailUrl, {
+            useCache: false,
+            // When waiting for a populated selector, skip the blind delay.
+            hydrationDelayMs: detailConfig.waitForSelector ? 0 : 3_000,
+            waitForPopulated: detailConfig.waitForSelector
+          })
+          fragments = await extractDetail(page, detailUrl)
+        } finally {
+          if (dctx) await dctx.close()
+        }
         await writeDetailCache(detailUrl, fingerprint, fragments)
         stats.detailFetched++
       }
@@ -375,16 +465,30 @@ async function runDetailFetches(
     }
 
     if (fragments.length === 1) {
-      // Single-row detail: merge into listing row in place
-      Object.assign(row, fragments[0])
-      out.push(row)
+      // Single-row detail: merge detail fields onto the listing row, honoring
+      // fillIfEmpty (gap-fill vs override).
+      out.push(mergeFragment(row, fragments[0], detailConfig.fillIfEmpty))
     } else {
       // Multi-row detail: fan out — each fragment becomes a row with listing
       // fields as base. The staging helper will group them by (title, date)
       // and gather personName/personRole/personHeadshotUrl into a cast array.
       for (const f of fragments) {
-        out.push({ ...row, ...f })
+        out.push(mergeFragment(row, f, detailConfig.fillIfEmpty))
       }
+    }
+  }
+
+  } finally {
+    if (sharedPage) await sharedPage.close()
+  }
+
+  // Ticket-URL fallback: if no ticket link was extracted, the detail page we
+  // scraped the event from is the most faithful "where to get tickets" link.
+  for (const row of out) {
+    const tu = (row as any).ticketUrl
+    if (!tu || !String(tu).trim()) {
+      const du = (row as any)[detailConfig.fromField]
+      if (du) (row as any).ticketUrl = resolveDetailUrl(String(du), startUrl)
     }
   }
 
@@ -396,7 +500,7 @@ async function runDetailFetches(
   return { rows: out, stats }
 }
 
-async function recordRunOutcome(
+export async function recordRunOutcome(
   dataSourceId: string,
   outcome: 'success' | 'failure',
   errorMessage?: string
@@ -419,7 +523,7 @@ async function recordRunOutcome(
   await ds.save()
 }
 
-async function markDisabled(dataSourceId: string, reason: string): Promise<void> {
+export async function markDisabled(dataSourceId: string, reason: string): Promise<void> {
   const ds = await DataSourceModel.findById(dataSourceId)
   if (!ds) return
   ds.isActive = false

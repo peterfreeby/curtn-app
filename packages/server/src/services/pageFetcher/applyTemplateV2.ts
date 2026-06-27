@@ -8,6 +8,34 @@ import type { CsvRowInput } from '../importEngine'
 // A flat row matching CsvRowInput shape — all string values
 type FlatRow = Record<string, string | undefined>
 
+const NAMED_ENTITIES: Record<string, string> = {
+  '&lt;': '<', '&gt;': '>', '&amp;': '&', '&quot;': '"', '&apos;': "'",
+  '&nbsp;': ' ', '&rsquo;': '’', '&lsquo;': '‘', '&rdquo;': '”', '&ldquo;': '“',
+  '&hellip;': '…', '&mdash;': '—', '&ndash;': '–', '&bull;': '•',
+  '&times;': '×', '&deg;': '°', '&copy;': '©', '&reg;': '®', '&trade;': '™',
+  '&eacute;': 'é', '&egrave;': 'è', '&agrave;': 'à', '&ccedil;': 'ç',
+  '&ntilde;': 'ñ', '&uuml;': 'ü', '&ouml;': 'ö', '&auml;': 'ä'
+}
+
+function decodeEntitiesOnce(s: string): string {
+  return s.replace(/&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z]+);/g, (match) => {
+    if (NAMED_ENTITIES[match]) return NAMED_ENTITIES[match]
+    const hex = match.match(/&#x([0-9a-fA-F]+);/)
+    if (hex) { const c = parseInt(hex[1], 16); if (!isNaN(c)) return String.fromCodePoint(c) }
+    const dec = match.match(/&#(\d+);/)
+    if (dec) { const c = parseInt(dec[1], 10); if (!isNaN(c)) return String.fromCodePoint(c) }
+    return match
+  })
+}
+
+// Decode HTML entities in extracted text. Up to two passes to unwind
+// double-encoded values (og: tags commonly emit "&amp;amp;" → "&amp;" → "&").
+function decodeEntities(s: string): string {
+  let out = decodeEntitiesOnce(s)
+  if (/&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z]+);/.test(out)) out = decodeEntitiesOnce(out)
+  return out
+}
+
 function resolveUrl(relative: string | undefined, baseUrl: string): string | undefined {
   if (!relative) return undefined
   try {
@@ -43,18 +71,28 @@ function extractFieldValue(
   // ":scope" / ":self" → the container element itself (handy for reading data-*
   // attributes off a card's wrapper). Cheerio's .find() only walks descendants,
   // so this special case routes around it.
-  const el =
+  const matches =
     field.selector === ':scope' || field.selector === ':self'
       ? context
-      : context.find(field.selector).first()
+      : context.find(field.selector)
+  // index picks the Nth match (for undifferentiated repeated blocks); default
+  // is the first.
+  const el =
+    field.selector === ':scope' || field.selector === ':self'
+      ? matches
+      : typeof field.index === 'number'
+        ? matches.eq(field.index)
+        : matches.first()
   if (!el.length) return undefined
 
   let value: string
   if (field.attribute) {
     value = el.attr(field.attribute) || ''
-    // For images, try fallbacks
-    if (!value && field.attribute === 'src') {
-      value = el.attr('data-src') || ''
+    // For images, fall through lazy-load placeholders. A `data:` URI is a
+    // base64 spacer, not the real image — treat it as empty so we reach
+    // data-src / data-lazy-src / srcset.
+    if (field.attribute === 'src' && (!value || value.startsWith('data:'))) {
+      value = el.attr('data-src') || el.attr('data-lazy-src') || ''
       if (!value) {
         const srcset = el.attr('srcset') || el.attr('data-srcset') || ''
         const firstEntry = srcset.split(',')[0]?.trim().split(/\s+/)[0]
@@ -66,6 +104,10 @@ function extractFieldValue(
   }
 
   if (!value) return undefined
+
+  // Decode HTML entities on all extracted text (&amp;, &#038;, double-encoded
+  // og values). Done before regex/transform so they operate on clean text.
+  value = decodeEntities(value)
 
   // Apply regex
   if (field.regex) {

@@ -9,7 +9,7 @@ import type { ScraperDataSourceConfig } from '../services/scraping/types'
 // probeSeedList found 5 TheaterEvent at root scr.org. Three stages: Segerstrom,
 // Julianne Argyros, Nicholas Studio. OC-based but tier-1 regional.
 
-const CONFIG: ScraperDataSourceConfig = {
+export const CONFIG: ScraperDataSourceConfig = {
   startUrl: 'https://www.scr.org/',
   strategy: { mode: 'json-ld' },
   rowDefaults: {
@@ -18,6 +18,28 @@ const CONFIG: ScraperDataSourceConfig = {
     venueCity: 'Costa Mesa',
     venueState: 'CA',
     venueZipCode: '92626'
+  },
+  // "Cursed" (2026) had no JSON-LD image while every other show did. Gap-fill
+  // the poster from the detail page's og:image ONLY when the listing lacks one
+  // (fillIfEmpty), so we don't override the good JSON-LD images on other shows.
+  detail: {
+    fromField: '_detailUrl',
+    fingerprint: ['title'],
+    fillIfEmpty: ['showImageUrl'],
+    template: {
+      version: 2,
+      nodes: [
+        {
+          type: 'container',
+          id: 'detail',
+          label: 'Poster fallback',
+          selector: 'head',
+          children: [
+            { type: 'field', id: 'poster', csvField: 'showImageUrl', selector: 'meta[property="og:image"]', attribute: 'content', transform: 'trim' }
+          ]
+        }
+      ]
+    }
   }
 }
 
@@ -61,4 +83,4 @@ async function main() {
   }
 }
 
-main().catch(err => { console.error(err); process.exit(1) })
+if (require.main === module) main().catch(err => { console.error(err); process.exit(1) })

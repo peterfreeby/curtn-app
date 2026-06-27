@@ -1,5 +1,6 @@
 import { pollDataSource } from './pollDataSource'
 import { approvePendingImport, rejectPendingImport, editPendingImport, autoValidatePendingImports, approveAllPendingImports } from './reviewPendingImport'
+import { flagScraperIssue } from './flagScraperIssue'
 
 export const pendingImportMutations = {
   pollDataSource,
@@ -7,5 +8,6 @@ export const pendingImportMutations = {
   rejectPendingImport,
   editPendingImport,
   autoValidatePendingImports,
-  approveAllPendingImports
+  approveAllPendingImports,
+  flagScraperIssue
 }

@@ -15,7 +15,7 @@ import type { ScraperDataSourceConfig } from '../services/scraping/types'
 // So: the listing just harvests detail URLs; detail-fetch with `jsonLd: true`
 // pulls the structured fields from each event's JSON-LD (Tier-1-quality).
 
-const CONFIG: ScraperDataSourceConfig = {
+export const CONFIG: ScraperDataSourceConfig = {
   startUrl: 'https://hennepinarts.org/events',
   strategy: {
     mode: 'template',
@@ -37,6 +37,16 @@ const CONFIG: ScraperDataSourceConfig = {
               selector: 'a[href*="/events/"]',
               attribute: 'href',
               transform: 'trim'
+            },
+            {
+              // Fallback ticketing link; the detail Ticketmaster link overrides
+              // it when present.
+              type: 'field',
+              id: 'ticketFallback',
+              csvField: 'ticketUrl',
+              selector: 'a[href*="/events/"]',
+              attribute: 'href',
+              transform: 'trim'
             }
           ]
         }
@@ -53,7 +63,24 @@ const CONFIG: ScraperDataSourceConfig = {
   detail: {
     fromField: '_detailUrl',
     fingerprint: ['title'],
-    jsonLd: true // pull title/date/description/image/venue from the detail Event JSON-LD
+    jsonLd: true, // pull title/date/description/venue from the detail Event JSON-LD
+    // The JSON-LD image is an @id ref (no usable URL) and there are no offers,
+    // so a template layer adds the og:image poster and the Ticketmaster link.
+    template: {
+      version: 2,
+      nodes: [
+        {
+          type: 'container',
+          id: 'detail',
+          label: 'Detail DOM fields',
+          selector: 'html',
+          children: [
+            { type: 'field', id: 'poster', csvField: 'showImageUrl', selector: 'meta[property="og:image"]', attribute: 'content', transform: 'trim' },
+            { type: 'field', id: 'ticketUrl', csvField: 'ticketUrl', selector: 'a[href*="ticketmaster"]', attribute: 'href', transform: 'trim' }
+          ]
+        }
+      ]
+    }
   }
 }
 
@@ -94,7 +121,7 @@ async function main() {
   }
 }
 
-main().catch(err => {
+if (require.main === module) main().catch(err => {
   console.error(err)
   process.exit(1)
 })

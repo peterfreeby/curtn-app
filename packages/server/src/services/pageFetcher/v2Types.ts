@@ -6,6 +6,10 @@ export interface FieldNode {
   csvField: string              // CsvRowInput key: 'title', 'venueName', 'personName', etc.
   selector?: string             // CSS selector (for magic select / manual CSS mode)
   attribute?: string            // e.g., 'href', 'src', 'datetime'
+  index?: number                // when the selector matches multiple elements,
+                                // pick the Nth (0-based) instead of the first.
+                                // Positional and brittle — use only where the
+                                // matched-block count is stable.
   regex?: string                // regex to extract substring from matched text
   transform?: 'date' | 'time' | 'datetime' | 'currency' | 'trim' | 'date-range-start' | 'date-range-end'
   staticValue?: string          // for static mode — hardcoded value

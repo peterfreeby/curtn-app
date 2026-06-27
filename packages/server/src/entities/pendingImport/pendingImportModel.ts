@@ -2,7 +2,7 @@ import mongoose, { Schema, Types } from 'mongoose'
 
 export interface IPendingImport {
   dataSource: Types.ObjectId
-  status: 'pending' | 'approved' | 'rejected'
+  status: 'pending' | 'approved' | 'rejected' | 'flagged'
 
   // Parsed event data (flat, ready to promote into Show/Run/Performance)
   title: string
@@ -44,7 +44,7 @@ const pendingImportSchema = new Schema<IPendingImport>({
   },
   status: {
     type: String,
-    enum: ['pending', 'approved', 'rejected'],
+    enum: ['pending', 'approved', 'rejected', 'flagged'],
     default: 'pending'
   },
   title: {

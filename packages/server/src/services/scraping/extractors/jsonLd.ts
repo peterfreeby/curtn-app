@@ -129,6 +129,30 @@ function stripHtml(s: string | undefined): string | undefined {
   return out || undefined
 }
 
+// Flatten Markdown to plain text. Some CMSs (Contentful) store Markdown in
+// JSON-LD descriptions. Emphasis stripping is boundary-guarded for underscores
+// so snake_case identifiers in copy survive.
+function stripMarkdown(s: string | undefined): string | undefined {
+  if (!s) return undefined
+  let out = s
+  // Images ![alt](url) → alt ; links [text](url) → text
+  out = out.replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+  out = out.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+  // Asterisk emphasis — safe to strip globally (asterisks aren't in identifiers)
+  out = out.replace(/\*\*([^*]+)\*\*/g, '$1')
+  out = out.replace(/\*([^*\n]+)\*/g, '$1')
+  // Underscore emphasis — boundary-guarded so my_snake_case stays intact
+  out = out.replace(/(^|[^\w])__([^_]+)__(?=[^\w]|$)/g, '$1$2')
+  out = out.replace(/(^|[^\w])_([^_\n]+)_(?=[^\w]|$)/g, '$1$2')
+  // Inline code, headings, blockquotes, list markers
+  out = out.replace(/`([^`]+)`/g, '$1')
+  out = out.replace(/^[ \t]*#{1,6}[ \t]+/gm, '')
+  out = out.replace(/^[ \t]*>[ \t]?/gm, '')
+  out = out.replace(/^[ \t]*[-*+][ \t]+/gm, '')
+  out = out.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
+  return out || undefined
+}
+
 // Schema.org @type names that some JSON-LD emitters mistakenly write as
 // performer.name string values (Wordpress event plugins, particularly).
 // When we see a performer whose name is one of these, it's a placeholder
@@ -232,14 +256,20 @@ function extractPerformer(performer: unknown): { personName?: string; creditType
 }
 
 function eventToRows(event: any, baseUrl: string | undefined): Partial<CsvRowInput>[] {
-  const title = asString(event.name)
-  if (!title) return []
+  const rawTitle = asString(event.name)
+  if (!rawTitle) return []
+  // Entity-decode titles (e.g. "Cansu&#038;Friends" → "Cansu&Friends").
+  let title = decodeEntitiesOnce(rawTitle)
+  if (/&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z]+);/.test(title)) title = decodeEntitiesOnce(title)
 
   const { date, time } = extractDate(event.startDate)
   const venue = extractVenue(event.location)
   const ticketUrl = resolveUrl(extractOffers(event.offers) || asUrl(event.url), baseUrl)
+  // The event's own canonical URL — the detail page. Exposed as _detailUrl so
+  // JSON-LD sources can run a detail fetch (e.g. for a poster the listing lacks).
+  const detailUrl = resolveUrl(asUrl(event.url), baseUrl)
   const image = resolveUrl(asImage(event.image), baseUrl)
-  const description = stripHtml(asString(event.description))
+  const description = stripMarkdown(stripHtml(asString(event.description)))
 
   // Map @type to performance type
   let performanceType: string | undefined
@@ -265,6 +295,9 @@ function eventToRows(event: any, baseUrl: string | undefined): Partial<CsvRowInp
     performanceImageUrl: image,
     ...venue
   }
+  // Transient field consumed by DetailFetchConfig.fromField and stripped before
+  // staging; not part of CsvRowInput, so attach off-type.
+  if (detailUrl) (baseRow as any)._detailUrl = detailUrl
 
   const performers = extractPerformer(event.performer)
   if (performers.length === 0) return [baseRow]
@@ -286,6 +319,44 @@ function* walkNodes(node: any): Generator<any> {
     return
   }
   yield node
+}
+
+// Some pages emit MULTIPLE schema.org Event nodes for the same show — e.g. a
+// summary node carrying an image + a truncated ("…") description, plus a second
+// node with the full description but no image (Pioneer Works / Sanity). Emitting
+// both leaves downstream dedup to pick one arbitrarily, often the truncated one.
+// Collapse nodes that describe the same event into one row: keep the LONGEST
+// description and gap-fill any field the kept node left empty. The identity key
+// includes time + personName, so distinct same-day showtimes and per-performer
+// cast rows are preserved (never merged).
+function mergeDuplicateEventRows(rows: Partial<CsvRowInput>[]): Partial<CsvRowInput>[] {
+  const isEmpty = (v: unknown) => v === undefined || v === null || v === ''
+  const byKey = new Map<string, Partial<CsvRowInput>>()
+  const order: string[] = []
+  for (const row of rows) {
+    const key = [
+      row.title ?? '',
+      row.date ?? '',
+      row.time ?? '',
+      (row as any).personName ?? ''
+    ].join(' ')
+    const existing = byKey.get(key)
+    if (!existing) {
+      byKey.set(key, { ...row })
+      order.push(key)
+      continue
+    }
+    // Longest description wins.
+    if ((row.showDescription?.length ?? 0) > (existing.showDescription?.length ?? 0)) {
+      existing.showDescription = row.showDescription
+    }
+    // Gap-fill every other field the kept node left empty (image, ticketUrl, …).
+    for (const [k, v] of Object.entries(row)) {
+      if (k === 'showDescription' || isEmpty(v)) continue
+      if (isEmpty((existing as any)[k])) (existing as any)[k] = v
+    }
+  }
+  return order.map(k => byKey.get(k)!)
 }
 
 export const jsonLdExtractor: Extractor = {
@@ -315,7 +386,7 @@ export const jsonLdExtractor: Extractor = {
         }
       }
     }
-    return rows
+    return mergeDuplicateEventRows(rows)
   }
 }
 
