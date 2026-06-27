@@ -1,10 +1,13 @@
 import * as admin from 'firebase-admin'
 import path from 'path'
 
-let initialized = false
-
 function getFirebaseAuth() {
-  if (!initialized) {
+  // Guard against firebase-admin's GLOBAL app registry, not a module-local
+  // flag: under hot-reload / repeated imports the module re-evaluates (a local
+  // `initialized` boolean resets) while the underlying [DEFAULT] app persists,
+  // so a second initializeApp throws "Firebase app already exists". Reuse the
+  // existing app instead.
+  if (admin.apps.length === 0) {
     // Support two modes:
     // 1. FIREBASE_SERVICE_ACCOUNT — JSON string (for Vercel/production)
     // 2. FIREBASE_SERVICE_ACCOUNT_PATH — file path (for local dev)
@@ -23,8 +26,6 @@ function getFirebaseAuth() {
     } else {
       throw new Error('FIREBASE_SERVICE_ACCOUNT or FIREBASE_SERVICE_ACCOUNT_PATH environment variable is required')
     }
-
-    initialized = true
   }
 
   return admin.auth()
