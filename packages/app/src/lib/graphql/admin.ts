@@ -260,6 +260,7 @@ export const PENDING_IMPORTS_QUERY = gql`
           }
         }
       }
+      totalCount
       pageInfo {
         hasNextPage
         endCursor

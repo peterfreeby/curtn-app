@@ -148,6 +148,9 @@ export default function IncomingEventsPage() {
 
   const items: PendingImportNode[] =
     data?.pendingImports?.edges?.map((e: { node: PendingImportNode }) => e.node) || [];
+  // True count for the active status filter (server-side count, not page-capped).
+  const totalCount: number | null =
+    data?.pendingImports?.totalCount ?? null;
   const pendingItems = items.filter((i) => i.status === "pending");
   const selectableIds = pendingItems.map((i) => i.id);
   const allSelected =
@@ -400,7 +403,14 @@ export default function IncomingEventsPage() {
     <div className="px-6 py-8 max-w-7xl mx-auto space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-curtn-cream">Incoming Events</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold text-curtn-cream">Incoming Events</h1>
+            {totalCount !== null && (
+              <span className="inline-flex items-center justify-center rounded-full bg-curtn-cream/10 px-2.5 py-0.5 text-sm font-semibold text-curtn-cream tabular-nums">
+                {totalCount}
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-sm text-curtn-muted">
             Review events imported from feeds. Items older than 1 day auto-approve.
           </p>

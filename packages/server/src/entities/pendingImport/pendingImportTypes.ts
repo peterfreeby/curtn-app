@@ -124,7 +124,15 @@ export const pendingImportType = new GraphQLObjectType({
 })
 
 export const { connectionType: PendingImportConnection, edgeType: PendingImportEdge } = connectionDefinitions({
-  nodeType: pendingImportType
+  nodeType: pendingImportType,
+  connectionFields: {
+    // True count of all matching rows for the active filter (not just the
+    // loaded page). Falls back to edge count if the resolver didn't set it.
+    totalCount: {
+      type: GraphQLInt,
+      resolve: (conn: any) => conn.totalCount ?? conn.edges?.length ?? 0
+    }
+  }
 })
 
 entityRegister({
