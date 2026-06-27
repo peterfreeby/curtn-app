@@ -321,6 +321,44 @@ function* walkNodes(node: any): Generator<any> {
   yield node
 }
 
+// Some pages emit MULTIPLE schema.org Event nodes for the same show — e.g. a
+// summary node carrying an image + a truncated ("…") description, plus a second
+// node with the full description but no image (Pioneer Works / Sanity). Emitting
+// both leaves downstream dedup to pick one arbitrarily, often the truncated one.
+// Collapse nodes that describe the same event into one row: keep the LONGEST
+// description and gap-fill any field the kept node left empty. The identity key
+// includes time + personName, so distinct same-day showtimes and per-performer
+// cast rows are preserved (never merged).
+function mergeDuplicateEventRows(rows: Partial<CsvRowInput>[]): Partial<CsvRowInput>[] {
+  const isEmpty = (v: unknown) => v === undefined || v === null || v === ''
+  const byKey = new Map<string, Partial<CsvRowInput>>()
+  const order: string[] = []
+  for (const row of rows) {
+    const key = [
+      row.title ?? '',
+      row.date ?? '',
+      row.time ?? '',
+      (row as any).personName ?? ''
+    ].join(' ')
+    const existing = byKey.get(key)
+    if (!existing) {
+      byKey.set(key, { ...row })
+      order.push(key)
+      continue
+    }
+    // Longest description wins.
+    if ((row.showDescription?.length ?? 0) > (existing.showDescription?.length ?? 0)) {
+      existing.showDescription = row.showDescription
+    }
+    // Gap-fill every other field the kept node left empty (image, ticketUrl, …).
+    for (const [k, v] of Object.entries(row)) {
+      if (k === 'showDescription' || isEmpty(v)) continue
+      if (isEmpty((existing as any)[k])) (existing as any)[k] = v
+    }
+  }
+  return order.map(k => byKey.get(k)!)
+}
+
 export const jsonLdExtractor: Extractor = {
   async extract(page, sourceUrl) {
     // Use the page's actual URL (post-redirect) for relative URL resolution.
@@ -348,7 +386,7 @@ export const jsonLdExtractor: Extractor = {
         }
       }
     }
-    return rows
+    return mergeDuplicateEventRows(rows)
   }
 }
 

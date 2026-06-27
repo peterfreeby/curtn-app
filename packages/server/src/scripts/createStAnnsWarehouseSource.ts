@@ -70,6 +70,10 @@ const ST_ANNS_CONFIG: ScraperDataSourceConfig = {
   detail: {
     fromField: '_detailUrl',
     fingerprint: ['title'],
+    // The /show/ pages 403 ('Just a moment' Cloudflare challenge) on the 2nd+
+    // sequential request when one page/context is reused. A fresh context per
+    // fetch resets the per-session anti-bot state (legit CurtnBot UA throughout).
+    freshContextPerFetch: true,
     template: {
       version: 2,
       nodes: [

@@ -5,15 +5,21 @@ import { UserModel } from '../entities/user/userModel'
 import { VenueModel } from '../entities/venue/venueModel'
 import type { ScraperDataSourceConfig } from '../services/scraping/types'
 
-// Tier 2 (template, listing-only) — The Stand, Union Square.
+// Tier 2 (template) + detail-follow — The Stand, Union Square.
 // /shows lists ~20 .show_row cards. The desktop .showinfo carries two
 // .show_date spans — [0] the date ("June 6", year-less) and [1] the time
 // ("1:00 PM") — plus .list-show-room ("Upstairs"). Title + ticket link come
 // from .showtitle a, poster from .show_image img.
-// NOTE: the /shows/show/<id>/<date-slug> detail pages sit behind a Cloudflare
-// bot-verification challenge, so we can't detail-follow for a description; every
-// other field (incl. the lineup, which is baked into the title) comes from the
-// listing.
+//
+// Cloudflare note (corrected): the site challenges the DEFAULT headless-Chrome
+// UA but PASSES our honest CurtnBot USER_AGENT (which the orchestrator uses), so
+// the detail pages ARE reachable. We detail-follow for the description: showcase/
+// lineup shows render a .tab-content of .lineup-item cards (each a performer +
+// bio) — we take .tab-content as the description and fan the .lineup-item names
+// out as cast. Headliner one-offs (e.g. Oz Pearlman) render neither, so they
+// keep an empty description (the act's name is already in the listing title).
+// freshContextPerFetch sidesteps Cloudflare's sequential-request degradation;
+// waitForSelector('.show_row') waits past the challenge before extracting.
 
 const CONFIG: ScraperDataSourceConfig = {
   startUrl: 'https://thestandnyc.com/shows',
@@ -70,6 +76,15 @@ const CONFIG: ScraperDataSourceConfig = {
               selector: '.showtitle a',
               attribute: 'href',
               transform: 'trim'
+            },
+            {
+              // Same link drives the description/cast detail-fetch.
+              type: 'field',
+              id: 'detailUrl',
+              csvField: '_detailUrl',
+              selector: '.showtitle a',
+              attribute: 'href',
+              transform: 'trim'
             }
           ]
         }
@@ -84,7 +99,62 @@ const CONFIG: ScraperDataSourceConfig = {
     venueZipCode: '10003',
     performanceTypes: 'comedy'
   },
-  maxItems: 30
+  maxItems: 30,
+  detail: {
+    fromField: '_detailUrl',
+    fingerprint: ['title', 'date'],
+    // Honest UA passes Cloudflare, but a fresh context per fetch avoids the
+    // sequential-request degradation; wait for the content wrapper to clear the
+    // challenge before extracting.
+    freshContextPerFetch: true,
+    waitForSelector: '.show_row',
+    template: {
+      version: 2,
+      nodes: [
+        {
+          type: 'container',
+          id: 'detail',
+          label: 'Show detail',
+          selector: '.tab-content',
+          children: [
+            {
+              // The lineup card stack (performer names + bios) is the de-facto
+              // show description. Absent on headliner one-offs → empty.
+              type: 'field',
+              id: 'description',
+              csvField: 'showDescription',
+              selector: ':scope',
+              transform: 'trim'
+            },
+            {
+              // One row per performer → grouped into the cast array on staging.
+              type: 'container',
+              id: 'lineup',
+              label: 'Lineup',
+              selector: '.lineup-item',
+              children: [
+                {
+                  type: 'field',
+                  id: 'personName',
+                  csvField: 'personName',
+                  selector: 'h4',
+                  transform: 'trim'
+                },
+                {
+                  type: 'field',
+                  id: 'personHeadshotUrl',
+                  csvField: 'personHeadshotUrl',
+                  selector: 'img',
+                  attribute: 'src',
+                  transform: 'trim'
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
 }
 
 async function main() {

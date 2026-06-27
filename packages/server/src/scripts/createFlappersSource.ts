@@ -115,12 +115,11 @@ const CONFIG: ScraperDataSourceConfig = {
   detail: {
     fromField: '_detailUrl',
     fingerprint: ['title', 'date'],
-    // NOTE: the detail page JS-hydrates #showDesc after load and is Cloudflare-
-    // fronted, so the current reused-page + fixed-3s detail fetch returns empty.
-    // Once the detail-fetch core patch lands (see
-    // /tmp/curtn_scraper/detail-fetch-patch.md), add here:
-    //   waitForSelector: '#showDesc', freshContextPerFetch: true
-    // then wipePendingImportsForSources + re-run to capture real descriptions.
+    // The detail page JS-hydrates #showDesc after load and is Cloudflare-fronted.
+    // Wait until #showDesc is populated (not just present), and use a fresh
+    // browser context per fetch to avoid reuse/anti-bot degradation across rows.
+    waitForSelector: '#showDesc',
+    freshContextPerFetch: true,
     template: {
       version: 2,
       nodes: [
