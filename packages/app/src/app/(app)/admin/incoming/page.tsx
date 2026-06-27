@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "urql";
 import {
   PENDING_IMPORTS_QUERY,
@@ -55,6 +55,9 @@ export default function IncomingEventsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   // Anchor for shift-click range selection across pending rows
   const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
+  // Shift-key state captured from the checkbox's onClick (fires just before its
+  // onChange), so onChange can do range-vs-single selection deterministically.
+  const shiftKeyRef = useRef(false);
   // Per-row in-flight tracking. id → action being performed
   const [rowBusy, setRowBusy] = useState<Record<string, RowAction>>({});
   // Per-row error messages set by the latest action on that row
@@ -336,28 +339,34 @@ export default function IncomingEventsPage() {
     });
   }
 
-  function handleRowCheckboxClick(
-    e: React.MouseEvent<HTMLInputElement>,
-    id: string
-  ) {
-    // Only the shift-range is handled here; the normal click toggles via the
-    // checkbox's own onChange (onToggle). Exclude the clicked endpoint from the
-    // range — onChange toggles THAT one on right after this fires. (Including it
-    // here let onChange toggle it back OFF, which was the "stops one before" bug.)
-    if (e.shiftKey && lastSelectedId && lastSelectedId !== id) {
+  // onClick fires just before onChange — only record whether shift was held.
+  function handleRowCheckboxClick(e: React.MouseEvent<HTMLInputElement>) {
+    shiftKeyRef.current = e.shiftKey;
+  }
+
+  // Single source of truth for row selection (wired to the checkbox onChange).
+  // Shift held → select the inclusive range from the anchor to this row; else
+  // toggle just this row. No preventDefault / no split across handlers, so the
+  // range endpoint can't be double-toggled off.
+  function handleSelectToggle(id: string) {
+    const shift = shiftKeyRef.current;
+    shiftKeyRef.current = false;
+    if (shift && lastSelectedId && lastSelectedId !== id) {
       const a = selectableIds.indexOf(lastSelectedId);
       const b = selectableIds.indexOf(id);
       if (a !== -1 && b !== -1) {
-        e.preventDefault();
         const [start, end] = a < b ? [a, b] : [b, a];
-        const range = selectableIds.slice(start, end + 1).filter((r) => r !== id);
+        const range = selectableIds.slice(start, end + 1);
         setSelected((prev) => {
           const next = new Set(prev);
           for (const r of range) next.add(r);
           return next;
         });
+        setLastSelectedId(id);
+        return;
       }
     }
+    toggleSelect(id);
     setLastSelectedId(id);
   }
 
@@ -531,8 +540,8 @@ export default function IncomingEventsPage() {
                     canSelect={canSelect}
                     isSelected={isSelected}
                     editFields={editFields}
-                    onToggle={() => toggleSelect(item.id)}
-                    onCheckboxClick={(e) => handleRowCheckboxClick(e, item.id)}
+                    onToggle={() => handleSelectToggle(item.id)}
+                    onCheckboxClick={(e) => handleRowCheckboxClick(e)}
                     onApprove={() => handleApprove(item)}
                     onReject={() => handleReject(item)}
                     onEdit={() => startEditing(item)}
