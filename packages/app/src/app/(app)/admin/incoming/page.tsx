@@ -45,7 +45,7 @@ interface PendingImportNode {
   dataSource: { id: string; name: string };
 }
 
-type StatusFilter = "pending" | "approved" | "rejected" | "all";
+type StatusFilter = "pending" | "approved" | "rejected" | "flagged" | "all";
 type RowAction = "approve" | "reject";
 
 export default function IncomingEventsPage() {
@@ -138,6 +138,9 @@ export default function IncomingEventsPage() {
     setBulkMessage(
       `Flagged ${flagged}${errors ? `, ${errors} error${errors === 1 ? "" : "s"}` : ""}.`
     );
+    // Flagged rows move to the 'flagged' status — refetch so they drop out of
+    // the pending list.
+    reexecuteQuery({ requestPolicy: "network-only" });
   }
 
   const items: PendingImportNode[] =
@@ -447,7 +450,7 @@ export default function IncomingEventsPage() {
 
       {/* Status filter tabs */}
       <div className="flex gap-1 bg-curtn-surface p-1">
-        {(["pending", "approved", "rejected", "all"] as StatusFilter[]).map((s) => (
+        {(["pending", "approved", "rejected", "flagged", "all"] as StatusFilter[]).map((s) => (
           <button
             key={s}
             onClick={() => {

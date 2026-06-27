@@ -145,6 +145,7 @@ export const SCRAPER_ISSUE_CATEGORIES: { value: string; label: string }[] = [
   { value: "image_hosting_error", label: "Image hosting error" },
   { value: "missing_description", label: "Missing description" },
   { value: "spam_in_description", label: "Spam in description" },
+  { value: "missing_cast", label: "Missing cast" },
   { value: "missing_date_time", label: "Missing date/time" },
   { value: "wrong_date_time", label: "Wrong date/time" },
   { value: "missing_ticket_url", label: "Missing ticket URL" },

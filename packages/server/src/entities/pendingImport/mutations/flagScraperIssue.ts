@@ -51,6 +51,15 @@ export const flagScraperIssue = mutationWithClientMutationId({
       createdBy: ctx.user.id,
     })
 
+    // Pull it out of the active review queue (logged, not rejected). Only flip a
+    // still-pending row so flagging never un-approves/un-rejects anything.
+    if (pi.status === 'pending') {
+      pi.status = 'flagged'
+      pi.reviewedAt = new Date()
+      pi.reviewedBy = ctx.user.id
+      await pi.save()
+    }
+
     return { pendingImport: pi, flagged: true, issueId: issue._id.toString() }
   },
 })

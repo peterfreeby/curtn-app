@@ -12,6 +12,7 @@ export const SCRAPER_ISSUE_CATEGORIES = [
   'image_hosting_error',
   'missing_description',
   'spam_in_description',
+  'missing_cast',
   'missing_date_time',
   'wrong_date_time',
   'missing_ticket_url',
