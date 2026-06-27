@@ -9,9 +9,9 @@ import { politeNavigate, RobotsBlockedError, USER_AGENT } from './politeNavigate
 import { getScraper } from './registry'
 import type { DetailFetchConfig, ScraperDataSourceConfig, Extractor } from './types'
 
-const NAV_TIMEOUT_MS = 30_000
-const DEFAULT_MAX_ITEMS = 500
-const DEFAULT_COOLDOWN_HOURS = 24
+export const NAV_TIMEOUT_MS = 30_000
+export const DEFAULT_MAX_ITEMS = 500
+export const DEFAULT_COOLDOWN_HOURS = 24
 const FAILURE_THRESHOLD = 3 // disable source after this many consecutive failures
 
 export type RunMode = 'pending' | 'direct' | 'dry-run'
@@ -51,7 +51,7 @@ export class SourceDisabledError extends Error {
   }
 }
 
-function pickExtractor(config: ScraperDataSourceConfig): Extractor {
+export function pickExtractor(config: ScraperDataSourceConfig): Extractor {
   switch (config.strategy.mode) {
     case 'json-ld':
       return jsonLdExtractor
@@ -65,7 +65,7 @@ function pickExtractor(config: ScraperDataSourceConfig): Extractor {
   }
 }
 
-function mergeAndValidate(
+export function mergeAndValidate(
   fragments: Partial<CsvRowInput>[],
   defaults: Partial<CsvRowInput> = {},
   filters: { excludeUrlPatterns?: string[]; includeUrlPatterns?: string[] } = {}
@@ -102,7 +102,7 @@ function isEmptyValue(v: unknown): boolean {
 // Merge a detail fragment onto a listing row. Detail fields override the
 // listing, EXCEPT keys listed in fillIfEmpty, which only fill when the
 // listing value is empty (gap-fill). Returns a new row; does not mutate base.
-function mergeFragment(
+export function mergeFragment(
   base: CsvRowInput,
   fragment: Partial<CsvRowInput>,
   fillIfEmpty: string[] = []
@@ -132,7 +132,7 @@ function stripPatterns(value: string, patterns: string[]): string {
 // Post-extraction text cleanup. Peels promo prefixes / boilerplate off titles
 // and descriptions per the source's `cleanup` config. A description reduced to
 // empty becomes undefined so staging treats it as absent.
-function applyRowCleanup(
+export function applyRowCleanup(
   rows: CsvRowInput[],
   cleanup: NonNullable<ScraperDataSourceConfig['cleanup']>
 ): void {
@@ -322,7 +322,7 @@ export async function runScraper(opts: RunScraperOptions): Promise<RunScraperRes
 const ONE_DAY_MS = 24 * 60 * 60 * 1000
 const MAX_FAN_OUT_DAYS = 60 // safety cap; nothing legit runs longer than ~2 months
 
-function expandRowsByDateRange(rows: CsvRowInput[]): CsvRowInput[] {
+export function expandRowsByDateRange(rows: CsvRowInput[]): CsvRowInput[] {
   const out: CsvRowInput[] = []
   for (const row of rows) {
     const startStr = (row as any).runStartDate
@@ -352,7 +352,7 @@ function expandRowsByDateRange(rows: CsvRowInput[]): CsvRowInput[] {
 
 // Resolve a possibly-relative URL against the source's startUrl. Handles
 // "/events/foo" → "https://caveat.nyc/events/foo" without breaking absolute URLs.
-function resolveDetailUrl(maybeRelative: string, startUrl: string): string {
+export function resolveDetailUrl(maybeRelative: string, startUrl: string): string {
   try {
     return new URL(maybeRelative, startUrl).toString()
   } catch {
@@ -493,7 +493,7 @@ async function runDetailFetches(
   return { rows: out, stats }
 }
 
-async function recordRunOutcome(
+export async function recordRunOutcome(
   dataSourceId: string,
   outcome: 'success' | 'failure',
   errorMessage?: string
@@ -516,7 +516,7 @@ async function recordRunOutcome(
   await ds.save()
 }
 
-async function markDisabled(dataSourceId: string, reason: string): Promise<void> {
+export async function markDisabled(dataSourceId: string, reason: string): Promise<void> {
   const ds = await DataSourceModel.findById(dataSourceId)
   if (!ds) return
   ds.isActive = false

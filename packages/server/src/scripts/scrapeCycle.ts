@@ -8,6 +8,7 @@ import {
   SourceDisabledError
 } from '../services/scraping/runScraper'
 import { RobotsBlockedError } from '../services/scraping/politeNavigate'
+import { runInterleavedCycle } from '../services/scraping/interleavedCycle'
 
 // Round-robin scrape scheduler — local one-shot cycle.
 //
@@ -89,6 +90,32 @@ async function main() {
       : await UserModel.findOne({ isAdmin: true })
     if (!user || !user.isAdmin) {
       throw new Error(opts.user ? `Admin user "${opts.user}" not found` : 'No admin user found')
+    }
+
+    // DEFAULT: interleaved "deal-cards" scheduler — detail fetches across all
+    // sources share one global queue served by least-recently-hit host, so no
+    // single domain gets a back-to-back burst. Pass --sequential for the old
+    // one-source-at-a-time loop.
+    if (!flags.has('sequential')) {
+      const cycleResults = await runInterleavedCycle({
+        userId: user._id.toString(),
+        mode: dryRun ? 'dry-run' : 'pending',
+        force,
+        limit: limit === Infinity ? undefined : limit,
+      })
+      const totalMs = Date.now() - startedAt
+      const byStatus = cycleResults.reduce<Record<string, number>>((a, r) => { a[r.status] = (a[r.status] || 0) + 1; return a }, {})
+      const totalStaged = cycleResults.reduce((s, r) => s + (r.staged ?? 0), 0)
+      const totalSkipped = cycleResults.reduce((s, r) => s + (r.skipped ?? 0), 0)
+      console.log(`\n=== Cycle complete in ${(totalMs / 1000 / 60).toFixed(1)} min (interleaved) ===`)
+      console.log(`Sources: ${cycleResults.length} | ` + Object.entries(byStatus).map(([k, v]) => `${k}: ${v}`).join(' | '))
+      console.log(`PendingImports staged: ${totalStaged} | skipped (dup): ${totalSkipped}`)
+      const problems = cycleResults.filter(r => r.status === 'error' || r.status === 'no-rows' || r.status === 'robots')
+      if (problems.length) {
+        console.log(`\nNeeds attention:`)
+        for (const p of problems) console.log(`  ${p.status.toUpperCase().padEnd(8)} ${p.name}${p.detail ? ` — ${p.detail}` : ''}`)
+      }
+      return
     }
 
     // Active, scraper-purpose sources only. claimant-sync sources are the
