@@ -9,6 +9,8 @@ import {
   EDIT_PENDING_IMPORT_MUTATION,
   AUTO_VALIDATE_MUTATION,
   APPROVE_ALL_MUTATION,
+  FLAG_SCRAPER_ISSUE_MUTATION,
+  SCRAPER_ISSUE_CATEGORIES,
 } from "@/lib/graphql/admin";
 import { Button } from "@/components/Button";
 
@@ -61,6 +63,12 @@ export default function IncomingEventsPage() {
   const [bulkMessage, setBulkMessage] = useState<string | null>(null);
   // Bulk reject loops the single-reject mutation, so track in-flight here
   const [rejectingSelected, setRejectingSelected] = useState(false);
+  // Scraper-issue flag modal state
+  const [flaggingItem, setFlaggingItem] = useState<PendingImportNode | null>(null);
+  const [flagCats, setFlagCats] = useState<Set<string>>(new Set());
+  const [flagNote, setFlagNote] = useState("");
+  const [flagBusy, setFlagBusy] = useState(false);
+  const [flagMsg, setFlagMsg] = useState<string | null>(null);
 
   const [{ data, fetching }, reexecuteQuery] = useQuery({
     query: PENDING_IMPORTS_QUERY,
@@ -79,6 +87,47 @@ export default function IncomingEventsPage() {
   const [{ fetching: approvingAll }, executeApproveAll] = useMutation(
     APPROVE_ALL_MUTATION
   );
+  const [, executeFlag] = useMutation(FLAG_SCRAPER_ISSUE_MUTATION);
+
+  function openFlag(item: PendingImportNode) {
+    setFlaggingItem(item);
+    setFlagCats(new Set());
+    setFlagNote("");
+    setFlagMsg(null);
+  }
+
+  function toggleFlagCat(value: string) {
+    setFlagCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  }
+
+  async function submitFlag() {
+    if (!flaggingItem) return;
+    if (flagCats.size === 0 && !flagNote.trim()) {
+      setFlagMsg("Pick at least one category or add a note.");
+      return;
+    }
+    setFlagBusy(true);
+    setFlagMsg(null);
+    const result = await executeFlag({
+      input: {
+        pendingImportId: decodeGlobalId(flaggingItem.id),
+        categories: Array.from(flagCats),
+        note: flagNote.trim() || undefined,
+      },
+    });
+    setFlagBusy(false);
+    const payload = result.data?.flagScraperIssue;
+    if (result.error || payload?.error) {
+      setFlagMsg(payload?.error || result.error?.message || "Failed to flag");
+      return;
+    }
+    setFlaggingItem(null);
+  }
 
   const items: PendingImportNode[] =
     data?.pendingImports?.edges?.map((e: { node: PendingImportNode }) => e.node) || [];
@@ -461,6 +510,7 @@ export default function IncomingEventsPage() {
                     onCheckboxClick={(e) => handleRowCheckboxClick(e, item.id)}
                     onApprove={() => handleApprove(item)}
                     onReject={() => handleReject(item)}
+                    onFlag={() => openFlag(item)}
                     onEdit={() => startEditing(item)}
                     onCancelEdit={() => setEditingId(null)}
                     onSaveEdit={handleSaveEdit}
@@ -474,6 +524,59 @@ export default function IncomingEventsPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {flaggingItem && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => !flagBusy && setFlaggingItem(null)}
+        >
+          <div
+            className="w-full max-w-md bg-curtn-surface border border-curtn-dark p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-medium text-curtn-cream">Flag scraper issue</h3>
+            <p className="mb-3 line-clamp-1 text-xs text-curtn-muted">
+              {flaggingItem.title}
+            </p>
+            <div className="mb-3 grid grid-cols-2 gap-1.5">
+              {SCRAPER_ISSUE_CATEGORIES.map((c) => (
+                <label
+                  key={c.value}
+                  className="flex cursor-pointer items-center gap-2 text-sm text-curtn-cream"
+                >
+                  <input
+                    type="checkbox"
+                    checked={flagCats.has(c.value)}
+                    onChange={() => toggleFlagCat(c.value)}
+                    className="accent-curtn-coral"
+                  />
+                  {c.label}
+                </label>
+              ))}
+            </div>
+            <textarea
+              value={flagNote}
+              onChange={(e) => setFlagNote(e.target.value)}
+              placeholder="Optional note…"
+              rows={3}
+              className="mb-2 w-full border border-curtn-dark bg-curtn-surface-2 p-2 text-sm text-curtn-cream"
+            />
+            {flagMsg && <p className="mb-2 text-xs text-curtn-coral">{flagMsg}</p>}
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="tertiary"
+                onClick={() => setFlaggingItem(null)}
+                disabled={flagBusy}
+              >
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={submitFlag} disabled={flagBusy}>
+                {flagBusy ? "Saving…" : "Log issue"}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -492,6 +595,7 @@ function RowGroup(props: {
   onCheckboxClick: (e: React.MouseEvent<HTMLInputElement>) => void;
   onApprove: () => void;
   onReject: () => void;
+  onFlag: () => void;
   onEdit: () => void;
   onCancelEdit: () => void;
   onSaveEdit: () => void;
@@ -511,6 +615,7 @@ function RowGroup(props: {
     onCheckboxClick,
     onApprove,
     onReject,
+    onFlag,
     onEdit,
     onCancelEdit,
     onSaveEdit,
@@ -611,6 +716,13 @@ function RowGroup(props: {
         <td className="px-3 py-3 align-top">
           {item.status === "pending" ? (
             <div className="flex justify-end gap-1.5">
+              <Button
+                variant="tertiary"
+                onClick={onFlag}
+                disabled={Boolean(busy)}
+              >
+                Flag
+              </Button>
               <Button
                 variant="tertiary"
                 onClick={onEdit}

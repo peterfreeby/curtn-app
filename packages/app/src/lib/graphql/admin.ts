@@ -139,6 +139,31 @@ export const DATA_SOURCE_DELETE_MUTATION = gql`
   }
 `;
 
+// Log a scraper-quality issue on a pending import without rejecting it.
+export const SCRAPER_ISSUE_CATEGORIES: { value: string; label: string }[] = [
+  { value: "missing_image", label: "Missing image" },
+  { value: "image_hosting_error", label: "Image hosting error" },
+  { value: "missing_description", label: "Missing description" },
+  { value: "spam_in_description", label: "Spam in description" },
+  { value: "missing_date_time", label: "Missing date/time" },
+  { value: "wrong_date_time", label: "Wrong date/time" },
+  { value: "missing_ticket_url", label: "Missing ticket URL" },
+  { value: "wrong_title", label: "Wrong title" },
+  { value: "not_a_real_event", label: "Not a real event" },
+  { value: "duplicate", label: "Duplicate" },
+  { value: "other", label: "Other" },
+];
+
+export const FLAG_SCRAPER_ISSUE_MUTATION = gql`
+  mutation FlagScraperIssue($input: flagScraperIssueInput!) {
+    flagScraperIssue(input: $input) {
+      flagged
+      issueId
+      error
+    }
+  }
+`;
+
 export const TEST_PARSING_TEMPLATE_MUTATION = gql`
   mutation TestParsingTemplate($input: testParsingTemplateInput!) {
     testParsingTemplate(input: $input) {
