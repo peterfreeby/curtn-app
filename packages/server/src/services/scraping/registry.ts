@@ -1,10 +1,12 @@
 import type { VenueScraper } from './types'
 import { broadStageScraper } from './scrapers/broadStage'
+import { tfanaScraper } from './scrapers/tfana'
 
 // Tier 3 scraper registry — code modules for sites that don't fit JSON-LD or template extraction.
 // Add entries here as we build hand-coded scrapers.
 export const scraperRegistry: Record<string, VenueScraper> = {
-  [broadStageScraper.id]: broadStageScraper
+  [broadStageScraper.id]: broadStageScraper,
+  [tfanaScraper.id]: tfanaScraper
 }
 
 export function getScraper(id: string): VenueScraper | undefined {
