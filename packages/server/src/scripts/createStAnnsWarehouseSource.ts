@@ -26,6 +26,7 @@ import type { ScraperDataSourceConfig } from '../services/scraping/types'
 
 const ST_ANNS_CONFIG: ScraperDataSourceConfig = {
   startUrl: 'https://stannswarehouse.org/',
+  rehostImages: true, // hotlink-protected images render broken cross-origin — download to R2
   strategy: {
     mode: 'template',
     template: {

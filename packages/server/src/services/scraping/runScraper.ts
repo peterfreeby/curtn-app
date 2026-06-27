@@ -7,6 +7,7 @@ import { jsonLdExtractor } from './extractors/jsonLd'
 import { makeTemplateExtractor } from './extractors/template'
 import { politeNavigate, RobotsBlockedError, USER_AGENT } from './politeNavigate'
 import { getScraper } from './registry'
+import { rehostRowImages } from '../images/rehostImage'
 import type { DetailFetchConfig, ScraperDataSourceConfig, Extractor } from './types'
 
 export const NAV_TIMEOUT_MS = 30_000
@@ -282,6 +283,12 @@ export async function runScraper(opts: RunScraperOptions): Promise<RunScraperRes
     // sources and genuinely link-less rows.
     for (const r of workingRows) {
       if (!r.ticketUrl || !String(r.ticketUrl).trim()) r.ticketUrl = config.startUrl
+    }
+
+    // Rehost hotlink-protected images into R2 (opt-in per source).
+    if (config.rehostImages && mode !== 'dry-run') {
+      const n = await rehostRowImages(workingRows, opts.dataSourceId)
+      if (n) console.log(`[runScraper] rehosted ${n} image(s) to R2`)
     }
 
     if (mode === 'dry-run') {

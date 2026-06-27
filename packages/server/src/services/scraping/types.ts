@@ -31,6 +31,11 @@ export interface ScraperDataSourceConfig {
   // empty — admin can fill in if needed, or the data flows through to a
   // Performance with no time (Performance.time is optional).
   fanOutByDateRange?: boolean
+  // Download scraped images into our own R2 bucket instead of hotlinking the
+  // source. Set for venues that hotlink-protect their images (the URL renders
+  // broken cross-origin on Curtn — e.g. St. Ann's Warehouse). A failed rehost
+  // drops the image rather than persisting a broken link. Off by default.
+  rehostImages?: boolean
   // Post-extraction text cleanup, applied to each final row just before
   // staging. Each pattern is a regex (string form) stripped from the field;
   // a description reduced to empty becomes undefined. Use to peel promo

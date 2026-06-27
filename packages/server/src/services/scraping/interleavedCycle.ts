@@ -6,6 +6,7 @@ import { computeFingerprint, readDetailCache, writeDetailCache } from './detailC
 import { jsonLdExtractor } from './extractors/jsonLd'
 import { makeTemplateExtractor } from './extractors/template'
 import { politeNavigate, RobotsBlockedError, USER_AGENT } from './politeNavigate'
+import { rehostRowImages } from '../images/rehostImage'
 import {
   pickExtractor,
   mergeAndValidate,
@@ -303,6 +304,11 @@ export async function runInterleavedCycle(
       if (config.cleanup) applyRowCleanup(workingRows, config.cleanup)
       for (const row of workingRows) {
         if (!row.ticketUrl || !String(row.ticketUrl).trim()) row.ticketUrl = config.startUrl
+      }
+
+      if (config.rehostImages && !dryRun) {
+        const n = await rehostRowImages(workingRows, src.id)
+        if (n) console.log(`  rehost   ${src.name} — ${n} image(s) to R2`)
       }
 
       const rowsValid = workingRows.length
