@@ -63,8 +63,8 @@ export default function IncomingEventsPage() {
   const [bulkMessage, setBulkMessage] = useState<string | null>(null);
   // Bulk reject loops the single-reject mutation, so track in-flight here
   const [rejectingSelected, setRejectingSelected] = useState(false);
-  // Scraper-issue flag modal state
-  const [flaggingItem, setFlaggingItem] = useState<PendingImportNode | null>(null);
+  // Scraper-issue flag modal state (bulk: applies to the current selection)
+  const [flaggingBulk, setFlaggingBulk] = useState(false);
   const [flagCats, setFlagCats] = useState<Set<string>>(new Set());
   const [flagNote, setFlagNote] = useState("");
   const [flagBusy, setFlagBusy] = useState(false);
@@ -89,8 +89,12 @@ export default function IncomingEventsPage() {
   );
   const [, executeFlag] = useMutation(FLAG_SCRAPER_ISSUE_MUTATION);
 
-  function openFlag(item: PendingImportNode) {
-    setFlaggingItem(item);
+  function openBulkFlag() {
+    if (selected.size === 0) {
+      setBulkMessage("No items selected to flag.");
+      return;
+    }
+    setFlaggingBulk(true);
     setFlagCats(new Set());
     setFlagNote("");
     setFlagMsg(null);
@@ -106,27 +110,34 @@ export default function IncomingEventsPage() {
   }
 
   async function submitFlag() {
-    if (!flaggingItem) return;
+    const ids = Array.from(selected);
+    if (ids.length === 0) {
+      setFlaggingBulk(false);
+      return;
+    }
     if (flagCats.size === 0 && !flagNote.trim()) {
       setFlagMsg("Pick at least one category or add a note.");
       return;
     }
     setFlagBusy(true);
     setFlagMsg(null);
-    const result = await executeFlag({
-      input: {
-        pendingImportId: decodeGlobalId(flaggingItem.id),
-        categories: Array.from(flagCats),
-        note: flagNote.trim() || undefined,
-      },
-    });
-    setFlagBusy(false);
-    const payload = result.data?.flagScraperIssue;
-    if (result.error || payload?.error) {
-      setFlagMsg(payload?.error || result.error?.message || "Failed to flag");
-      return;
+    const categories = Array.from(flagCats);
+    const note = flagNote.trim() || undefined;
+    let flagged = 0;
+    let errors = 0;
+    for (const id of ids) {
+      const result = await executeFlag({
+        input: { pendingImportId: decodeGlobalId(id), categories, note },
+      });
+      if (result.error || result.data?.flagScraperIssue?.error) errors += 1;
+      else flagged += 1;
     }
-    setFlaggingItem(null);
+    setFlagBusy(false);
+    setFlaggingBulk(false);
+    setSelected(new Set());
+    setBulkMessage(
+      `Flagged ${flagged}${errors ? `, ${errors} error${errors === 1 ? "" : "s"}` : ""}.`
+    );
   }
 
   const items: PendingImportNode[] =
@@ -397,6 +408,13 @@ export default function IncomingEventsPage() {
                   ? "Rejecting..."
                   : `Reject ${selected.size} Selected`}
               </Button>
+              <Button
+                variant="tertiary"
+                onClick={openBulkFlag}
+                disabled={validating || approvingAll || rejectingSelected || flagBusy}
+              >
+                {flagBusy ? "Flagging..." : `Flag ${selected.size} Selected`}
+              </Button>
             </>
           )}
           <Button
@@ -510,7 +528,6 @@ export default function IncomingEventsPage() {
                     onCheckboxClick={(e) => handleRowCheckboxClick(e, item.id)}
                     onApprove={() => handleApprove(item)}
                     onReject={() => handleReject(item)}
-                    onFlag={() => openFlag(item)}
                     onEdit={() => startEditing(item)}
                     onCancelEdit={() => setEditingId(null)}
                     onSaveEdit={handleSaveEdit}
@@ -527,18 +544,22 @@ export default function IncomingEventsPage() {
         </div>
       )}
 
-      {flaggingItem && (
+      {flaggingBulk && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          onClick={() => !flagBusy && setFlaggingItem(null)}
+          onClick={() => !flagBusy && setFlaggingBulk(false)}
         >
           <div
             className="w-full max-w-md bg-curtn-surface border border-curtn-dark p-5"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="font-medium text-curtn-cream">Flag scraper issue</h3>
-            <p className="mb-3 line-clamp-1 text-xs text-curtn-muted">
-              {flaggingItem.title}
+            <h3 className="font-medium text-curtn-cream">
+              Flag {selected.size} selected{" "}
+              {selected.size === 1 ? "event" : "events"}
+            </h3>
+            <p className="mb-3 text-xs text-curtn-muted">
+              Logs a scraper-quality issue (does not reject). Applied to all
+              selected.
             </p>
             <div className="mb-3 grid grid-cols-2 gap-1.5">
               {SCRAPER_ISSUE_CATEGORIES.map((c) => (
@@ -567,7 +588,7 @@ export default function IncomingEventsPage() {
             <div className="flex justify-end gap-2">
               <Button
                 variant="tertiary"
-                onClick={() => setFlaggingItem(null)}
+                onClick={() => setFlaggingBulk(false)}
                 disabled={flagBusy}
               >
                 Cancel
@@ -595,7 +616,6 @@ function RowGroup(props: {
   onCheckboxClick: (e: React.MouseEvent<HTMLInputElement>) => void;
   onApprove: () => void;
   onReject: () => void;
-  onFlag: () => void;
   onEdit: () => void;
   onCancelEdit: () => void;
   onSaveEdit: () => void;
@@ -615,7 +635,6 @@ function RowGroup(props: {
     onCheckboxClick,
     onApprove,
     onReject,
-    onFlag,
     onEdit,
     onCancelEdit,
     onSaveEdit,
@@ -716,13 +735,6 @@ function RowGroup(props: {
         <td className="px-3 py-3 align-top">
           {item.status === "pending" ? (
             <div className="flex justify-end gap-1.5">
-              <Button
-                variant="tertiary"
-                onClick={onFlag}
-                disabled={Boolean(busy)}
-              >
-                Flag
-              </Button>
               <Button
                 variant="tertiary"
                 onClick={onEdit}
