@@ -22,8 +22,11 @@ export const pendingImportQueries = {
       if (args.status) query.status = args.status
       if (args.dataSourceId) query.dataSource = args.dataSourceId
 
-      const items = await PendingImportModel.find(query).sort({ importedAt: -1 }).limit(200).lean()
-      return connectionFromArrayLean(items, args)
+      const [items, totalCount] = await Promise.all([
+        PendingImportModel.find(query).sort({ importedAt: -1 }).limit(200).lean(),
+        PendingImportModel.countDocuments(query)
+      ])
+      return { ...connectionFromArrayLean(items, args), totalCount }
     }
   }
 }
