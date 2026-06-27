@@ -16,6 +16,7 @@ export interface PoliteNavigateOptions {
   useCache?: boolean        // default: true (probes); orchestrator passes false
   cacheMaxAgeMs?: number
   waitForSelector?: string
+  waitForPopulated?: string // wait until selector exists AND has non-empty text/data-full
   hydrationDelayMs?: number // default: 2000 — JS hydration grace period
   navTimeoutMs?: number     // default: 30000
   forceRobots?: boolean     // bypass robots.txt check (default: false)
@@ -36,6 +37,7 @@ export async function politeNavigate(
     useCache = true,
     cacheMaxAgeMs,
     waitForSelector,
+    waitForPopulated,
     hydrationDelayMs = 2_000,
     navTimeoutMs = 30_000,
     forceRobots = false
@@ -71,7 +73,23 @@ export async function politeNavigate(
     timeout: navTimeoutMs
   })
 
-  if (waitForSelector) {
+  if (waitForPopulated) {
+    // Wait for JS hydration to actually FILL the element, not just insert the
+    // empty shell. Swallow timeout: fall back to whatever's present so a slow /
+    // genuinely-empty page still yields its listing-merged row.
+    await page
+      .waitForFunction(
+        (sel) => {
+          const el = document.querySelector(sel)
+          if (!el) return false
+          const v = el.getAttribute('data-full') ?? el.textContent ?? ''
+          return v.trim().length > 0
+        },
+        waitForPopulated,
+        { timeout: navTimeoutMs, polling: 250 }
+      )
+      .catch(() => {})
+  } else if (waitForSelector) {
     await page.waitForSelector(waitForSelector, { timeout: navTimeoutMs })
   } else if (hydrationDelayMs > 0) {
     await page.waitForTimeout(hydrationDelayMs)

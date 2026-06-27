@@ -88,6 +88,14 @@ const CONFIG: ScraperDataSourceConfig = {
           children: [
             { type: 'field', id: 'title', csvField: 'title', selector: 'meta[property="og:title"]', attribute: 'content', transform: 'trim' },
             { type: 'field', id: 'desc', csvField: 'showDescription', selector: 'meta[property="og:description"]', attribute: 'content', transform: 'trim' },
+            // Poster, two-tier. Some show pages (e.g. /antigone, /speakingintongues)
+            // ship NO og:image meta tag, but every page carries the show poster as
+            // the first Squarespace image block (.sqs-block-image — the section
+            // background and footer logos are not image blocks). Extract that first
+            // as a fallback, then let og:image override it when present (later field
+            // wins in walkNodes only when it resolves to a value). So: og:image when
+            // it exists, content poster when it doesn't.
+            { type: 'field', id: 'posterFallback', csvField: 'showImageUrl', selector: '.sqs-block-image img', attribute: 'src', transform: 'trim' },
             { type: 'field', id: 'poster', csvField: 'showImageUrl', selector: 'meta[property="og:image"]', attribute: 'content', transform: 'trim' },
             {
               type: 'field',

@@ -12,6 +12,13 @@ import type { ScraperDataSourceConfig } from '../services/scraping/types'
 // no image/offers, so we layer the poster from og:image over the JSON-LD base
 // (Hennepin pattern). The show page URL doubles as the ticket link.
 // TheaterEvent maps to 'theater', so we force performanceTypes 'comedy'.
+//
+// Poster gotcha: shows without an uploaded poster (recurring lineup nights —
+// Thursday/Friday Favs, etc.) fall back to Next.js's generic site-wide
+// `/opengraph-image` route in og:image, which is not a real poster. We whitelist
+// only the real CDN poster hosts (storage.googleapis.com / imagedelivery.net)
+// via regex; a generic og:image yields "" (no poster) instead of a broken
+// branded card. Shows with a real poster are unaffected.
 
 const CONFIG: ScraperDataSourceConfig = {
   startUrl: 'https://www.westsidecomedyclub.com/',
@@ -69,11 +76,14 @@ const CONFIG: ScraperDataSourceConfig = {
           children: [
             {
               // JSON-LD has no image; pull the per-show poster from og:image.
+              // Whitelist real CDN poster hosts — a generic /opengraph-image
+              // fallback regex-matches the empty alternative → "" (no poster).
               type: 'field',
               id: 'poster',
               csvField: 'showImageUrl',
               selector: 'meta[property="og:image"]',
               attribute: 'content',
+              regex: '(https?://(?:storage\\.googleapis\\.com|imagedelivery\\.net)/\\S+|)',
               transform: 'trim'
             }
           ]

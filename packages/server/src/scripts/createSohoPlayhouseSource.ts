@@ -13,9 +13,12 @@ import type { ScraperDataSourceConfig } from '../services/scraping/types'
 // "|", " - "-separated so parseDateRange handles it) out of that text.
 //
 // Notes:
-//  - No detail crawl: detail pages have no og:description and only logistics content
-//    (run time, age, box office) — no reliable synopsis. showDescription omitted
-//    rather than stage logistics/box-office text as a description.
+//  - Detail crawl for the synopsis: each show page is a stack of Squarespace
+//    html blocks where block[0] is the title and block[1] is the synopsis
+//    (block[2+] are logistics — run time, age, box office). We grab the synopsis
+//    via `.sqs-html-content` index:1 and skip the logistics blocks. (There is no
+//    og:description on these pages, which is why the first pass shipped without a
+//    description — the synopsis lives in the second html block, not in meta.)
 //  - Tickets route through one OvationTix portal (ci.ovationtix.com/35583) — row default.
 //  - Year-less dates → current year inferred by date-range transform (no roll-forward,
 //    so mid-run shows that started in the recent past keep the correct year).
@@ -77,6 +80,16 @@ const SOHO_PLAYHOUSE_CONFIG: ScraperDataSourceConfig = {
               selector: 'img',
               attribute: 'src',
               transform: 'trim'
+            },
+            {
+              // .grid-item IS the <a> to the show page — capture it for the
+              // synopsis detail-fetch.
+              type: 'field',
+              id: 'detailUrl',
+              csvField: '_detailUrl',
+              selector: ':scope',
+              attribute: 'href',
+              transform: 'trim'
             }
           ]
         }
@@ -92,7 +105,34 @@ const SOHO_PLAYHOUSE_CONFIG: ScraperDataSourceConfig = {
     performanceTypes: 'theater',
     ticketUrl: 'https://ci.ovationtix.com/35583'
   },
-  maxItems: 30
+  maxItems: 30,
+  detail: {
+    fromField: '_detailUrl',
+    fingerprint: ['title'],
+    template: {
+      version: 2,
+      nodes: [
+        {
+          type: 'container',
+          id: 'detail',
+          label: 'Show detail',
+          selector: 'body',
+          children: [
+            {
+              // Squarespace html blocks: [0]=title, [1]=synopsis, [2+]=logistics.
+              // index:1 grabs the synopsis and skips run-time/box-office text.
+              type: 'field',
+              id: 'synopsis',
+              csvField: 'showDescription',
+              selector: '.sqs-html-content',
+              index: 1,
+              transform: 'trim'
+            }
+          ]
+        }
+      ]
+    }
+  }
 }
 
 async function main() {

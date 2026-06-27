@@ -59,6 +59,16 @@ export interface DetailFetchConfig {
   // listing as usual. Use for JSON-LD sources that occasionally drop a field
   // (e.g. image) on a single event while the listing has it.
   fillIfEmpty?: string[]
+  // JS-hydrated detail pages: wait until this selector is present AND non-empty
+  // (its text OR data-full attribute) before extracting, instead of the fixed
+  // hydration delay. Falls back to whatever's in the DOM if it never populates.
+  waitForSelector?: string
+  // Create a fresh browser context (+page) per detail fetch instead of reusing
+  // one page for the batch. Avoids anti-bot/session degradation on sites that
+  // 403 or stop hydrating on the 2nd+ sequential request (Cloudflare, etc.).
+  // Heavier (new context per row) — only enable where reuse is demonstrably
+  // broken. Default: false (reuse one page, as today).
+  freshContextPerFetch?: boolean
 }
 
 export interface Extractor {
