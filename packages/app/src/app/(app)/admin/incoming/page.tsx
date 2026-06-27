@@ -340,11 +340,14 @@ export default function IncomingEventsPage() {
     e: React.MouseEvent<HTMLInputElement>,
     id: string
   ) {
+    // onClick owns selection entirely: preventDefault stops the native toggle
+    // (and its onChange), so a shift-range never has its clicked endpoint
+    // toggled back off — that off-by-one was the "stops one before" bug.
+    e.preventDefault();
     if (e.shiftKey && lastSelectedId && lastSelectedId !== id) {
       const a = selectableIds.indexOf(lastSelectedId);
       const b = selectableIds.indexOf(id);
       if (a !== -1 && b !== -1) {
-        e.preventDefault();
         const [start, end] = a < b ? [a, b] : [b, a];
         const range = selectableIds.slice(start, end + 1);
         setSelected((prev) => {
@@ -353,6 +356,8 @@ export default function IncomingEventsPage() {
           return next;
         });
       }
+    } else {
+      toggleSelect(id);
     }
     setLastSelectedId(id);
   }
@@ -527,7 +532,6 @@ export default function IncomingEventsPage() {
                     canSelect={canSelect}
                     isSelected={isSelected}
                     editFields={editFields}
-                    onToggle={() => toggleSelect(item.id)}
                     onCheckboxClick={(e) => handleRowCheckboxClick(e, item.id)}
                     onApprove={() => handleApprove(item)}
                     onReject={() => handleReject(item)}
@@ -615,7 +619,6 @@ function RowGroup(props: {
   canSelect: boolean;
   isSelected: boolean;
   editFields: Record<string, string>;
-  onToggle: () => void;
   onCheckboxClick: (e: React.MouseEvent<HTMLInputElement>) => void;
   onApprove: () => void;
   onReject: () => void;
@@ -634,7 +637,6 @@ function RowGroup(props: {
     canSelect,
     isSelected,
     editFields,
-    onToggle,
     onCheckboxClick,
     onApprove,
     onReject,
@@ -655,7 +657,7 @@ function RowGroup(props: {
               type="checkbox"
               checked={isSelected}
               onClick={onCheckboxClick}
-              onChange={onToggle}
+              onChange={() => {}}
               className="cursor-pointer accent-curtn-coral"
               aria-label={`Select ${item.title}`}
               title="Shift-click to select a range"
