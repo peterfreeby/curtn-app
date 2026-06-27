@@ -691,7 +691,10 @@ function RowGroup(props: {
             <img
               src={item.imageUrl}
               alt=""
-              className="h-12 w-12 object-cover bg-curtn-surface-2"
+              // max-w-none defeats preflight's img{max-width:100%}, which let the
+              // thumbnail shrink to 0 when the w-full auto-layout table ran out of
+              // room and squeezed this column. Keeps the poster a firm 84px.
+              className="h-12 w-12 max-w-none object-cover bg-curtn-surface-2"
             />
           ) : (
             <div className="h-12 w-12 bg-curtn-surface-2 flex items-center justify-center text-curtn-muted/40 text-[10px]">
