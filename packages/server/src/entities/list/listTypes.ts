@@ -42,6 +42,13 @@ const typeNameMap: Record<string, string> = {
   people: 'Person'
 }
 
+// Models for resolving a dynamic list's source entity (keyed by source entity type)
+const sourceEntityModelMap: Record<string, () => any> = {
+  venue: () => require('../venue/venueModel').VenueModel,
+  person: () => require('../person/personModel').PersonModel,
+  productionCompany: () => require('../productionCompany/productionCompanyModel').ProductionCompanyModel
+}
+
 export const ListableItem = new GraphQLUnionType({
   name: 'ListableItem',
   types: () => LIST_TYPES.map(t => typeMap[t]()),
@@ -61,6 +68,8 @@ export const listItemType: GraphQLObjectType = new GraphQLObjectType({
       item: {
         type: ListableItem,
         resolve: async (listItem: any) => {
+          // Dynamic lists synthesize nodes with the item already resolved.
+          if (listItem._resolvedItem) return listItem._resolvedItem
           const list = await ListModel.findById(listItem.list)
           if (!list) return null
           const Model = getModelForListType(list.listType)
@@ -168,11 +177,47 @@ export const listType: GraphQLObjectType = new GraphQLObjectType({
         type: GraphQLInt,
         resolve: (list: any) => list.itemCount
       },
+      sourceMode: {
+        type: GraphQLString,
+        description: 'How items are populated: manual, entity, or follows',
+        resolve: (list: any) => list.sourceMode || 'manual'
+      },
+      sourceEntityType: {
+        type: GraphQLString,
+        description: 'For entity lists: the kind of source entity (venue/person/productionCompany)',
+        resolve: (list: any) => list.sourceEntityType || null
+      },
+      sourceEntityName: {
+        type: GraphQLString,
+        description: 'For entity lists: the display name of the source entity',
+        resolve: async (list: any) => {
+          if (list.sourceMode !== 'entity' || !list.sourceEntityType || !list.sourceEntityId) return null
+          const Model = sourceEntityModelMap[list.sourceEntityType]?.()
+          if (!Model) return null
+          const doc = await Model.findById(list.sourceEntityId).select('name').lean()
+          return doc?.name ?? null
+        }
+      },
+      followTargetType: {
+        type: GraphQLString,
+        description: 'For follows lists: the kind of followed entity (venue/person/productionCompany)',
+        resolve: (list: any) => list.followTargetType || null
+      },
       items: {
         type: ListItemConnection,
         description: 'Items in this list, ordered by position',
         args: { ...connectionArgs },
         resolve: async (list: any, args: any, ctx: any) => {
+          // Dynamic lists (entity / follows) synthesize their items at query time.
+          if (list.sourceMode && list.sourceMode !== 'manual') {
+            const { resolveDynamicListItems } = require('./resolveDynamicListItems')
+            const shows = await resolveDynamicListItems(list, ctx)
+            const edges = shows.map((show: any, i: number) => {
+              const node = { _id: `${list._id}_${show._id}`, position: i, _resolvedItem: show }
+              return { node, cursor: node._id }
+            })
+            return { edges, pageInfo: { hasNextPage: false, hasPreviousPage: false } }
+          }
           // If no pagination args, use DataLoader for batching
           if (!args.first && !args.after && ctx.loaders) {
             const items = await ctx.loaders.listItemsByListLoader.load(list._id.toString())

@@ -7,6 +7,7 @@ import { PersonHero } from "@/components/people/PersonHero";
 import { PersonCredits } from "@/components/people/PersonCredits";
 import { ClaimPersonButton } from "@/components/people/ClaimPersonButton";
 import { AddToListButton } from "@/components/lists/AddToListButton";
+import { EntityFollowButton } from "@/components/follows/EntityFollowButton";
 import { EditHistory } from "@/components/auditLog/EditHistory";
 import { PendingProposalsStrip } from "@/components/proposals/PendingProposalsStrip";
 import { useAuth } from "@/lib/auth/useAuth";
@@ -64,6 +65,12 @@ export default function PersonDetailPage() {
       />
 
       <div className="flex items-center gap-3">
+        <EntityFollowButton
+          targetId={person.id}
+          targetType="person"
+          isFollowedByViewer={person.isFollowedByViewer}
+          size="sm"
+        />
         <AddToListButton itemId={person.id} listType="people" />
         <ClaimPersonButton
           personId={person.id}

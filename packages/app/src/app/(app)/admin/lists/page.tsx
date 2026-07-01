@@ -8,9 +8,11 @@ import {
   LIST_CREATE_MUTATION,
   LIST_SET_EDITORIAL_MUTATION,
   LIST_DELETE_MUTATION,
-  EDITORIAL_LISTS_QUERY,
+  ADMIN_EDITORIAL_LISTS_QUERY,
 } from "@/lib/graphql/lists";
 import { Icon } from "@/components/icons/Icons";
+import { EntitySourcePicker } from "@/components/admin/EntitySourcePicker";
+import { InfiniteList } from "@/components/admin/InfiniteList";
 
 const LIST_TYPES = [
   { value: "shows", label: "Shows" },
@@ -20,35 +22,87 @@ const LIST_TYPES = [
   { value: "people", label: "People" },
 ];
 
+const SOURCE_MODES = [
+  { value: "manual", label: "Manual (hand-picked)" },
+  { value: "entity", label: "Auto — all shows from one entity" },
+  { value: "follows", label: "Auto — shows from entities I follow" },
+];
+
+const ENTITY_TYPES = [
+  { value: "venue", label: "Venue" },
+  { value: "person", label: "Person" },
+  { value: "productionCompany", label: "Production company" },
+];
+
+type SourceEntityType = "venue" | "person" | "productionCompany";
+
+function sourceLabel(list: any): string {
+  if (list.sourceMode === "entity") {
+    return `Auto · ${list.sourceEntityName ?? list.sourceEntityType ?? "entity"}`;
+  }
+  if (list.sourceMode === "follows") {
+    return `Auto · ${list.followTargetType ?? "entities"} I follow`;
+  }
+  return `${list.itemCount} items`;
+}
+
 export default function AdminListsPage() {
   const [name, setName] = useState("");
   const [listType, setListType] = useState("shows");
+  const [sourceMode, setSourceMode] = useState("manual");
+  const [sourceEntityType, setSourceEntityType] = useState<SourceEntityType>("venue");
+  const [selectedEntity, setSelectedEntity] = useState<{ id: string; name: string } | null>(null);
+  const [followTargetType, setFollowTargetType] = useState<SourceEntityType>("person");
   const [error, setError] = useState<string | null>(null);
 
-  const [{ data: editorialData, fetching: editorialFetching }, reexecuteEditorial] = useQuery({
-    query: EDITORIAL_LISTS_QUERY,
-    variables: {},
+  // Active editorial lists (mirrors the browse query). Small, complete, always shown
+  // first in the merged editorial scroll area — never crowded out by the inactive pile.
+  const [{ data: activeData, fetching: activeFetching }, reexecuteActive] = useQuery({
+    query: ADMIN_EDITORIAL_LISTS_QUERY,
+    variables: { activeOnly: true, first: 200 },
   });
 
-  const [{ data: allListsData, fetching: allFetching }, reexecuteAll] = useQuery({
-    query: MY_LISTS_QUERY,
-    variables: { first: 100 },
-  });
+  // Bumped after any mutation to reset the infinite-scroll lists to their first page.
+  const [refreshTick, setRefreshTick] = useState(0);
+  function refreshLists() {
+    reexecuteActive({ requestPolicy: "network-only" });
+    setRefreshTick((t) => t + 1);
+  }
 
   const [, executeCreate] = useMutation(LIST_CREATE_MUTATION);
   const [, executeSetEditorial] = useMutation(LIST_SET_EDITORIAL_MUTATION);
   const [, executeDelete] = useMutation(LIST_DELETE_MUTATION);
 
-  const editorialLists = editorialData?.editorialLists?.edges?.map((e: any) => e.node) ?? [];
-  const allLists = allListsData?.myLists?.edges?.map((e: any) => e.node) ?? [];
+  const activeLists = activeData?.editorialLists?.edges?.map((e: any) => e.node) ?? [];
 
   async function handleQuickCreate() {
     if (!name.trim()) return;
     setError(null);
 
-    const result = await executeCreate({
-      input: { name: name.trim(), listType, isPublic: true },
-    });
+    // Dynamic lists are always lists of shows.
+    const effectiveListType = sourceMode === "manual" ? listType : "shows";
+
+    const input: any = {
+      name: name.trim(),
+      listType: effectiveListType,
+      isPublic: true,
+      sourceMode,
+    };
+
+    if (sourceMode === "entity") {
+      if (!selectedEntity) {
+        setError("Pick an entity to source shows from.");
+        return;
+      }
+      input.sourceEntityType = sourceEntityType;
+      input.sourceEntityId = selectedEntity.id;
+    }
+
+    if (sourceMode === "follows") {
+      input.followTargetType = followTargetType;
+    }
+
+    const result = await executeCreate({ input });
 
     if (result.data?.listCreate?.error) {
       setError(result.data.listCreate.error);
@@ -58,41 +112,120 @@ export default function AdminListsPage() {
     const newList = result.data?.listCreate?.list;
     if (newList) {
       await executeSetEditorial({
-        input: { listId: newList.id, isEditorial: true, isActive: true, displayOrder: editorialLists.length },
+        input: { listId: newList.id, isEditorial: true, isActive: true, displayOrder: activeLists.length },
       });
     }
 
     setName("");
-    reexecuteEditorial({ requestPolicy: "network-only" });
-    reexecuteAll({ requestPolicy: "network-only" });
+    setSelectedEntity(null);
+    setSourceMode("manual");
+    refreshLists();
   }
 
   async function toggleEditorial(listId: string, isCurrentlyEditorial: boolean) {
     await executeSetEditorial({
       input: { listId, isEditorial: !isCurrentlyEditorial },
     });
-    reexecuteEditorial({ requestPolicy: "network-only" });
-    reexecuteAll({ requestPolicy: "network-only" });
+    refreshLists();
   }
 
   async function toggleActive(listId: string, isCurrentlyActive: boolean) {
     await executeSetEditorial({
       input: { listId, isEditorial: true, isActive: !isCurrentlyActive },
     });
-    reexecuteEditorial({ requestPolicy: "network-only" });
+    refreshLists();
   }
 
   async function updateDisplayOrder(listId: string, displayOrder: number) {
     await executeSetEditorial({
       input: { listId, isEditorial: true, displayOrder },
     });
-    reexecuteEditorial({ requestPolicy: "network-only" });
+    refreshLists();
   }
 
   async function handleDelete(listId: string) {
     await executeDelete({ input: { listId } });
-    reexecuteEditorial({ requestPolicy: "network-only" });
-    reexecuteAll({ requestPolicy: "network-only" });
+    refreshLists();
+  }
+
+  function renderEditorialRow(list: any) {
+    return (
+      <div key={list.id} className="flex items-center justify-between border border-curtn-dark/50 bg-curtn-surface px-3 py-2">
+        <div className="flex items-center gap-3">
+          <input
+            type="number"
+            defaultValue={list.displayOrder ?? 0}
+            onBlur={(e) => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val) && val !== list.displayOrder) {
+                updateDisplayOrder(list.id, val);
+              }
+            }}
+            className="w-12 border border-curtn-dark bg-curtn-deep px-1.5 py-0.5 text-xs text-curtn-cream text-center focus:border-curtn-muted/50 focus:outline-none"
+            title="Display order (lower = first)"
+          />
+          <button
+            type="button"
+            onClick={() => toggleActive(list.id, list.isActive)}
+            className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 cursor-pointer transition-colors ${
+              list.isActive
+                ? "bg-curtn-acid/20 text-curtn-acid"
+                : "bg-curtn-dark/60 text-curtn-muted/50"
+            }`}
+            title={list.isActive ? "Active — visible on browse" : "Inactive — hidden from browse"}
+          >
+            {list.isActive ? "Active" : "Inactive"}
+          </button>
+          <span className="text-[10px] uppercase tracking-wider text-curtn-muted bg-curtn-dark/60 px-1.5 py-0.5">
+            {list.listType}
+          </span>
+          <Link
+            href={`/u/${list.owner.username}/lists/${list.slug}`}
+            className="text-sm text-curtn-cream hover:text-curtn-coral transition-colors"
+          >
+            {list.name}
+          </Link>
+          <span className="text-[10px] text-curtn-muted/50">{sourceLabel(list)}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => toggleEditorial(list.id, true)}
+            className="text-[10px] text-curtn-muted hover:text-curtn-cream transition-colors cursor-pointer"
+          >
+            Remove from browse
+          </button>
+          <button
+            type="button"
+            onClick={() => handleDelete(list.id)}
+            className="p-1 text-curtn-muted/50 hover:text-curtn-coral transition-colors cursor-pointer"
+          >
+            <Icon name="trash" size={12} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  function renderYourListRow(list: any) {
+    return (
+      <div key={list.id} className="flex items-center justify-between border border-curtn-dark/30 px-3 py-2">
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] uppercase tracking-wider text-curtn-muted/50 bg-curtn-dark/40 px-1.5 py-0.5">
+            {list.listType}
+          </span>
+          <span className="text-sm text-curtn-muted">{list.name}</span>
+          <span className="text-[10px] text-curtn-muted/50">{list.itemCount} items</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => toggleEditorial(list.id, false)}
+          className="text-[10px] text-curtn-coral hover:text-curtn-red transition-colors cursor-pointer"
+        >
+          Add to browse
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -104,6 +237,7 @@ export default function AdminListsPage() {
       {/* Quick create editorial list */}
       <div className="border border-curtn-dark bg-curtn-surface p-4 space-y-3">
         <p className="text-xs uppercase tracking-widest text-curtn-muted">Create Editorial List</p>
+
         <div className="flex gap-2">
           <input
             type="text"
@@ -113,18 +247,74 @@ export default function AdminListsPage() {
             className="flex-1 border border-curtn-dark bg-curtn-deep px-3 py-1.5 text-sm text-curtn-cream placeholder:text-curtn-muted/40 focus:border-curtn-muted/50 focus:outline-none"
           />
           <select
-            value={listType}
-            onChange={(e) => setListType(e.target.value)}
+            value={sourceMode}
+            onChange={(e) => { setSourceMode(e.target.value); setError(null); }}
             className="border border-curtn-dark bg-curtn-deep px-3 py-1.5 text-sm text-curtn-cream focus:outline-none cursor-pointer"
+            title="How this list is populated"
           >
-            {LIST_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
+            {SOURCE_MODES.map((m) => (
+              <option key={m.value} value={m.value}>{m.label}</option>
             ))}
           </select>
+        </div>
+
+        {/* Mode-specific controls */}
+        {sourceMode === "manual" && (
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-wider text-curtn-muted">Item type</span>
+            <select
+              value={listType}
+              onChange={(e) => setListType(e.target.value)}
+              className="border border-curtn-dark bg-curtn-deep px-3 py-1.5 text-sm text-curtn-cream focus:outline-none cursor-pointer"
+            >
+              {LIST_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+            <span className="text-[10px] text-curtn-muted/50">Add items by hand on the list page.</span>
+          </div>
+        )}
+
+        {sourceMode === "entity" && (
+          <div className="flex items-center gap-2">
+            <select
+              value={sourceEntityType}
+              onChange={(e) => { setSourceEntityType(e.target.value as SourceEntityType); setSelectedEntity(null); }}
+              className="border border-curtn-dark bg-curtn-deep px-3 py-1.5 text-sm text-curtn-cream focus:outline-none cursor-pointer"
+            >
+              {ENTITY_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+            <EntitySourcePicker
+              entityType={sourceEntityType}
+              value={selectedEntity}
+              onChange={setSelectedEntity}
+            />
+          </div>
+        )}
+
+        {sourceMode === "follows" && (
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-wider text-curtn-muted">Shows from</span>
+            <select
+              value={followTargetType}
+              onChange={(e) => setFollowTargetType(e.target.value as SourceEntityType)}
+              className="border border-curtn-dark bg-curtn-deep px-3 py-1.5 text-sm text-curtn-cream focus:outline-none cursor-pointer"
+            >
+              {ENTITY_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}s I follow</option>
+              ))}
+            </select>
+            <span className="text-[10px] text-curtn-muted/50">Per-viewer. Hidden when a viewer follows none.</span>
+          </div>
+        )}
+
+        <div className="flex justify-end">
           <button
             type="button"
             onClick={handleQuickCreate}
-            disabled={!name.trim()}
+            disabled={!name.trim() || (sourceMode === "entity" && !selectedEntity)}
             className="bg-curtn-coral px-4 py-1.5 text-xs font-semibold text-curtn-deep uppercase tracking-wider hover:bg-curtn-red disabled:opacity-40 cursor-pointer"
           >
             Create
@@ -133,80 +323,33 @@ export default function AdminListsPage() {
         {error && <p className="text-xs text-curtn-coral">{error}</p>}
       </div>
 
-      {/* Current editorial lists */}
+      {/* Editorial lists — active first, then inactive streams in on scroll */}
       <section>
         <h3 className="text-xs uppercase tracking-widest text-curtn-muted mb-3">
-          Active Editorial Lists ({editorialLists.length})
+          Editorial Lists
+          <span className="ml-2 text-curtn-muted/50 normal-case tracking-normal">
+            {activeLists.length} active on browse
+          </span>
         </h3>
 
-        {editorialFetching ? (
-          <div className="space-y-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-12 bg-curtn-dark/30 animate-pulse" />
-            ))}
-          </div>
-        ) : editorialLists.length === 0 ? (
-          <p className="text-xs text-curtn-muted/50">No editorial lists yet</p>
-        ) : (
-          <div className="space-y-1">
-            {editorialLists.map((list: any) => (
-              <div key={list.id} className="flex items-center justify-between border border-curtn-dark/50 bg-curtn-surface px-3 py-2">
-                <div className="flex items-center gap-3">
-                  <input
-                    type="number"
-                    defaultValue={list.displayOrder ?? 0}
-                    onBlur={(e) => {
-                      const val = parseInt(e.target.value, 10);
-                      if (!isNaN(val) && val !== list.displayOrder) {
-                        updateDisplayOrder(list.id, val);
-                      }
-                    }}
-                    className="w-12 border border-curtn-dark bg-curtn-deep px-1.5 py-0.5 text-xs text-curtn-cream text-center focus:border-curtn-muted/50 focus:outline-none"
-                    title="Display order (lower = first)"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => toggleActive(list.id, list.isActive)}
-                    className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 cursor-pointer transition-colors ${
-                      list.isActive
-                        ? "bg-curtn-acid/20 text-curtn-acid"
-                        : "bg-curtn-dark/60 text-curtn-muted/50"
-                    }`}
-                    title={list.isActive ? "Active — visible on browse" : "Inactive — hidden from browse"}
-                  >
-                    {list.isActive ? "Active" : "Inactive"}
-                  </button>
-                  <span className="text-[10px] uppercase tracking-wider text-curtn-muted bg-curtn-dark/60 px-1.5 py-0.5">
-                    {list.listType}
-                  </span>
-                  <Link
-                    href={`/u/${list.owner.username}/lists/${list.slug}`}
-                    className="text-sm text-curtn-cream hover:text-curtn-coral transition-colors"
-                  >
-                    {list.name}
-                  </Link>
-                  <span className="text-[10px] text-curtn-muted/50">{list.itemCount} items</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => toggleEditorial(list.id, true)}
-                    className="text-[10px] text-curtn-muted hover:text-curtn-cream transition-colors cursor-pointer"
-                  >
-                    Remove from browse
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(list.id)}
-                    className="p-1 text-curtn-muted/50 hover:text-curtn-coral transition-colors cursor-pointer"
-                  >
-                    <Icon name="trash" size={12} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <InfiniteList
+          query={ADMIN_EDITORIAL_LISTS_QUERY}
+          connectionKey="editorialLists"
+          variables={{ isActive: false }}
+          renderItem={renderEditorialRow}
+          resetKey={refreshTick}
+          emptyText="No editorial lists yet — create one above."
+          prepend={
+            <>
+              {activeLists.map(renderEditorialRow)}
+              {activeLists.length > 0 && (
+                <p className="pt-3 pb-1 text-[10px] uppercase tracking-wider text-curtn-muted/40">
+                  Inactive
+                </p>
+              )}
+            </>
+          }
+        />
       </section>
 
       {/* All my lists — promote to editorial */}
@@ -215,36 +358,15 @@ export default function AdminListsPage() {
           Your Lists (promote to editorial)
         </h3>
 
-        {allFetching ? (
-          <div className="space-y-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-10 bg-curtn-dark/30 animate-pulse" />
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-1">
-            {allLists
-              .filter((l: any) => !l.isEditorial)
-              .map((list: any) => (
-                <div key={list.id} className="flex items-center justify-between border border-curtn-dark/30 px-3 py-2">
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] uppercase tracking-wider text-curtn-muted/50 bg-curtn-dark/40 px-1.5 py-0.5">
-                      {list.listType}
-                    </span>
-                    <span className="text-sm text-curtn-muted">{list.name}</span>
-                    <span className="text-[10px] text-curtn-muted/50">{list.itemCount} items</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => toggleEditorial(list.id, false)}
-                    className="text-[10px] text-curtn-coral hover:text-curtn-red transition-colors cursor-pointer"
-                  >
-                    Add to browse
-                  </button>
-                </div>
-              ))}
-          </div>
-        )}
+        <InfiniteList
+          query={MY_LISTS_QUERY}
+          connectionKey="myLists"
+          variables={{}}
+          filter={(l: any) => !l.isEditorial}
+          renderItem={renderYourListRow}
+          resetKey={refreshTick}
+          emptyText="No non-editorial lists."
+        />
       </section>
     </div>
   );

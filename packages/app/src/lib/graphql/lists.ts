@@ -12,6 +12,10 @@ export const LIST_FRAGMENT = gql`
     isActive
     displayOrder
     itemCount
+    sourceMode
+    sourceEntityType
+    sourceEntityName
+    followTargetType
     isOwner
     isCollaborator
     owner {
@@ -148,10 +152,31 @@ export const LIST_BY_ID_QUERY = gql`
   ${LIST_FRAGMENT}
 `;
 
-export const EDITORIAL_LISTS_QUERY = gql`
-  query EditorialLists($listType: String, $activeOnly: Boolean) {
-    editorialLists(listType: $listType, activeOnly: $activeOnly) {
+// Lightweight editorial-list query for admin management: list metadata only,
+// no `items` (so dynamic lists don't run their show aggregations just to show a row).
+export const ADMIN_EDITORIAL_LISTS_QUERY = gql`
+  query AdminEditorialLists($activeOnly: Boolean, $isActive: Boolean, $first: Int, $after: String) {
+    editorialLists(activeOnly: $activeOnly, isActive: $isActive, first: $first, after: $after) {
       edges {
+        cursor
+        node {
+          ...ListFields
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+  ${LIST_FRAGMENT}
+`;
+
+export const EDITORIAL_LISTS_QUERY = gql`
+  query EditorialLists($listType: String, $activeOnly: Boolean, $isActive: Boolean, $first: Int, $after: String) {
+    editorialLists(listType: $listType, activeOnly: $activeOnly, isActive: $isActive, first: $first, after: $after) {
+      edges {
+        cursor
         node {
           ...ListFields
           items {
@@ -199,6 +224,10 @@ export const EDITORIAL_LISTS_QUERY = gql`
             }
           }
         }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
       }
     }
   }

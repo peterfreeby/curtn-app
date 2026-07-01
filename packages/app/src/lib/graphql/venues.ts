@@ -73,6 +73,7 @@ export const VENUE_BY_SLUG_QUERY = gql`
       imageUrl
       permanentlyClosed
       closedDate
+      isFollowedByViewer
       claimState
       claimedBy {
         id

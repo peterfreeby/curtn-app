@@ -15,10 +15,14 @@ export const editorialLists: GraphQLFieldConfig<any, any, any> = {
     activeOnly: {
       type: GraphQLBoolean,
       description: 'If true, only return lists where isActive is true'
+    },
+    isActive: {
+      type: GraphQLBoolean,
+      description: 'If provided, filter by exact active state (true = active, false = inactive)'
     }
   },
   resolve: async (_, args) => {
-    const { listType, activeOnly, ...connArgs } = args
+    const { listType, activeOnly, isActive, ...connArgs } = args
     const filter: any = { isEditorial: true }
 
     if (listType) {
@@ -27,6 +31,8 @@ export const editorialLists: GraphQLFieldConfig<any, any, any> = {
 
     if (activeOnly) {
       filter.isActive = true
+    } else if (typeof isActive === 'boolean') {
+      filter.isActive = isActive
     }
 
     const { filter: cursorFilter, sort, limit } = applyCursorToQuery(filter, {
@@ -34,7 +40,7 @@ export const editorialLists: GraphQLFieldConfig<any, any, any> = {
       first: (connArgs as any).first,
       sortField: 'displayOrder',
       sortDirection: 1,
-      maxLimit: 50
+      maxLimit: 200
     })
     const lists = await ListModel.find(cursorFilter).sort(sort).limit(limit).lean()
     return buildConnection(lists, { first: (connArgs as any).first, sortField: 'displayOrder', maxLimit: 50 })

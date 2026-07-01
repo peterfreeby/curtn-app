@@ -13,6 +13,7 @@ import {
   import { globalIdField, connectionDefinitions } from 'graphql-relay'
   import { entityRegister } from '../../graphql/entityHelpers'
   import { claimableFieldsGraphQL } from '../../permissions/claimableFieldsGraphQL'
+  import { isFollowedByViewerField } from '../entityFollow/isFollowedByViewerField'
   import { VenueModel } from './venueModel'
   
   // Coordinates type for venue location
@@ -171,6 +172,7 @@ import {
         description: 'When venue was last updated',
         resolve: venue => venue.updatedAt?.toISOString()
       },
+      isFollowedByViewer: isFollowedByViewerField('venue'),
       ...claimableFieldsGraphQL()
     })
   })

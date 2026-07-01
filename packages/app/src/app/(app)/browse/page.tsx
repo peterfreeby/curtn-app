@@ -9,6 +9,7 @@ import { ShowGrid } from "@/components/shows/ShowGrid";
 import { PosterCard } from "@/components/PosterCard";
 import { WiredPosterCard } from "@/components/WiredPosterCard";
 import { Icon } from "@/components/icons/Icons";
+import { useNearbyMetroState } from "@/lib/location/useNearbyMetro";
 
 const PAGE_SIZE = 12;
 const SCROLL_PADDING = 24; // matches px-6
@@ -110,12 +111,33 @@ function BrowseCarousel({ children }: { children: ReactNode }) {
 }
 
 function EditorialCarousel() {
+  // Prompts for location on mount; resolves to the user's nearest metro's state
+  // code (e.g. "NY"), or null while pending / if denied (→ show everything).
+  const metroState = useNearbyMetroState();
+
   const [{ data, fetching }] = useQuery({
     query: EDITORIAL_LISTS_QUERY,
-    variables: { activeOnly: true },
+    variables: { activeOnly: true, first: 200 },
   });
 
-  const lists = data?.editorialLists?.edges?.map((e: any) => e.node) ?? [];
+  const allLists = data?.editorialLists?.edges?.map((e: any) => e.node) ?? [];
+
+  // Resolve a list's item nodes, applying the location filter to venue lists:
+  // when we know the user's metro, only surface featured venues in that state.
+  const itemsForList = (list: any): any[] => {
+    let items = list.items?.edges?.map((e: any) => e.node) ?? [];
+    if (metroState && list.listType === "venues") {
+      items = items.filter((node: any) => node.item?.state === metroState);
+    }
+    return items;
+  };
+
+  // Pair each list with its (possibly filtered) items, then drop any that end up
+  // empty — covers empty manual lists, dynamic lists that resolve to nothing, and
+  // venue lists with no featured venues near the user.
+  const lists = allLists
+    .map((list: any) => ({ list, items: itemsForList(list) }))
+    .filter((entry: { items: any[] }) => entry.items.length > 0);
 
   if (fetching) {
     return (
@@ -138,8 +160,7 @@ function EditorialCarousel() {
 
   return (
     <div className="space-y-10">
-      {lists.map((list: any) => {
-        const items = list.items?.edges?.map((e: any) => e.node) ?? [];
+      {lists.map(({ list, items }: { list: any; items: any[] }) => {
         return (
           <section key={list.id}>
             <div className="flex items-center justify-between mb-4">
@@ -158,15 +179,11 @@ function EditorialCarousel() {
               <p className="text-xs text-curtn-muted mb-3 -mt-2">{list.description}</p>
             )}
 
-            {items.length > 0 ? (
-              <BrowseCarousel>
-                {items.map((item: any) => (
-                  <BrowseItemCard key={item.id} item={item.item} listType={list.listType} />
-                ))}
-              </BrowseCarousel>
-            ) : (
-              <p className="text-xs text-curtn-muted/50">No items in this list yet</p>
-            )}
+            <BrowseCarousel>
+              {items.map((item: any) => (
+                <BrowseItemCard key={item.id} item={item.item} listType={list.listType} />
+              ))}
+            </BrowseCarousel>
           </section>
         );
       })}
