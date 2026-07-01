@@ -8,6 +8,7 @@ export const COMPANY_BY_SLUG_QUERY = gql`
       slug
       description
       logoUrl
+      isFollowedByViewer
       claimState
       claimedBy {
         id

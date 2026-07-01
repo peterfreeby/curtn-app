@@ -7,6 +7,7 @@ import { VENUE_BY_SLUG_QUERY } from "@/lib/graphql/venues";
 import { VenueHero } from "@/components/venues/VenueHero";
 import { VenuePerformances } from "@/components/venues/VenuePerformances";
 import { AddToListButton } from "@/components/lists/AddToListButton";
+import { EntityFollowButton } from "@/components/follows/EntityFollowButton";
 import { Button } from "@/components/Button";
 import { InlineEditor } from "@/components/admin/InlineEditor";
 import { EntityDataSourcesPanel } from "@/components/admin/EntityDataSourcesPanel";
@@ -85,7 +86,15 @@ export default function VenueDetailPage() {
         isClaimant={!!user && !!venue.claimedBy?.id && decodeId(venue.claimedBy.id) === user.id}
       />
 
-      <AddToListButton itemId={venue.id} listType="venues" />
+      <div className="flex items-center gap-3">
+        <EntityFollowButton
+          targetId={venue.id}
+          targetType="venue"
+          isFollowedByViewer={venue.isFollowedByViewer}
+          size="sm"
+        />
+        <AddToListButton itemId={venue.id} listType="venues" />
+      </div>
 
       {isAdmin && !editing && (
         <Button variant="tertiary" size="sm" icon="pencil" onClick={() => setEditing(true)}>

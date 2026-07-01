@@ -3,6 +3,17 @@ import mongoose, { Schema, Types } from 'mongoose'
 export const LIST_TYPES = ['shows', 'venues', 'runs', 'performances', 'people'] as const
 export type ListType = typeof LIST_TYPES[number]
 
+// How a list's items are populated:
+//  - manual:  hand-picked ListItem docs (the original behavior)
+//  - entity:  auto — all shows from one venue/person/company, by recency
+//  - follows: auto — all shows from the viewer's followed entities of a type, by recency
+export const LIST_SOURCE_MODES = ['manual', 'entity', 'follows'] as const
+export type ListSourceMode = typeof LIST_SOURCE_MODES[number]
+
+// Entity kinds a dynamic list can source shows from (aligns with EntityFollow target types)
+export const LIST_SOURCE_ENTITY_TYPES = ['venue', 'person', 'productionCompany'] as const
+export type ListSourceEntityType = typeof LIST_SOURCE_ENTITY_TYPES[number]
+
 export interface IList {
   name: string
   slug: string
@@ -15,6 +26,10 @@ export interface IList {
   owner: Types.ObjectId
   collaborators: Types.ObjectId[]
   itemCount: number
+  sourceMode: ListSourceMode
+  sourceEntityType?: ListSourceEntityType
+  sourceEntityId?: Types.ObjectId
+  followTargetType?: ListSourceEntityType
   createdAt: Date
   updatedAt: Date
 }
@@ -67,6 +82,25 @@ const listSchema = new Schema<IList>({
   itemCount: {
     type: Number,
     default: 0
+  },
+  sourceMode: {
+    type: String,
+    enum: LIST_SOURCE_MODES,
+    default: 'manual'
+  },
+  sourceEntityType: {
+    type: String,
+    enum: LIST_SOURCE_ENTITY_TYPES,
+    required: false
+  },
+  sourceEntityId: {
+    type: Schema.Types.ObjectId,
+    required: false
+  },
+  followTargetType: {
+    type: String,
+    enum: LIST_SOURCE_ENTITY_TYPES,
+    required: false
   }
 }, {
   timestamps: true

@@ -9,6 +9,7 @@ import { globalIdField, connectionDefinitions, connectionArgs } from 'graphql-re
 import { applyCursorToQuery, buildConnection } from '../../graphql/cursorPagination'
 import { entityRegister } from '../../graphql/entityHelpers'
 import { claimableFieldsGraphQL } from '../../permissions/claimableFieldsGraphQL'
+import { isFollowedByViewerField } from '../entityFollow/isFollowedByViewerField'
 import { ProductionCompanyModel } from './productionCompanyModel'
 import { RunModel } from '../run/runModel'
 import { CreditModel } from '../credit/creditModel'
@@ -97,6 +98,7 @@ export const productionCompanyType: GraphQLObjectType = new GraphQLObjectType({
         type: GraphQLString,
         resolve: company => company.updatedAt?.toISOString()
       },
+      isFollowedByViewer: isFollowedByViewerField('productionCompany'),
       ...claimableFieldsGraphQL()
     }
   }

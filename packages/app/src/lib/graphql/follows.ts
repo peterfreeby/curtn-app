@@ -1,8 +1,17 @@
 import { gql } from "urql";
 
 export const FOLLOW_TOGGLE_MUTATION = gql`
-  mutation FollowToggle($input: FollowToggleInput!) {
+  mutation FollowToggle($input: followToggleInput!) {
     followToggle(input: $input) {
+      isFollowing
+      error
+    }
+  }
+`;
+
+export const ENTITY_FOLLOW_TOGGLE_MUTATION = gql`
+  mutation EntityFollowToggle($input: entityFollowToggleInput!) {
+    entityFollowToggle(input: $input) {
       isFollowing
       error
     }

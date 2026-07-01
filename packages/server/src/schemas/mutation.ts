@@ -28,6 +28,7 @@ import { removalRequestMutations } from '../entities/removalRequest/mutations/re
 import { proposalMutations } from '../entities/proposal/mutations/proposal'
 import { trustedEditorMutations } from '../entities/trustedEditor/mutations/trustedEditor'
 import { blockMutations } from '../entities/block/mutations/block'
+import { entityFollowMutations } from '../entities/entityFollow/mutations/entityFollow'
 
 export const mutation = new GraphQLObjectType({
   name: 'Mutation',
@@ -58,6 +59,7 @@ export const mutation = new GraphQLObjectType({
     ...removalRequestMutations,
     ...proposalMutations,
     ...trustedEditorMutations,
-    ...blockMutations
+    ...blockMutations,
+    ...entityFollowMutations
   }
 })

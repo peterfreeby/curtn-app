@@ -9,6 +9,7 @@ export const PERSON_BY_SLUG_QUERY = gql`
       bio
       headshotUrl
       isClaimed
+      isFollowedByViewer
       claimState
       claimedBy {
         id
