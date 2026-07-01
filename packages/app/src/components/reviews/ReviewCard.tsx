@@ -48,7 +48,7 @@ export function ReviewCard({ review, showPerformanceLink = false, onDeleted }: R
     : "";
 
   const showTitle = review.run?.show?.title;
-  const showImageUrl = review.run?.show?.posterUrl || review.run?.show?.imageUrl;
+  const showImageUrl = review.run?.show?.posterUrl;
   const runId = review.run?.id;
   const reviewerName = review.user?.fullName || review.user?.username || "Anonymous";
 

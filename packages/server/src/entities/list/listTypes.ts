@@ -198,6 +198,17 @@ export const listType: GraphQLObjectType = new GraphQLObjectType({
           return doc?.name ?? null
         }
       },
+      sourceEntitySlug: {
+        type: GraphQLString,
+        description: 'For entity lists: the slug of the source entity (for linking to its detail page)',
+        resolve: async (list: any) => {
+          if (list.sourceMode !== 'entity' || !list.sourceEntityType || !list.sourceEntityId) return null
+          const Model = sourceEntityModelMap[list.sourceEntityType]?.()
+          if (!Model) return null
+          const doc = await Model.findById(list.sourceEntityId).select('slug').lean()
+          return doc?.slug ?? null
+        }
+      },
       followTargetType: {
         type: GraphQLString,
         description: 'For follows lists: the kind of followed entity (venue/person/productionCompany)',

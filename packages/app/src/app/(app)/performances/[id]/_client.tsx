@@ -72,7 +72,7 @@ export default function ShowDetailPage() {
         title: show.title,
         subtitle: sub,
         entityType,
-        posterUrl: show.posterUrl || show.imageUrl,
+        posterUrl: show.posterUrl,
         showId: show.id,
         runId: singleRun?.id || null,
         isOnWatchlist: show.isOnMyWatchlist ?? false,
@@ -250,7 +250,7 @@ export default function ShowDetailPage() {
           intermissions={singleRun.intermissions}
           languages={show.languages}
           imageUrl={show.imageUrl}
-          posterUrl={show.posterUrl}
+          posterUrl={singlePerf.imageUrl || show.posterUrl}
           creators={creators}
           companyName={company?.name}
           companySlug={company?.slug}

@@ -65,7 +65,7 @@ export function VenuePerformances({ venueName }: VenuePerformancesProps) {
             performanceTypes={run.show.performanceTypes}
             companyName={run.productionCompany?.name}
             companySlug={run.productionCompany?.slug}
-            imageUrl={run.show.posterUrl || run.show.imageUrl}
+            imageUrl={run.show.posterUrl}
             startDate={run.startDate}
             endDate={run.endDate}
             averageRating={run.averageRating}

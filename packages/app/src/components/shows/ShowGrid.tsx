@@ -146,7 +146,7 @@ export function ShowGrid({ shows, loading }: ShowGridProps) {
               <WiredPosterCard
                 key={show.id}
                 showId={show.id}
-                imageUrl={show.posterUrl || show.imageUrl}
+                imageUrl={show.posterUrl}
                 title={show.title}
                 subtitle={firstRun?.productionCompany?.name ?? undefined}
                 href={`/performances/${show.id}`}

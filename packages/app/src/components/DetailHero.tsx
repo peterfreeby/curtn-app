@@ -103,7 +103,7 @@ export function DetailHero({
         <div className="relative -mx-6 -mt-8 mb-6 z-0">
           {/* Backdrop */}
           <div className="relative h-[280px] sm:h-[400px] overflow-hidden">
-            {effectiveImage && effectivePoster ? (
+            {effectiveImage ? (
               <img
                 src={effectiveImage}
                 alt=""
@@ -119,16 +119,21 @@ export function DetailHero({
 
           {/* Poster + title overlay */}
           <div className="relative z-10 -mt-28 sm:-mt-36 px-6 flex flex-col sm:flex-row sm:gap-5 sm:items-end">
-            <div className="w-[140px] shrink-0">
-              <div className="relative aspect-[2/3] rounded-sm border-2 border-curtn-dark/50 bg-curtn-surface shadow-2xl overflow-hidden">
-                <img
-                  src={(effectivePoster || effectiveImage)!}
-                  alt={title}
-                  className="h-full w-full object-cover"
-                  onError={() => setPosterFailed(true)}
-                />
+            {effectivePoster && (
+              <div className="shrink-0">
+                {/* Poster only (never the splash). Uniform height across all detail
+                    pages; width follows the poster's aspect ratio (w-fit avoids
+                    stretching in the column layout). No crop. */}
+                <div className="relative h-[104px] w-fit min-w-[4rem] rounded-sm border-2 border-curtn-dark/50 bg-curtn-surface shadow-2xl overflow-hidden">
+                  <img
+                    src={effectivePoster}
+                    alt={title}
+                    className="block h-full w-auto"
+                    onError={() => setPosterFailed(true)}
+                  />
+                </div>
               </div>
-            </div>
+            )}
             <div className="flex-1 min-w-0 mt-4 sm:mt-0 sm:pb-1">
               {performanceTypes.length > 0 && (
                 <div className="-ml-2.5 mb-2 flex flex-wrap gap-1.5">

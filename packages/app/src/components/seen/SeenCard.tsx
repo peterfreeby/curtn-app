@@ -47,7 +47,7 @@ export function SeenCard({ seen, showUser = false }: SeenCardProps) {
   if (!run) return null;
 
   const showTitle = run.show.title;
-  const showImageUrl = run.show.posterUrl || run.show.imageUrl;
+  const showImageUrl = run.show.posterUrl;
   const dateRange = formatDateRange(run.startDate, run.endDate);
   const venueName = run.venues?.[0]?.name;
   const userName = seen.user?.fullName || seen.user?.username || "Someone";
