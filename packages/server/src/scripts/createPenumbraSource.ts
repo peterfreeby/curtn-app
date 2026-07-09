@@ -5,25 +5,26 @@ import { UserModel } from '../entities/user/userModel'
 import { VenueModel } from '../entities/venue/venueModel'
 import type { ScraperDataSourceConfig } from '../services/scraping/types'
 
-// Penumbra Theatre (penumbratheatre.org) — St. Paul; the nation's flagship Black
-// theater. WordPress site, no JSON-LD. The /events page renders an upcoming-events
-// list as `<section class="events"> <article>…`, one article PER PERFORMANCE
-// (a multi-week run like "Joe Turner's Come and Gone" shows ~16 dated articles).
+// Penumbra Theatre — St. Paul; the nation's flagship Black theater. The site
+// MIGRATED to penumbracenter.org and restructured: the old per-performance
+// article list (`.day`/`.time`/`.details h3 a`) is gone and the previous
+// selectors extract 0 rows. The listing (still reachable at
+// penumbratheatre.org/events, which serves the new markup) now renders ONE
+// article per show:
+//   <article class="category-...">
+//     <a href="https://penumbracenter.org/event/<slug>/" class="responsiveImage-…">
+//       <div class="details"><div class="category …">Arts</div>
+//         <div class="text"><h2>TITLE</h2><div class="date">September 8 - October 4</div></div>
+//   </article>
+// So the listing yields title + detail URL + a yearless run-date range; the
+// listing poster is a CSS background set in a <style> block (not inline), so we
+// take the poster from the detail page instead.
 //
-// Each article carries: `.day` (weekday/number/"Mon<br>YYYY" — cheerio's text()
-// joins to a parseable "Sat 6 Jun 2026"), `.time` ("2:00PM"), a `.image` div with
-// a background-image poster, a `.category`, and the title + detail link in
-// `.details h3 a` (→ /event/<slug>/#NN). The pipeline groups same-title rows into
-// one show with many performances.
-//
-// Detail pages expose a rich og:description (credits + run dates + synopsis) and a
-// large og:image, so detail-fetch overrides the listing's thumbnail and adds the
-// blurb. Fingerprint is [title] so all performances of a run share one detail
-// fetch.
-//
-// NOTE: /events also lists a few non-performance items (book clubs, equity panels);
-// they stage with performanceTypes=theater and are dropped at admin review. No
-// per-row field cleanly distinguishes them, and the mainstage run dominates.
+// Detail pages (penumbracenter.org/event/<slug>/) carry a rich og:description
+// (WRITTEN BY / DIRECTED BY + synopsis), a full-size og:image, and a `.tickets`
+// block listing every performance ("Tuesday, September 8, 2026 | 7:30PM …") — we
+// regex the first dated showtime out of it for a precise date + time (the listing
+// range only gives yearless run dates). One row per show; fingerprint [title].
 
 const CONFIG: ScraperDataSourceConfig = {
   startUrl: 'https://penumbratheatre.org/events',
@@ -38,24 +39,14 @@ const CONFIG: ScraperDataSourceConfig = {
           label: 'Events',
           selector: '.events article',
           children: [
-            { type: 'field', id: 'title', csvField: 'title', selector: '.details h3 a', transform: 'trim' },
-            { type: 'field', id: 'date', csvField: 'date', selector: '.day', transform: 'date' },
-            { type: 'field', id: 'time', csvField: 'time', selector: '.time', transform: 'time' },
-            {
-              // Background-image thumbnail; detail og:image overrides with the
-              // full-size poster.
-              type: 'field',
-              id: 'poster',
-              csvField: 'showImageUrl',
-              selector: '.image',
-              attribute: 'style',
-              regex: 'url\\(["\']?([^"\')]+)["\']?\\)',
-              transform: 'trim'
-            },
-            { type: 'field', id: 'ticketUrl', csvField: 'ticketUrl', selector: '.mainButtons a', attribute: 'href', transform: 'trim' },
-            // Strip the per-performance #NN anchor so every performance of a run
-            // shares one detail URL → one fetch + cache hits (vs one per date).
-            { type: 'field', id: 'detailUrl', csvField: '_detailUrl', selector: '.details h3 a', attribute: 'href', regex: '^([^#]+)', transform: 'trim' }
+            { type: 'field', id: 'title', csvField: 'title', selector: '.text h2', transform: 'trim' },
+            // Yearless run-date range "September 8 - October 4". Fallback date =
+            // range start (detail overrides with the precise dated showtime).
+            { type: 'field', id: 'date', csvField: 'date', selector: '.date', regex: '^\\s*([A-Z][a-z]+\\s+\\d{1,2})', transform: 'date' },
+            { type: 'field', id: 'runStart', csvField: 'runStartDate', selector: '.date', regex: '^\\s*([A-Z][a-z]+\\s+\\d{1,2})', transform: 'date' },
+            { type: 'field', id: 'runEnd', csvField: 'runEndDate', selector: '.date', regex: '[-–]\\s*([A-Z][a-z]+\\s+\\d{1,2})', transform: 'date' },
+            { type: 'field', id: 'ticketUrl', csvField: 'ticketUrl', selector: 'a[href*="/event/"]', attribute: 'href', transform: 'trim' },
+            { type: 'field', id: 'detailUrl', csvField: '_detailUrl', selector: 'a[href*="/event/"]', attribute: 'href', transform: 'trim' }
           ]
         }
       ]
@@ -97,6 +88,25 @@ const CONFIG: ScraperDataSourceConfig = {
               selector: 'meta[property="og:description"], meta[name="og:description"]',
               attribute: 'content',
               transform: 'trim'
+            },
+            // Precise date + time from the first performance in the .tickets block
+            // ("… Tuesday, September 8, 2026 | 7:30PM …"). Overrides the yearless
+            // listing date.
+            {
+              type: 'field',
+              id: 'detailDate',
+              csvField: 'date',
+              selector: '.tickets',
+              regex: '([A-Z][a-z]+\\s+\\d{1,2},\\s+\\d{4})',
+              transform: 'date'
+            },
+            {
+              type: 'field',
+              id: 'detailTime',
+              csvField: 'time',
+              selector: '.tickets',
+              regex: '(\\d{1,2}:\\d{2}\\s*[AP]M)',
+              transform: 'time'
             }
           ]
         }

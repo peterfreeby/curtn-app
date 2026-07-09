@@ -5,20 +5,15 @@ import { UserModel } from '../entities/user/userModel'
 import { VenueModel } from '../entities/venue/venueModel'
 import type { ScraperDataSourceConfig } from '../services/scraping/types'
 
-// Tier 1 (JSON-LD) — The Bell House, Gowanus (Brooklyn).
-// probeSeedList found 36 MusicEvent on /shows. The Bell House programs comedy
-// and variety alongside music; all events live on the same /shows page.
+// Tier 3 (code) — The Bell House, Gowanus (Brooklyn).
+// The page's JSON-LD carries title/date/image/ticket-url but NO description,
+// and every event links out to Ticketmaster (bot-walled, no venue detail page).
+// The real blurb lives in the `important_info` field of the Next.js flight
+// payload, which the code scraper decodes. See scrapers/bellHouse.ts.
 
 const CONFIG: ScraperDataSourceConfig = {
   startUrl: 'https://www.thebellhouseny.com/shows',
-  strategy: { mode: 'json-ld' },
-  rowDefaults: {
-    venueName: 'The Bell House',
-    venueAddress: '149 7th St',
-    venueCity: 'Brooklyn',
-    venueState: 'NY',
-    venueZipCode: '11215'
-  }
+  strategy: { mode: 'code', scraperId: 'bell-house' }
 }
 
 async function main() {

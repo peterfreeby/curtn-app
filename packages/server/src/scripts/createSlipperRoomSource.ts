@@ -61,14 +61,18 @@ const CONFIG: ScraperDataSourceConfig = {
               transform: 'trim'
             },
             {
-              // First [data-hook="image"] holds the bigger fit-display image;
-              // pick its inner img src. Wix renders multiple <img>s for
-              // different formats — first is the highest-quality variant.
+              // Wix serves this poster through a downscaling transform
+              // (…~mv2.jpg/v1/fill/w_498,…) — that 498px crop is what read as
+              // "blurry/low-res" in review. Strip everything from "/v1/" on to
+              // recover the full-resolution original (…~mv2.jpg), which Wix
+              // serves directly. Works whichever <img> variant is first, since
+              // they all share the same base media URL.
               type: 'field',
               id: 'image',
               csvField: 'showImageUrl',
               selector: '[data-hook="image"] img',
               attribute: 'src',
+              regex: '^(.*?~mv2\\.[A-Za-z]+)',
               transform: 'trim'
             },
             {
@@ -95,7 +99,35 @@ const CONFIG: ScraperDataSourceConfig = {
     venueZipCode: '10002',
     performanceTypes: 'burlesque'
   },
-  maxItems: 50
+  maxItems: 50,
+  // The list view carries no blurb; each Wix event-details page holds the
+  // description (showtime + host + lineup) in [data-hook="event-description"].
+  // freshContextPerFetch keeps Wix from degrading across the sequential fetches.
+  detail: {
+    fromField: '_detailUrl',
+    fingerprint: ['title', 'date'],
+    freshContextPerFetch: true,
+    template: {
+      version: 2,
+      nodes: [
+        {
+          type: 'container',
+          id: 'detail',
+          label: 'Detail',
+          selector: 'html',
+          children: [
+            {
+              type: 'field',
+              id: 'description',
+              csvField: 'showDescription',
+              selector: '[data-hook="event-description"]',
+              transform: 'trim'
+            }
+          ]
+        }
+      ]
+    }
+  }
 }
 
 async function main() {

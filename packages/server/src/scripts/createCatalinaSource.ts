@@ -10,9 +10,9 @@ import type { ScraperDataSourceConfig } from '../services/scraping/types'
 // Playwright-rendered) lists `.tw-cal-event` rows: `.tw-name` (artist/show title),
 // `.tw-event-date` ("Jun 6", year-less → date transform infers it), and a
 // `.tw-image` link to the /tm-event/<slug> page. Detail pages carry the TicketWeb
-// og:image flyer and the show time (`.tw-event-time-complete`). Like a stand-up
-// bill, these jazz listings carry no prose synopsis — the billed artist is the
-// credit — so showDescription is omitted.
+// og:image flyer, the show time (`.tw-event-time-complete`), and a rich
+// og:description synopsis (contra the earlier note — the /tm-event pages DO carry
+// a prose blurb per show), which we pull for showDescription.
 
 const CONFIG: ScraperDataSourceConfig = {
   startUrl: 'https://catalinajazzclub.com/calendar',
@@ -74,6 +74,14 @@ const CONFIG: ScraperDataSourceConfig = {
               selector: '.tw-event-time-complete, .tw-event-time',
               regex: '(\\d{1,2}:\\d{2}\\s*[APap][Mm])',
               transform: 'time'
+            },
+            {
+              type: 'field',
+              id: 'description',
+              csvField: 'showDescription',
+              selector: 'meta[property="og:description"], meta[name="og:description"]',
+              attribute: 'content',
+              transform: 'trim'
             }
           ]
         }

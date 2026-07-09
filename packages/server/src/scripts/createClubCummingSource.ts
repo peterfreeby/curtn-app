@@ -57,7 +57,11 @@ const CONFIG: ScraperDataSourceConfig = {
           label: 'Event detail',
           selector: 'html',
           children: [
-            { type: 'field', id: 'desc', csvField: 'showDescription', selector: 'meta[property="og:description"]', attribute: 'content', transform: 'trim' }
+            // og:description is Squarespace-truncated (~200 chars) and empty on
+            // recurring bar nights. The event page's rich-text block carries the
+            // full untruncated synopsis; recurring DJ/party nights (bingo, tea
+            // dances) have no rich-text block, so those stay empty (no source blurb).
+            { type: 'field', id: 'desc', csvField: 'showDescription', selector: '.sqs-html-content', transform: 'trim' }
           ]
         }
       ]

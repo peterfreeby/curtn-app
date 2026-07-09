@@ -14,10 +14,13 @@ import type { ScraperDataSourceConfig } from '../services/scraping/types'
 // them out of .meta and apply the date-range transforms (current-year assumed;
 // fine for a current-season listing, admin corrects any cross-year edge case).
 //
-// No prose synopsis: detail pages (/shows/show-detail/<slug>/) lead with a
-// metadata <dl>, credits, company bio, and review quotes — there's no clean
-// marketing description to extract, and og:description is empty. So we ship the
-// rich card record (title / run dates / poster / company) without a description.
+// Detail pages (/shows/show-detail/<slug>/) DO carry a synopsis: a
+// <section class="show-module--show-info"> holding an <h2>Show Info</h2> heading
+// followed by credits + the prose synopsis + a festival tag. og:description is
+// empty, so we follow each show's own page (the .title a href, which we already
+// capture as ticketUrl) and take that section's text, stripping the heading.
+// Shows without the section keep an empty description (rare; content-less on the
+// source). freshContextPerFetch keeps the CMS happy across the ~26 unique pages.
 
 const CONFIG: ScraperDataSourceConfig = {
   startUrl: 'https://www.59e59.org/shows/calendar-listing/',
@@ -93,7 +96,27 @@ const CONFIG: ScraperDataSourceConfig = {
   // The calendar-listing repeats each show across many calendar cells (~276
   // items for ~26 shows). Cap high so all unique shows are captured pre-dedup;
   // staging collapses the duplicates by (title, venue).
-  maxItems: 300
+  maxItems: 300,
+  detail: {
+    // ticketUrl is the show-detail page itself (the .title a href).
+    fromField: 'ticketUrl',
+    fingerprint: ['title'],
+    freshContextPerFetch: true,
+    template: {
+      version: 2,
+      nodes: [
+        {
+          type: 'field',
+          id: 'description',
+          csvField: 'showDescription',
+          selector: '.show-module--show-info',
+          // Strip the leading "Show Info" <h2>; keep credits + synopsis + tag.
+          regex: 'Show Info\\s*([\\s\\S]+)',
+          transform: 'trim'
+        }
+      ]
+    }
+  }
 }
 
 async function main() {

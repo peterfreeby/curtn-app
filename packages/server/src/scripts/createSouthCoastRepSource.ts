@@ -19,23 +19,25 @@ export const CONFIG: ScraperDataSourceConfig = {
     venueState: 'CA',
     venueZipCode: '92626'
   },
-  // "Cursed" (2026) had no JSON-LD image while every other show did. Gap-fill
-  // the poster from the detail page's og:image ONLY when the listing lacks one
-  // (fillIfEmpty), so we don't override the good JSON-LD images on other shows.
+  // "Cursed" (2026) had no JSON-LD image OR description while every other show
+  // did. Gap-fill both the poster (og:image) and the blurb (og:description) from
+  // the detail page ONLY when the listing lacks them (fillIfEmpty), so we never
+  // override the good JSON-LD values on the other shows.
   detail: {
     fromField: '_detailUrl',
     fingerprint: ['title'],
-    fillIfEmpty: ['showImageUrl'],
+    fillIfEmpty: ['showImageUrl', 'showDescription'],
     template: {
       version: 2,
       nodes: [
         {
           type: 'container',
           id: 'detail',
-          label: 'Poster fallback',
+          label: 'Poster + blurb fallback',
           selector: 'head',
           children: [
-            { type: 'field', id: 'poster', csvField: 'showImageUrl', selector: 'meta[property="og:image"]', attribute: 'content', transform: 'trim' }
+            { type: 'field', id: 'poster', csvField: 'showImageUrl', selector: 'meta[property="og:image"]', attribute: 'content', transform: 'trim' },
+            { type: 'field', id: 'desc', csvField: 'showDescription', selector: 'meta[property="og:description"]', attribute: 'content', transform: 'trim' }
           ]
         }
       ]

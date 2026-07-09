@@ -45,12 +45,16 @@ const CONFIG: ScraperDataSourceConfig = {
   },
   maxItems: 60,
   // Two current listings (Renée Fleming recital, Carmen) have no schema.org Event
-  // markup yet → no date, so they'd stage title+poster only (below bar). Drop them
-  // by year-scoped slug (a future Carmen lives under a different /performances/<yr>/
-  // path, so this won't suppress it). ticketUrl carries the detail URL, which the
-  // filter matches; this also collapses the duplicate "More Info"/"Info and Tickets"
-  // button links that point at the same two pages.
-  excludeUrlPatterns: ['/2026/renee-fleming-in-recital', '/2026-27/carmen'],
+  // markup yet → no date, so they'd stage title+poster only (below bar, even
+  // though a description exists via og:description — a dateless recital can't meet
+  // the quality bar). Drop them by year-scoped slug (a future Carmen lives under a
+  // different /performances/<yr>/ path, so this won't suppress it). ticketUrl
+  // carries the detail URL, which the filter matches; this also collapses the
+  // duplicate "More Info"/"Info and Tickets" button links pointing at the same
+  // pages. NOTE: the Renée Fleming recital lives under /2026-27/ (not /2026/) —
+  // an earlier typo let it slip the filter and stage dateless (flagged
+  // missing_description); the corrected slug drops it again.
+  excludeUrlPatterns: ['/2026-27/renee-fleming-in-recital', '/2026-27/carmen'],
   detail: {
     fromField: '_detailUrl',
     fingerprint: ['title'],

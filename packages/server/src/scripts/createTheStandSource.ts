@@ -18,8 +18,7 @@ import type { ScraperDataSourceConfig } from '../services/scraping/types'
 // bio) — we take .tab-content as the description and fan the .lineup-item names
 // out as cast. Headliner one-offs (e.g. Oz Pearlman) render neither, so they
 // keep an empty description (the act's name is already in the listing title).
-// freshContextPerFetch sidesteps Cloudflare's sequential-request degradation;
-// waitForSelector('.show_row') waits past the challenge before extracting.
+// freshContextPerFetch sidesteps Cloudflare's sequential-request degradation.
 
 const CONFIG: ScraperDataSourceConfig = {
   startUrl: 'https://thestandnyc.com/shows',
@@ -107,7 +106,11 @@ const CONFIG: ScraperDataSourceConfig = {
     // sequential-request degradation; wait for the content wrapper to clear the
     // challenge before extracting.
     freshContextPerFetch: true,
-    waitForSelector: '.show_row',
+    // NOTE: no waitForSelector — detail pages are server-rendered (the
+    // .tab-content lineup is present immediately). The old '.show_row' wait was
+    // a LISTING selector that never appears on a detail page, so every fetch
+    // burned the full 30s nav timeout (swallowed) before extracting. Dropping it
+    // lets the default hydration delay apply and speeds the run ~10x.
     template: {
       version: 2,
       nodes: [

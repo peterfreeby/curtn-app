@@ -24,6 +24,10 @@ const JOES_PUB_OG_CONFIG: OgFallbackConfig = {
   venueState: 'NY',
   venueZipCode: '10003',
   titleSuffixes: [" | Joe's Pub", ' | The Public Theater', ' - The Public Theater'],
+  // publictheater.org is Cloudflare-fronted; FB occasionally scrapes the
+  // interstitial instead of the show page, yielding a junk title like
+  // "Public Theater - Please Wait". Drop those instead of staging them.
+  skipTitlePatterns: ['please wait', 'just a moment', 'attention required', 'access denied'],
   discovery: {
     url: 'https://publictheater.org/programs/joes-pub/',
     linkPattern: '/performances-jp/'

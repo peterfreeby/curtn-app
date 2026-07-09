@@ -78,6 +78,10 @@ const DIXON_PLACE_CONFIG: ScraperDataSourceConfig = {
   detail: {
     fromField: '_detailUrl',
     fingerprint: ['title'],
+    // A clean context per page: a couple of detail pages (an emoji-in-slug URL,
+    // and one card that links to an already-fetched slug) came back empty when
+    // the batch reused a single page. A fresh context per fetch clears that.
+    freshContextPerFetch: true,
     template: {
       version: 2,
       nodes: [
@@ -107,11 +111,16 @@ const DIXON_PLACE_CONFIG: ScraperDataSourceConfig = {
           transform: 'time'
         },
         {
-          // First paragraph in the content panel = synopsis.
+          // Synopsis = the first .uk-panel.uk-margin block's text. Targeting a
+          // `p` inside it broke two ways: shows whose blurb is pasted from Gmail
+          // wrap it in <div class="gmail_default"> (no <p>, so the field went
+          // empty), and others have no leading <p> so the first matching <p> fell
+          // through to the "Tickets:" panel. Reading the panel itself captures the
+          // synopsis (plus any FEATURING lineup) on every layout.
           type: 'field',
           id: 'description',
           csvField: 'showDescription',
-          selector: '.uk-panel.uk-margin p',
+          selector: '.uk-panel.uk-margin',
           transform: 'trim'
         }
       ]

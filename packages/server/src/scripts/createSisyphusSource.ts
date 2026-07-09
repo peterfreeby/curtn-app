@@ -19,6 +19,9 @@ import type { ScraperDataSourceConfig } from '../services/scraping/types'
 
 const CONFIG: ScraperDataSourceConfig = {
   startUrl: 'https://dojour.us/embed/u/sisyphusbrewing?cal_type=upcoming',
+  // Client-rendered Angular SPA — wait for the first event card to hydrate,
+  // else extraction can race the render and return zero rows.
+  waitFor: '.embed-card',
   strategy: {
     mode: 'template',
     template: {
@@ -64,11 +67,18 @@ const CONFIG: ScraperDataSourceConfig = {
           selector: 'html',
           children: [
             {
+              // Recurring shows link to /s/<id>/reserve pages whose og:image is
+              // the generic dojour logo (dojour.us/assets/img/dojour_icon.png),
+              // which was clobbering the real listing poster. Whitelist only the
+              // real CDN host (storage.dojour.us); the logo empty-matches → "" →
+              // undefined, so the listing card's real poster survives untouched.
+              // Full /e/ detail pages still override with their real og:image.
               type: 'field',
               id: 'poster',
               csvField: 'showImageUrl',
               selector: 'meta[property="og:image"], meta[name="og:image"]',
               attribute: 'content',
+              regex: '(https?://storage\\.dojour\\.us/\\S+|)',
               transform: 'trim'
             },
             {

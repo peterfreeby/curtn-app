@@ -59,6 +59,16 @@ const CONFIG: ScraperDataSourceConfig = {
               selector: 'img',
               attribute: 'src',
               transform: 'trim'
+            },
+            {
+              // "More Info"/gallery link → the show's own page, where the full
+              // synopsis lives. Exclude the sibling /tickets/ link.
+              type: 'field',
+              id: 'detailUrl',
+              csvField: '_detailUrl',
+              selector: 'a[href*="/show/"]:not([href*="/tickets/"])',
+              attribute: 'href',
+              transform: 'trim'
             }
           ]
         }
@@ -72,7 +82,26 @@ const CONFIG: ScraperDataSourceConfig = {
     venueState: 'NY',
     venueZipCode: '10003'
   },
-  maxItems: 20
+  maxItems: 20,
+  // The listing carries no synopsis; each show page's .show_description_expandee
+  // holds the full blurb (og:description is generic boilerplate, so we don't use
+  // it). Server-rendered WordPress — no hydration wait needed.
+  detail: {
+    fromField: '_detailUrl',
+    fingerprint: ['title'],
+    template: {
+      version: 2,
+      nodes: [
+        {
+          type: 'field',
+          id: 'description',
+          csvField: 'showDescription',
+          selector: '.show_description_expandee',
+          transform: 'trim'
+        }
+      ]
+    }
+  }
 }
 
 async function main() {

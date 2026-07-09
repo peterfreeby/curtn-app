@@ -71,7 +71,11 @@ const CONFIG: ScraperDataSourceConfig = {
     venueState: 'NY',
     venueZipCode: '10003'
   },
-  maxItems: 30
+  maxItems: 30,
+  // lamama.org posters hotlink-protect (render broken cross-origin on Curtn —
+  // the image_hosting_error flag). Rehost each to R2 so it serves cleanly; a
+  // failed rehost drops the field rather than staging a broken link.
+  rehostImages: true
 }
 
 async function main() {

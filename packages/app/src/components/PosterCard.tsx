@@ -167,10 +167,14 @@ export function PosterCard({
       ? ""
       : "aspect-[1/1.58]";
   // fitHeight: fill the row height and let width follow the poster's aspect ratio
-  // (wide stays wide, narrow stays narrow — no crop, no cap). Small min-w just
-  // avoids a zero-width collapse before the image loads.
+  // (wide stays wide, narrow stays narrow). Width is capped at max-w so panoramic
+  // images don't balloon; anything past the cap center-crops (object-cover), while
+  // portraits and normal landscapes sit under it and render whole. The cap is
+  // ~1.7:1 at full row height (h-56); at the half-height double-stack it allows up
+  // to ~3.4:1, so those banners stay uncropped. Small min-w avoids a zero-width
+  // collapse before the image loads.
   const imgClass = fitHeight
-    ? "h-full w-auto min-w-[4rem] block"
+    ? "h-full w-auto min-w-[4rem] max-w-[24rem] object-cover block"
     : useNatural
       ? "block w-full h-auto"
       : "h-full w-full object-cover";

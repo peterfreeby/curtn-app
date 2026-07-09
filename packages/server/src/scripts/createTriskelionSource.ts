@@ -55,6 +55,9 @@ const CONFIG: ScraperDataSourceConfig = {
       ]
     }
   },
+  // /spring-2026-performances/support is the "Support Trisk" donation CTA, not a
+  // show — it matches the grid-item anchor but carries no synopsis, so drop it.
+  excludeUrlPatterns: ['/spring-2026-performances/support'],
   detail: {
     fromField: '_detailUrl',
     fingerprint: ['title'],
@@ -102,10 +105,21 @@ const CONFIG: ScraperDataSourceConfig = {
               selector: 'body',
               regex: '^(?:[\\s\\S]*?(\\d{1,2}(?::\\d{2})?\\s*[AP]M))',
               transform: 'time'
+            },
+            {
+              // Description: among the Squarespace rich-text blocks that carry a
+              // large-format paragraph (p.sqsrte-large), the order is stable
+              // across every show page — [0] ticket pricing, [1] the show
+              // synopsis, [2] the artist bio, [3+] the site footer. So index 1 is
+              // the synopsis. This survives the header blocks shifting position
+              // (subtitles, extra photo credits) that break a raw nth-block index.
+              type: 'field',
+              id: 'description',
+              csvField: 'showDescription',
+              selector: '.sqs-html-content:has(p.sqsrte-large)',
+              index: 1,
+              transform: 'trim'
             }
-            // No description: Squarespace .sqs-html-content blocks aren't
-            // distinguishable here (the first one is just the title heading), so
-            // omit rather than echo the title. Title/date/time/poster/ticket carry.
           ]
         }
       ]

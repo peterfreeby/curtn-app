@@ -9,8 +9,9 @@ import type { ScraperDataSourceConfig } from '../services/scraping/types'
 // /calendar links shows at /calendar/<slug>. No JSON-LD / og:image, but the
 // detail page has clean hooks: <title> ("Show – Danspace Project"), poster
 // img.attachment-large (a wp-content production photo), time .event-time ("8PM"),
-// and the run dates in body text ("July 2–11, 2026"). Description prose is in
-// class-less <p>s with no stable selector, so it's omitted rather than mis-grabbed.
+// and the run dates in body text ("July 2–11, 2026"). The description prose lives
+// in div.event-main (the article's body block: synopsis + performers + casting),
+// which we now take as the show description.
 
 const CONFIG: ScraperDataSourceConfig = {
   startUrl: 'https://danspaceproject.org/calendar/',
@@ -101,6 +102,16 @@ const CONFIG: ScraperDataSourceConfig = {
               selector: 'body',
               regex: '^(?:[\\s\\S]*?((?:January|February|March|April|May|June|July|August|September|October|November|December)\\s+\\d{1,2}))',
               transform: 'date'
+            },
+            {
+              // The article body block: synopsis + performer list + per-night
+              // casting. Class-less inner <p>s have no hook of their own, so we
+              // take the whole .event-main block as the description.
+              type: 'field',
+              id: 'description',
+              csvField: 'showDescription',
+              selector: '.event-main',
+              transform: 'trim'
             }
           ]
         }

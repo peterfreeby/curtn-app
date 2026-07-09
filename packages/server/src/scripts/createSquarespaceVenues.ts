@@ -17,6 +17,7 @@ interface SqVenue {
   startUrl: string
   rowDefaults: Partial<CsvRowInput>
   detailDescription?: boolean // detail-fetch og:description when listing excerpts are empty
+  detailDescriptionSelector?: string // detail-fetch the body synopsis from this selector (when og:description is a poor auto-summary)
 }
 
 const VENUES: SqVenue[] = [
@@ -68,6 +69,10 @@ const VENUES: SqVenue[] = [
   {
     name: 'In the Heart of the Beast (hobt.org)',
     startUrl: 'https://www.hobt.org/events',
+    // .eventlist-excerpt is a truncated blurb and og:description is a caption
+    // ("ASL interpreter available") — pull the real synopsis from the event
+    // body (.eventitem-column-content, the Squarespace Events item body).
+    detailDescriptionSelector: '.eventitem-column-content',
     rowDefaults: { venueName: 'In the Heart of the Beast', venueCity: 'Minneapolis', venueState: 'MN', performanceTypes: 'theater' }
   },
   {
@@ -101,7 +106,7 @@ async function main() {
     if (!admin) throw new Error('No admin user found — run setAdmin first')
 
     for (const v of VENUES) {
-      const config = squarespaceConfig({ startUrl: v.startUrl, rowDefaults: v.rowDefaults, detailDescription: v.detailDescription })
+      const config = squarespaceConfig({ startUrl: v.startUrl, rowDefaults: v.rowDefaults, detailDescription: v.detailDescription, detailDescriptionSelector: v.detailDescriptionSelector })
       const existing = await DataSourceModel.findOne({ type: 'scraper', url: v.startUrl })
       if (existing) {
         existing.config = config as unknown as Record<string, any>

@@ -44,6 +44,13 @@ const CONFIG: ScraperDataSourceConfig = {
     // performanceTypes intentionally unset — the Ford mixes dance / music / etc.
   },
   maxItems: 80,
+  // The page renders TWO .performance-card sets: the real cards (whose .name
+  // links to /events/performances/<id>/...) and a duplicate set whose .name has
+  // no href — that empty href resolves to the bare /events listing URL, yielding
+  // a title-only row with no og:image/og:description. Staging title-dedup could
+  // let a bad duplicate win over the good row. Keep only rows whose ticketUrl is
+  // a real performance URL; the empty-href duplicates are filtered out.
+  includeUrlPatterns: ['/events/performances/'],
   detail: {
     fromField: '_detailUrl',
     fingerprint: ['title'],

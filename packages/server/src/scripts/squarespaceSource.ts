@@ -25,6 +25,12 @@ export interface SquarespaceSourceOptions {
   // full synopsis from each event page's og:description. Off by default —
   // skip it for high-volume venues whose excerpts are already populated.
   detailDescription?: boolean
+  // Some venues' og:description is a poor auto-summary (e.g. a caption like
+  // "ASL interpreter available") while the real synopsis sits in the event
+  // body. Set this to the body wrapper selector (e.g. '.eventitem-column-content')
+  // to pull the description from the DOM instead of og:description. Takes
+  // precedence over detailDescription.
+  detailDescriptionSelector?: string
 }
 
 export function squarespaceConfig(opts: SquarespaceSourceOptions): ScraperDataSourceConfig {
@@ -86,9 +92,47 @@ export function squarespaceConfig(opts: SquarespaceSourceOptions): ScraperDataSo
     maxItems: opts.maxItems ?? 40
   }
 
-  // Optional: pull the full synopsis from each event page's og:description when
-  // the listing excerpts are empty.
-  if (opts.detailDescription) {
+  // Optional: pull the full synopsis from each event page. Prefer a DOM body
+  // selector when given (og:description can be a poor auto-summary); otherwise
+  // fall back to og:description. Used when the listing excerpt is empty/partial.
+  if (opts.detailDescriptionSelector) {
+    config.detail = {
+      fromField: '_detailUrl',
+      fingerprint: ['title'],
+      template: {
+        version: 2,
+        nodes: [
+          {
+            type: 'container',
+            id: 'detail',
+            label: 'Event detail',
+            selector: 'body',
+            children: [
+              {
+                type: 'field',
+                id: 'desc',
+                csvField: 'showDescription',
+                selector: opts.detailDescriptionSelector,
+                transform: 'trim'
+              }
+            ]
+          }
+        ]
+      }
+    }
+    // The event body wrapper contains inline <style> blocks whose CSS text
+    // (`#block-… { … }`, @media/@supports rules) leaks into the extracted
+    // text. Cut everything from the first such marker so only the prose
+    // synopsis survives.
+    config.cleanup = {
+      ...config.cleanup,
+      descriptionStripPatterns: [
+        ...(config.cleanup?.descriptionStripPatterns ?? []),
+        '\\s*#block-[\\s\\S]*$',
+        '\\s*@(media|supports)[\\s\\S]*$'
+      ]
+    }
+  } else if (opts.detailDescription) {
     config.detail = {
       fromField: '_detailUrl',
       fingerprint: ['title'],
