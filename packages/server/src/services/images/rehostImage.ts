@@ -87,6 +87,11 @@ export async function rehostImage(srcUrl: string, keyPrefix: string): Promise<st
 const IMAGE_FIELDS = [
   'showImageUrl', 'showPosterUrl', 'runImageUrl', 'runPosterUrl',
   'performanceImageUrl', 'venueImageUrl',
+  // Cast/crew headshots are as hotlink-prone as posters. For cast-fan-out
+  // sources (one row per person) each row carries a personHeadshotUrl; rehost
+  // it so cast[].headshotUrl / Person.headshotUrl serve our own copy. Only
+  // affects sources that both opt into rehostImages AND emit personHeadshotUrl.
+  'personHeadshotUrl',
 ] as const
 
 // Rehost every external image field on each row in place. A field whose rehost

@@ -42,10 +42,16 @@ const CONFIG: ScraperDataSourceConfig = {
               transform: 'trim'
             },
             {
+              // The blurb lives in div.entry-summary (the first <p> is often
+              // empty, so selecting bare 'p' missed it). Its text trails the
+              // "Buy Tickets / Learn More" button labels, stripped via cleanup.
+              // The detail og:description overrides this with the fuller copy
+              // where the event has its own MEC page; shows whose button links
+              // straight to Salesforce ticketing keep this listing blurb.
               type: 'field',
               id: 'showDescription',
               csvField: 'showDescription',
-              selector: 'p',
+              selector: '.entry-summary',
               transform: 'trim'
             },
             {
@@ -63,11 +69,48 @@ const CONFIG: ScraperDataSourceConfig = {
               selector: 'img',
               attribute: 'src',
               transform: 'trim'
+            },
+            {
+              // The event's own MEC page (also the ticket link). Followed for
+              // the full blurb + poster: most listing cards (jams, mics, and
+              // many shows) render an EMPTY <p>, so the description lives only
+              // on the detail page's og tags.
+              type: 'field',
+              id: 'detailUrl',
+              csvField: '_detailUrl',
+              selector: 'a.btn',
+              attribute: 'href',
+              transform: 'trim'
             }
           ]
         }
       ]
     }
+  },
+  detail: {
+    fromField: '_detailUrl',
+    fingerprint: ['title'],
+    template: {
+      version: 2,
+      nodes: [
+        {
+          type: 'container',
+          id: 'detail',
+          label: 'Event detail',
+          selector: 'html',
+          children: [
+            // Full blurb — overrides the (usually empty) listing <p>.
+            { type: 'field', id: 'desc', csvField: 'showDescription', selector: 'meta[property="og:description"]', attribute: 'content', transform: 'trim' },
+            // Poster — only fills when the listing card had no <img>.
+            { type: 'field', id: 'poster', csvField: 'showImageUrl', selector: 'meta[property="og:image"]', attribute: 'content', transform: 'trim' }
+          ]
+        }
+      ]
+    },
+    fillIfEmpty: ['showImageUrl']
+  },
+  cleanup: {
+    descriptionStripPatterns: ['\\s*Buy Tickets\\s*Learn More\\s*$', '\\s*Buy Tickets\\s*$', '\\s*Learn More\\s*$']
   },
   rowDefaults: {
     venueName: 'The PIT',

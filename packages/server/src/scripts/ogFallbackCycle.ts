@@ -2,6 +2,7 @@ import '../config/env'
 import mongoose from 'mongoose'
 import { DataSourceModel } from '../entities/dataSource/dataSourceModel'
 import { runOgFallbackSource } from '../services/ogFetch'
+import { runInterleavedOgCycle } from '../services/ogFetch/runInterleavedOgCycle'
 
 // OG-fallback scheduler — local one-shot cycle, parallel to scrapeCycle.ts.
 //
@@ -30,6 +31,10 @@ import { runOgFallbackSource } from '../services/ogFetch'
 //   --fetch-delay=<ms> Base delay between FB calls within a source (default: 1500)
 //   --cooldown=<ms>    Pause chunk when the FB budget is hot/throttled (default: 300000 = 5min)
 //   --dry-run          Discover + fetch + print, no staging, no source mutation
+//   --sequential       Old per-source loop (run each source to completion). Default
+//                      is the interleaved round-robin: discover per source, then
+//                      rotate FB fetches across all sources through ONE shared
+//                      governor, so a slow/hung source can't starve the rest.
 
 interface CycleRowResult {
   name: string
@@ -73,6 +78,36 @@ async function main() {
   const results: CycleRowResult[] = []
 
   try {
+    // DEFAULT: interleaved round-robin — discover per source, then rotate FB
+    // fetches across all sources through ONE shared governor. A slow/hung
+    // source no longer starves the rest. Pass --sequential for the old
+    // run-each-source-to-completion loop.
+    if (!flags.has('sequential')) {
+      const cycleResults = await runInterleavedOgCycle({
+        dryRun,
+        force,
+        limit: limit === Infinity ? undefined : limit,
+        governor: { baseDelayMs: fetchDelayMs, cooldownMs },
+      })
+      const totalMs = Date.now() - startedAt
+      const byStatus = cycleResults.reduce<Record<string, number>>((a, r) => { a[r.status] = (a[r.status] || 0) + 1; return a }, {})
+      const totalStaged = cycleResults.reduce((s, r) => s + (r.staged ?? 0), 0)
+      const totalSkipped = cycleResults.reduce((s, r) => s + (r.skipped ?? 0), 0)
+      console.log(`\n=== OG cycle complete in ${(totalMs / 1000 / 60).toFixed(1)} min (interleaved) ===`)
+      console.log(`Sources: ${cycleResults.length} | ` + Object.entries(byStatus).map(([k, v]) => `${k}: ${v}`).join(' | '))
+      console.log(`PendingImports staged: ${totalStaged} | skipped (dup): ${totalSkipped}`)
+      const problems = cycleResults.filter(r => r.status === 'error' || r.status === 'partial')
+      if (problems.length) {
+        console.log(`\nNeeds attention:`)
+        for (const p of problems) {
+          const tag = p.status === 'partial' ? 'PARTIAL' : 'ERROR  '
+          const note = p.status === 'partial' ? 're-run to resume' : p.detail ?? ''
+          console.log(`  ${tag} ${p.name}${note ? ` — ${note}` : ''}`)
+        }
+      }
+      return
+    }
+
     // Hydrated docs (not .lean()) — the runner mutates + saves each source.
     const sources = await DataSourceModel.find({
       type: 'api',

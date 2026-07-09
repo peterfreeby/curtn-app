@@ -67,7 +67,7 @@ function fmtMs(ms: number): string {
  * throttle error cool down and retry the same URL until the governor's max-wait
  * budget is spent (then give up so the caller can stop and resume later).
  */
-async function fetchWithGovernor(
+export async function fetchWithGovernor(
   url: string,
   governor: RateGovernor
 ): Promise<{ status: 'ok'; og: Awaited<ReturnType<typeof fetchOpenGraph>>['og'] } | { status: 'giveup' }> {

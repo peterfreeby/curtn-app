@@ -59,7 +59,38 @@ const CONFIG: ScraperDataSourceConfig = {
               selector: 'img',
               attribute: 'src',
               transform: 'trim'
+            },
+            {
+              // Detail-page URL — consumed by the detail fetch below (also the
+              // ticketUrl fallback). Same href as ticketUrl, dedicated field.
+              type: 'field',
+              id: '_detailUrl',
+              csvField: '_detailUrl',
+              selector: 'a[href*="/events/"]',
+              attribute: 'href',
+              transform: 'trim'
             }
+          ]
+        }
+      ]
+    }
+  },
+  // The listing card's .tagline is only a short subtitle and is often empty,
+  // so most rows staged with no description. The full blurb lives on each event
+  // page in Spektrix's .richtext body; follow the detail URL and override.
+  detail: {
+    fromField: '_detailUrl',
+    fingerprint: ['title'],
+    template: {
+      version: 2,
+      nodes: [
+        {
+          type: 'container',
+          id: 'detail',
+          label: 'Event body',
+          selector: 'body',
+          children: [
+            { type: 'field', id: 'showDescription', csvField: 'showDescription', selector: '.richtext', transform: 'trim' }
           ]
         }
       ]

@@ -56,7 +56,10 @@ const CONFIG: ScraperDataSourceConfig = {
           label: 'Event detail',
           selector: 'html',
           children: [
-            { type: 'field', id: 'desc', csvField: 'showDescription', selector: 'meta[property="og:description"]', attribute: 'content', transform: 'trim' }
+            // Full blurb from the .event__description container. (og:description
+            // is unreliable here — empty on some shows, prefixed with livestream
+            // boilerplate on others.)
+            { type: 'field', id: 'desc', csvField: 'showDescription', selector: '.event__description', transform: 'trim' }
           ]
         }
       ]

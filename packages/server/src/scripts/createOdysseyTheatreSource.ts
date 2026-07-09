@@ -97,6 +97,10 @@ const ODYSSEY_CONFIG: ScraperDataSourceConfig = {
   detail: {
     fromField: '_detailUrl',
     fingerprint: ['title'],
+    // The synopsis is JS-hydrated into .show-text__synopsis; without a wait a
+    // fast capture occasionally grabbed the empty shell (the missing_description
+    // flag). Hold until the synopsis has real text before extracting.
+    waitForSelector: '.show-text__synopsis',
     template: {
       version: 2,
       nodes: [

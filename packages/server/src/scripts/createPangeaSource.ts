@@ -13,6 +13,10 @@ import type { ScraperDataSourceConfig } from '../services/scraping/types'
 export const CONFIG: ScraperDataSourceConfig = {
   startUrl: 'https://pangeanyc.com/music/',
   strategy: { mode: 'json-ld' },
+  // Detail posters resolve to insecure http:// URLs on pangeanyc.com, which the
+  // https admin UI blocks as mixed content (renders as a missing image). Rehost
+  // each poster to R2 so it serves over https.
+  rehostImages: true,
   rowDefaults: {
     venueName: 'Pangea',
     venueAddress: '178 2nd Ave',

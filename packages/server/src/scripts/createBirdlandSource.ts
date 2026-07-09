@@ -48,6 +48,11 @@ const CONFIG: ScraperDataSourceConfig = {
   detail: {
     fromField: '_detailUrl',
     fingerprint: ['title'],
+    // birdlandjazz.com sits behind Cloudflare; reusing one page across every
+    // /tm-event fetch let the session degrade so a couple of og:description reads
+    // came back empty (the missing_description flags). A fresh context per fetch
+    // keeps each detail read clean.
+    freshContextPerFetch: true,
     template: {
       version: 2,
       nodes: [

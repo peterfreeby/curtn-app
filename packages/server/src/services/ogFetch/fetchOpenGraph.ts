@@ -6,6 +6,12 @@ import type { AppUsage, FetchOpenGraphResult, OpenGraphResult } from './types'
 const GRAPH_VERSION = process.env.FB_GRAPH_VERSION || 'v21.0'
 const GRAPH_HOST = 'https://graph.facebook.com'
 
+// Hard ceiling on a single Graph API POST. Without it a stalled connection
+// hangs the whole cycle indefinitely (the bug that froze og:cycle on The
+// Public Theater). Env-overridable. Aborts surface as a network OgFetchError,
+// which the caller counts as a normal failure and moves on.
+const FETCH_TIMEOUT_MS = Number(process.env.FB_FETCH_TIMEOUT_MS) || 20_000
+
 export class OgFetchError extends Error {
   constructor(
     message: string,
@@ -107,10 +113,18 @@ export async function fetchOpenGraph(url: string): Promise<FetchOpenGraphResult>
   endpoint.searchParams.set('access_token', token)
 
   let res: Response
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
   try {
-    res = await fetch(endpoint.toString(), { method: 'POST' })
+    res = await fetch(endpoint.toString(), { method: 'POST', signal: controller.signal })
   } catch (e) {
-    throw new OgFetchError(`Network error fetching OG for ${url}: ${(e as Error).message}`)
+    throw new OgFetchError(
+      controller.signal.aborted
+        ? `Timed out after ${FETCH_TIMEOUT_MS}ms fetching OG for ${url}`
+        : `Network error fetching OG for ${url}: ${(e as Error).message}`
+    )
+  } finally {
+    clearTimeout(timer)
   }
 
   const usage = parseAppUsage(res.headers.get('x-app-usage'))

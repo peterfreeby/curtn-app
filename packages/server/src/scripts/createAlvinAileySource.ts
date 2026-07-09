@@ -5,12 +5,18 @@ import { UserModel } from '../entities/user/userModel'
 import { VenueModel } from '../entities/venue/venueModel'
 import type { ScraperDataSourceConfig } from '../services/scraping/types'
 
-// Tier 2 (template) + JSON-LD detail-follow — Alvin Ailey American Dance Theater.
-// ailey.org/performances lists shows as EventCards (Next.js hashed classes) that
-// link to /events/<slug>. Each detail page carries an Event JSON-LD
-// (name/startDate+time/location/description) — Ailey's NYC seasons play at BAM
-// and NY City Center, so the JSON-LD location.name (the host venue) wins over the
-// rowDefault. Layer og:image for the poster (JSON-LD image can be incomplete).
+// Tier 2 (template) + og detail-follow — Alvin Ailey American Dance Theater.
+// ailey.org/performances lists each performance as an EventCard <article>. Each
+// card holds FOUR anchors to the same /events/<slug> (date/time, image, title,
+// "Learn More"); the old selector matched all four, so it staged junk rows
+// titled "Sep 25 7:30PM" / "Learn More" (the wrong_title flag). We now walk the
+// card <article> and read the real title, date, and time from it.
+//
+// Detail pages carry NO reliable Event JSON-LD (present on some engagements,
+// absent on most — e.g. the LA / touring dates) and no rich body copy, so the
+// description and poster come from the og: meta tags, which every /events page
+// renders server-side. Hash-suffixed CSS-module classes are matched by prefix
+// ([class*="EventCard_title"]) so a rebuild's new hash doesn't break us.
 // Event maps to no performanceType, so force 'dance'.
 
 const CONFIG: ScraperDataSourceConfig = {
@@ -24,22 +30,36 @@ const CONFIG: ScraperDataSourceConfig = {
           type: 'container',
           id: 'events',
           label: 'Events',
-          selector: 'a[href*="/events/"]',
+          selector: 'article',
           children: [
             {
               type: 'field',
               id: 'title',
               csvField: 'title',
-              selector: ':scope',
+              selector: 'a[class*="EventCard_title"]',
               transform: 'trim'
             },
             {
               type: 'field',
               id: 'detailUrl',
               csvField: '_detailUrl',
-              selector: ':scope',
+              selector: 'a[class*="EventCard_title"]',
               attribute: 'href',
               transform: 'trim'
+            },
+            {
+              type: 'field',
+              id: 'date',
+              csvField: 'date',
+              selector: '[class*="EventCard_dateSpan"]',
+              transform: 'date'
+            },
+            {
+              type: 'field',
+              id: 'time',
+              csvField: 'time',
+              selector: '[class*="EventCard_time"]',
+              transform: 'time'
             }
           ]
         }
@@ -48,21 +68,36 @@ const CONFIG: ScraperDataSourceConfig = {
   },
   detail: {
     fromField: '_detailUrl',
-    fingerprint: ['title'],
-    jsonLd: true, // name/startDate(date+time)/location/description from the Event JSON-LD
+    fingerprint: ['title', 'date'],
     template: {
       version: 2,
       nodes: [
         {
           type: 'container',
           id: 'detail',
-          label: 'Poster',
+          label: 'Detail',
           selector: 'html',
           children: [
             {
               type: 'field',
+              id: 'desc',
+              csvField: 'showDescription',
+              selector: 'meta[property="og:description"]',
+              attribute: 'content',
+              transform: 'trim'
+            },
+            {
+              type: 'field',
               id: 'poster',
               csvField: 'showImageUrl',
+              selector: 'meta[property="og:image"]',
+              attribute: 'content',
+              transform: 'trim'
+            },
+            {
+              type: 'field',
+              id: 'poster2',
+              csvField: 'performanceImageUrl',
               selector: 'meta[property="og:image"]',
               attribute: 'content',
               transform: 'trim'
@@ -80,7 +115,7 @@ const CONFIG: ScraperDataSourceConfig = {
     venueZipCode: '10019',
     performanceTypes: 'dance'
   },
-  maxItems: 40
+  maxItems: 80
 }
 
 async function main() {

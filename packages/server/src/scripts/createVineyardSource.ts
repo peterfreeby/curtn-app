@@ -46,11 +46,47 @@ const CONFIG: ScraperDataSourceConfig = {
               selector: 'a[href*="/shows/"]',
               attribute: 'href',
               transform: 'trim'
+            },
+            {
+              // The show page — followed for the synopsis + poster, neither of
+              // which is on the listing card.
+              type: 'field',
+              id: 'detailUrl',
+              csvField: '_detailUrl',
+              selector: 'a[href*="/shows/"]',
+              attribute: 'href',
+              transform: 'trim'
             }
           ]
         }
       ]
     }
+  },
+  detail: {
+    fromField: '_detailUrl',
+    fingerprint: ['title'],
+    // No og tags on Vineyard show pages. The synopsis is the .show-hero text
+    // block; the poster is a CSS background-image on .image-display--cover.
+    template: {
+      version: 2,
+      nodes: [
+        {
+          type: 'container',
+          id: 'detail',
+          label: 'Show detail',
+          selector: 'html',
+          children: [
+            { type: 'field', id: 'desc', csvField: 'showDescription', selector: '.show-hero .col-md-8', transform: 'trim' },
+            { type: 'field', id: 'img', csvField: 'showImageUrl', selector: '.show-hero .image-display--cover.desktop', attribute: 'style', regex: 'url\\((https://[^)]+)\\)', transform: 'trim' },
+            { type: 'field', id: 'img2', csvField: 'performanceImageUrl', selector: '.show-hero .image-display--cover.desktop', attribute: 'style', regex: 'url\\((https://[^)]+)\\)', transform: 'trim' }
+          ]
+        }
+      ]
+    }
+  },
+  cleanup: {
+    // Peel the membership CTA off the tail of the .show-hero text block.
+    descriptionStripPatterns: ['\\s*Join us for the [\\s\\S]*$', '\\s*Become a Vineyard Member[\\s\\S]*$']
   },
   rowDefaults: {
     venueName: 'Vineyard Theatre',

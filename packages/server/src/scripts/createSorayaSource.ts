@@ -29,7 +29,11 @@ const CONFIG: ScraperDataSourceConfig = {
             { type: 'field', id: 'title', csvField: 'title', selector: '.c-event-card__permalink', transform: 'trim' },
             { type: 'field', id: 'date', csvField: 'date', selector: '.c-event-card__daterange', regex: '([A-Z][a-z]{2}\\s+\\d{1,2})', transform: 'date' },
             { type: 'field', id: 'time', csvField: 'time', selector: '.c-event-card__daterange', regex: '(\\d{1,2}(?::\\d{2})?\\s*[AP]M)', transform: 'time' },
-            { type: 'field', id: 'poster', csvField: 'showImageUrl', selector: 'img', attribute: 'src', transform: 'trim' },
+            // images.thesoraya.org serves a downscaled crop via a ?resize=/?fit=
+            // query (the card src is a 16px lazyload placeholder). Strip the query
+            // to request the original full-res upload. Detail og:image overrides
+            // this, but a strong fallback keeps posters sharp if detail fails.
+            { type: 'field', id: 'poster', csvField: 'showImageUrl', selector: 'img', attribute: 'src', regex: '^([^?]+)', transform: 'trim' },
             { type: 'field', id: 'ticketUrl', csvField: 'ticketUrl', selector: '.c-event-card__permalink', attribute: 'href', transform: 'trim' },
             { type: 'field', id: 'detailUrl', csvField: '_detailUrl', selector: '.c-event-card__permalink', attribute: 'href', transform: 'trim' }
           ]
@@ -60,7 +64,9 @@ const CONFIG: ScraperDataSourceConfig = {
           children: [
             // og:title is "<title> | <Month Day>"; keep the part before the pipe.
             { type: 'field', id: 'title', csvField: 'title', selector: 'meta[property="og:title"]', attribute: 'content', regex: '^(.+?)\\s*\\|', transform: 'trim' },
-            { type: 'field', id: 'poster', csvField: 'showImageUrl', selector: 'meta[property="og:image"], meta[name="og:image"]', attribute: 'content', transform: 'trim' },
+            // og:image is a ?fit=1024,1024 downscale (e.g. 1024x657). Strip the
+            // query to get the native upload (e.g. 1324x850) — sharper poster.
+            { type: 'field', id: 'poster', csvField: 'showImageUrl', selector: 'meta[property="og:image"], meta[name="og:image"]', attribute: 'content', regex: '^([^?]+)', transform: 'trim' },
             { type: 'field', id: 'description', csvField: 'showDescription', selector: 'meta[property="og:description"], meta[name="og:description"]', attribute: 'content', transform: 'trim' }
           ]
         }

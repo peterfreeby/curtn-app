@@ -15,6 +15,13 @@ import type { ScraperDataSourceConfig } from '../services/scraping/types'
 
 const CONFIG: ScraperDataSourceConfig = {
   startUrl: 'https://qedastoria.com/apps/events/calendar',
+  // FullCalendar hydrates the .fc-event anchors client-side; without waiting for
+  // them the listing extracts 0 rows (they aren't in the initial DOM). Wait for
+  // the first event cell to render before extracting.
+  waitFor: '.fc-event',
+  // Shopify CDN posters (og:image) are hotlink-protected and render broken
+  // cross-origin on Curtn — download + re-host to R2 (was image_hosting_error).
+  rehostImages: true,
   strategy: {
     mode: 'template',
     template: {

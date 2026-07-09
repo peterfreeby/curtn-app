@@ -49,6 +49,15 @@ const CONFIG: ScraperDataSourceConfig = {
               selector: 'a.learn-more',
               attribute: 'href',
               transform: 'trim'
+            },
+            {
+              // Card title link doubles as the /shows/<slug>/ detail URL.
+              type: 'field',
+              id: 'detailUrl',
+              csvField: '_detailUrl',
+              selector: 'a.title',
+              attribute: 'href',
+              transform: 'trim'
             }
           ]
         }
@@ -62,7 +71,38 @@ const CONFIG: ScraperDataSourceConfig = {
     venueState: 'NY',
     venueZipCode: '10023'
   },
-  maxItems: 20
+  maxItems: 20,
+  // Listing cards carry only the LCT3 logo SVG (no poster). Each /shows/<slug>/
+  // detail page has the real poster in og:image — but LCT's tag is malformed:
+  // it prepends "http://www.lct.org" to an already-absolute media.lct.org URL
+  // ("http://www.lct.orghttps://media.lct.org/..."), which renders broken
+  // (image_hosting_error). Regex-extract the clean, valid media.lct.org URL.
+  detail: {
+    fromField: '_detailUrl',
+    fingerprint: ['title'],
+    template: {
+      version: 2,
+      nodes: [
+        {
+          type: 'container',
+          id: 'detail',
+          label: 'Poster',
+          selector: 'html',
+          children: [
+            {
+              type: 'field',
+              id: 'poster',
+              csvField: 'showImageUrl',
+              selector: 'meta[property="og:image"], meta[name="og:image"]',
+              attribute: 'content',
+              regex: '(https://media\\.lct\\.org/\\S+)',
+              transform: 'trim'
+            }
+          ]
+        }
+      ]
+    }
+  }
 }
 
 async function main() {

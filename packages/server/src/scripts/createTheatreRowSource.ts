@@ -14,8 +14,11 @@ import type { ScraperDataSourceConfig } from '../services/scraping/types'
 // ranges — regex the first (start) and the post-hyphen (end) date out of the <p>.
 // The `a` href → /theatre-row/shows/<slug>/.
 //
-// Detail: the show page's og:description carries the synopsis (the listing card has
-// none). og:image == the listing poster.
+// Detail: the show page's og:description carries the synopsis but is TRUNCATED
+// with a "… Read more »" tail. The full untruncated synopsis lives in the
+// Cornerstone content block `.cs-content`, so we pull that instead (festival
+// umbrella pages carry neither — they have no synopsis on the source).
+// og:image == the listing poster.
 //
 // Notes:
 //  - Theatre Row is a 5-stage rental house (Acorn/Beckett/Kirk/Lion/Clurman); venue-
@@ -99,6 +102,12 @@ const TR_CONFIG: ScraperDataSourceConfig = {
     performanceTypes: 'theater'
   },
   maxItems: 30,
+  // Strip stray <br> markers that leak into .cs-content text. Cosmetic on real
+  // shows; on festival umbrella pages the content block is just "<br />", so
+  // stripping it empties the field → undefined (no bogus one-tag description).
+  cleanup: {
+    descriptionStripPatterns: ['<br\\s*/?>']
+  },
   detail: {
     fromField: '_detailUrl',
     fingerprint: ['title'],
@@ -109,8 +118,8 @@ const TR_CONFIG: ScraperDataSourceConfig = {
           type: 'field',
           id: 'description',
           csvField: 'showDescription',
-          selector: 'meta[property="og:description"]',
-          attribute: 'content',
+          // Full untruncated synopsis (og:description ends with "… Read more »").
+          selector: '.cs-content',
           transform: 'trim'
         }
       ]

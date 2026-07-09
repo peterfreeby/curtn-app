@@ -57,6 +57,15 @@ const CONFIG: ScraperDataSourceConfig = {
               transform: 'trim'
             },
             {
+              // Same /show/ link — captured for the detail fetch below.
+              type: 'field',
+              id: 'detailUrl',
+              csvField: '_detailUrl',
+              selector: 'a[href*="/show/"]',
+              attribute: 'href',
+              transform: 'trim'
+            },
+            {
               type: 'field',
               id: 'showImageUrl',
               csvField: 'showImageUrl',
@@ -72,7 +81,48 @@ const CONFIG: ScraperDataSourceConfig = {
   rowDefaults: {
     performanceTypes: 'comedy'
   },
-  maxItems: 30
+  maxItems: 30,
+  // Listing cards carry no blurb, and ~13 cards ship without a thumbnail. Each
+  // /show/ detail page holds the full show text in `.ucb-event-description`
+  // (synopsis + inline cast line) and a full-res poster in og:image. Override
+  // the low-res listing thumbnail with the og:image; a missing detail field
+  // returns undefined and never clobbers the listing value.
+  detail: {
+    fromField: '_detailUrl',
+    fingerprint: ['title'],
+    // A single shared page degrades over 30 sequential same-domain fetches (UCB
+    // starts returning challenge shells without .ucb-event-description). A fresh
+    // browser context per page keeps every fetch clean. Legit CurtnBot UA.
+    freshContextPerFetch: true,
+    template: {
+      version: 2,
+      nodes: [
+        {
+          type: 'container',
+          id: 'detail',
+          label: 'Event detail',
+          selector: 'html',
+          children: [
+            {
+              type: 'field',
+              id: 'description',
+              csvField: 'showDescription',
+              selector: '.ucb-event-description',
+              transform: 'trim'
+            },
+            {
+              type: 'field',
+              id: 'poster',
+              csvField: 'showImageUrl',
+              selector: 'meta[property="og:image"], meta[name="og:image"]',
+              attribute: 'content',
+              transform: 'trim'
+            }
+          ]
+        }
+      ]
+    }
+  }
 }
 
 async function main() {

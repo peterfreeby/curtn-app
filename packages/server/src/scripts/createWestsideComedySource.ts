@@ -11,6 +11,8 @@ import type { ScraperDataSourceConfig } from '../services/scraping/types'
 // transform infers it), `.eaw-title`, a `.published` line ("Sat 8:00pm" → regex the
 // time), an `.eaw-summary` blurb, the Eventbrite flyer (`.entered`/img, img.evbuc.com),
 // and a `.eaw-img` link to the local single-event page (ticket/info).
+// Poster: img.eaw-thumb (Eventbrite CDN, img.evbuc.com). The old `.entered`
+// lazy-load class never fires in headless, so posters staged empty.
 
 const CONFIG: ScraperDataSourceConfig = {
   startUrl: 'https://westsidecomedy.com/shows',
@@ -29,7 +31,7 @@ const CONFIG: ScraperDataSourceConfig = {
             { type: 'field', id: 'date', csvField: 'date', selector: '.eaw-calendar-date', transform: 'date' },
             { type: 'field', id: 'time', csvField: 'time', selector: '.published', regex: '(\\d{1,2}:\\d{2}\\s*[APap][Mm])', transform: 'time' },
             { type: 'field', id: 'desc', csvField: 'showDescription', selector: '.eaw-summary', transform: 'trim' },
-            { type: 'field', id: 'poster', csvField: 'showImageUrl', selector: '.entered', attribute: 'src', transform: 'trim' },
+            { type: 'field', id: 'poster', csvField: 'showImageUrl', selector: 'img.eaw-thumb', attribute: 'src', transform: 'trim' },
             { type: 'field', id: 'ticketUrl', csvField: 'ticketUrl', selector: '.eaw-img', attribute: 'href', transform: 'trim' }
           ]
         }

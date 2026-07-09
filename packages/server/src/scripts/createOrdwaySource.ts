@@ -94,11 +94,18 @@ const CONFIG: ScraperDataSourceConfig = {
               transform: 'trim'
             },
             {
+              // The real per-show editorial blurb is the .description inside
+              // .body-content. Two junk decoys must be avoided: og:description is
+              // the house tagline ("Minnesota's Premier Performing Arts Center®"),
+              // and every page also carries .bullet-main .description promos
+              // ("Save on tickets…become a subscriber!" / "Parties of 10+…") that
+              // a bare `.description` grabs first. Scoping to .body-content skips
+              // both. A few touring/co-presented shows lack the body blurb → empty
+              // (acceptable minority).
               type: 'field',
               id: 'description',
               csvField: 'showDescription',
-              selector: 'meta[property="og:description"], meta[name="og:description"]',
-              attribute: 'content',
+              selector: '.body-content .description',
               transform: 'trim'
             }
           ]

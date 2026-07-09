@@ -25,9 +25,26 @@ export interface OgSourceConfig {
    * A description reduced to empty becomes undefined.
    */
   descriptionStripPatterns?: string[]
+  /**
+   * Regex patterns (string form) that mark a scraped title as junk — e.g. a
+   * Cloudflare interstitial ("Please Wait", "Just a moment", "Attention
+   * Required"). When the cleaned title matches any, the row is dropped rather
+   * than staged. FB's crawler occasionally scrapes the challenge page instead
+   * of the real one for Cloudflare-fronted sites (publictheater.org); this
+   * keeps that garbage out of the review queue. Case-insensitive.
+   */
+  skipTitlePatterns?: string[]
 }
 
 const SEP = /\s*[|–—]\s*/ // pipe, en-dash, em-dash
+
+// Always-applied junk-title guard. FB's crawler sometimes scrapes a
+// Cloudflare/queue interstitial instead of the real page on guarded sites
+// (e.g. publictheater.org behind Queue-it → "Please Wait / you've been placed
+// in a queue"). This drops those universally, on top of any per-source
+// skipTitlePatterns. Mirrors CHALLENGE_RE in discoverShowUrls. Case-insensitive.
+const DEFAULT_SKIP_TITLE_RE =
+  /just a moment|please wait|attention required|access denied|verify(?:ing)? you are (?:a )?human|you have been blocked|placed in (?:a )?queue|due to high demand/i
 
 /**
  * og:title often carries a site-name suffix ("GIRL, INTERRUPTED | The Public
@@ -80,6 +97,18 @@ export function cleanDescription(raw: string | undefined, config: OgSourceConfig
 export function mapOgToRow(og: OpenGraphResult, config: OgSourceConfig): CsvRowInput | null {
   const title = og.title ? cleanTitle(og.title, config) : ''
   if (!title) return null
+
+  // Drop Cloudflare/interstitial junk titles (FB sometimes scrapes the
+  // challenge page instead of the real one on guarded sites). Built-in guard
+  // first, then any per-source patterns.
+  if (DEFAULT_SKIP_TITLE_RE.test(title)) return null
+  for (const p of config.skipTitlePatterns ?? []) {
+    try {
+      if (new RegExp(p, 'i').test(title)) return null
+    } catch {
+      // invalid pattern — ignore
+    }
+  }
 
   return {
     title,

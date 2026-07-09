@@ -61,7 +61,50 @@ const CONFIG: ScraperDataSourceConfig = {
               selector: 'img',
               attribute: 'src',
               transform: 'trim'
+            },
+            {
+              // Detail-page link ("/shows/<slug>") off the title. Consumed by the
+              // detail fetch below (also the ticketUrl fallback). Scoped to the
+              // title anchor so the poster-only nested .show (no h2) yields no row.
+              type: 'field',
+              id: '_detailUrl',
+              csvField: '_detailUrl',
+              selector: 'h2.show-title a',
+              attribute: 'href',
+              transform: 'trim'
             }
+          ]
+        }
+      ]
+    }
+  },
+  // The listing blurb is unreliable: the CMS often renders an EMPTY
+  // <p class="description"> and puts the real copy in a bare sibling <p>, so
+  // ".show-info p:not(.date)" grabbed the empty node. Follow each show's detail
+  // page and read section.body instead — the full, consistent synopsis. The
+  // body is JS-hydrated (empty on first paint), so waitForSelector holds until
+  // it populates; freshContextPerFetch avoids stale hydration on later fetches.
+  detail: {
+    fromField: '_detailUrl',
+    fingerprint: ['title'],
+    // Wait on the synopsis paragraph itself (not the section wrapper): the body
+    // is JS-hydrated and the wrapper briefly holds whitespace, so waiting on the
+    // <p> guarantees real copy before capture. freshContextPerFetch avoids stale
+    // hydration on later fetches in the batch.
+    waitForSelector: 'section.body .content p',
+    freshContextPerFetch: true,
+    template: {
+      version: 2,
+      nodes: [
+        {
+          type: 'container',
+          id: 'detail',
+          label: 'Show body',
+          selector: 'html',
+          children: [
+            // The first paragraph of the body = the clean synopsis. Reading the
+            // whole section.body dragged in the showtime/cast tables as whitespace.
+            { type: 'field', id: 'showDescription', csvField: 'showDescription', selector: 'section.body .content p', transform: 'trim' }
           ]
         }
       ]
