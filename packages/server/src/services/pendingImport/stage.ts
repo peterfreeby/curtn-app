@@ -154,7 +154,10 @@ export async function stageRowsAsPendingImports(
       stageName: head.stageName?.trim() || undefined,
       companyName: head.companyName?.trim() || undefined,
       ticketUrl: head.ticketUrl?.trim() || undefined,
-      imageUrl: head.performanceImageUrl || head.runImageUrl || head.showImageUrl || undefined,
+      // Single image slot; a scraped image is the poster. Prefer an explicit
+      // poster field if a source sets one, else fall back to the image fields.
+      // Approval routes this to show.posterUrl (see reviewPendingImport).
+      imageUrl: head.showPosterUrl || head.runPosterUrl || head.performanceImageUrl || head.runImageUrl || head.showImageUrl || undefined,
       startDate: parseDate(head.runStartDate),
       endDate: parseDate(head.runEndDate),
       cast: cast.length ? cast : undefined,

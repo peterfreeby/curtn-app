@@ -37,7 +37,12 @@ export async function promoteToRecords(pi: any, userId: string) {
       description: pi.showDescription || '',
       performanceTypes: pi.performanceTypes || [],
       duration: pi.duration || 0,
-      ...(pi.imageUrl && { imageUrl: pi.imageUrl }),
+      // A scraped/OG image is the show's key art — i.e. its poster, not a
+      // background splash. PendingImport has a single image slot, so route it
+      // to posterUrl (imageUrl is now strictly the optional background splash,
+      // which scrapers never provide). See migratePosterImage.ts for the
+      // matching backfill of shows imported before this.
+      ...(pi.imageUrl && { posterUrl: pi.imageUrl }),
       submittedBy: userId,
       source: pi.dataSource
     }).save()
