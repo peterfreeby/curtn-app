@@ -33,7 +33,7 @@ function getItemDisplay(item: any) {
       return {
         title: item.showTitle,
         subtitle: item.performanceTypes?.join(", "),
-        image: item.posterUrl || item.imageUrl,
+        image: item.posterUrl,
       };
     case "Venue":
       return {

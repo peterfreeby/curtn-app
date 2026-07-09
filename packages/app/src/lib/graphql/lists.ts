@@ -15,6 +15,7 @@ export const LIST_FRAGMENT = gql`
     sourceMode
     sourceEntityType
     sourceEntityName
+    sourceEntitySlug
     followTargetType
     isOwner
     isCollaborator

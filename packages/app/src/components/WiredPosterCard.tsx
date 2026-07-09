@@ -33,6 +33,8 @@ interface WiredPosterCardProps {
   ticketUrl?: string | null;
   /** When true, the poster sizes to the image's natural aspect ratio. */
   naturalAspect?: boolean;
+  /** When true, the poster fills its parent's height and width follows the image. */
+  fitHeight?: boolean;
 }
 
 export function WiredPosterCard({
@@ -48,6 +50,7 @@ export function WiredPosterCard({
   isOnWatchlist: initialWatchlist = false,
   ticketUrl,
   naturalAspect = false,
+  fitHeight = false,
 }: WiredPosterCardProps) {
   const router = useRouter();
   const { user } = useAuth();
@@ -132,7 +135,7 @@ export function WiredPosterCard({
   ];
 
   return (
-    <div className="relative">
+    <div className={fitHeight ? "relative h-full" : "relative"}>
       <PosterCard
         imageUrl={imageUrl}
         title={title}
@@ -142,6 +145,7 @@ export function WiredPosterCard({
         className={className}
         actions={actions}
         naturalAspect={naturalAspect}
+        fitHeight={fitHeight}
       />
 
       {/* Run picker popup */}

@@ -117,6 +117,9 @@ interface PosterCardProps {
   /** When true, the card sizes to the image's natural aspect ratio
    *  instead of the default 1/1.58. Used for masonry layouts. */
   naturalAspect?: boolean;
+  /** When true, the card fills its parent's height and its width follows the
+   *  image's aspect ratio (no crop). Used for uniform-height carousel rows. */
+  fitHeight?: boolean;
 }
 
 const sizeClasses = {
@@ -140,6 +143,7 @@ export function PosterCard({
   size = "md",
   className = "",
   naturalAspect = false,
+  fitHeight = false,
 }: PosterCardProps) {
   const [imgFailed, setImgFailed] = useState(false);
   const hasImage = !!imageUrl && !imgFailed;
@@ -151,24 +155,38 @@ export function PosterCard({
   // In natural-aspect mode the image dictates height; fall back to the
   // standard poster ratio when there's no image (TextPoster) or it failed.
   const useNatural = naturalAspect && hasImage;
-  const wrapperAspect = useNatural ? "" : "aspect-[1/1.58]";
+
+  // Layout: fitHeight fills the parent's height and lets width follow the image
+  // (uniform-height carousel rows, no crop). Otherwise use the fixed-width sizing.
+  const outerClass = fitHeight ? "h-full" : sizeClasses[size];
+  const wrapperShape = fitHeight
+    ? hasImage
+      ? "h-full w-auto" // width follows the image (capped on the <img> below)
+      : "h-full aspect-[1/1.58]" // no image → derive width from height
+    : useNatural
+      ? ""
+      : "aspect-[1/1.58]";
+  // fitHeight: fill the row height and let width follow the poster's aspect ratio
+  // (wide stays wide, narrow stays narrow — no crop, no cap). Small min-w just
+  // avoids a zero-width collapse before the image loads.
+  const imgClass = fitHeight
+    ? "h-full w-auto min-w-[4rem] block"
+    : useNatural
+      ? "block w-full h-auto"
+      : "h-full w-full object-cover";
 
   return (
-    <div className={`${sizeClasses[size]} ${className}`}>
+    <div className={`${outerClass} ${className}`}>
       <Wrapper
         {...wrapperProps}
-        className={`group relative block ${wrapperAspect} overflow-hidden bg-curtn-surface border border-curtn-dark/30`}
+        className={`group relative block ${wrapperShape} overflow-hidden bg-curtn-surface border border-curtn-dark/30`}
       >
         {hasImage ? (
           <>
             <img
               src={imageUrl}
               alt={title}
-              className={
-                useNatural
-                  ? "block w-full h-auto"
-                  : "h-full w-full object-cover"
-              }
+              className={imgClass}
               onError={() => setImgFailed(true)}
             />
             {/* Duotone canvas overlay — fades in on hover */}

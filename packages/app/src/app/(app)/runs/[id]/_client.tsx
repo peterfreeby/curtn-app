@@ -133,7 +133,7 @@ export default function RunDetailPage() {
         title: run.show.title,
         subtitle: sub,
         entityType: forceView === 'run' ? 'Run' : (onlyOnePerf ? 'Performance' : 'Run'),
-        posterUrl: run.posterUrl || run.imageUrl || run.show.posterUrl || run.show.imageUrl,
+        posterUrl: run.posterUrl || run.show.posterUrl,
         showId: run.show.id,
         runId: run.id,
         isOnWatchlist: false,

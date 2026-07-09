@@ -313,7 +313,7 @@ export default function ProfilePage() {
                   <WiredPosterCard
                     key={show.id}
                     showId={show.id}
-                    imageUrl={show.posterUrl || show.imageUrl}
+                    imageUrl={show.posterUrl}
                     title={show.title}
                     href={`/performances/${encodeURIComponent(show.id)}`}
                     size="md"

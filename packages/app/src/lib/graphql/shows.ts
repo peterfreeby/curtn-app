@@ -186,6 +186,7 @@ export const SINGLE_SHOW_QUERY = gql`
                   id
                   date
                   time
+                  imageUrl
                   venue {
                     id
                     name

@@ -16,11 +16,33 @@ const SCROLL_PADDING = 24; // matches px-6
 
 type PeekSide = "left" | "right";
 
+// Above this many posters, the shelf stacks into two rows (then scrolls sideways);
+// shorter shelves stay a single row.
+const TWO_ROW_THRESHOLD = 6;
+
+// Source-entity type → detail-page route segment.
+const ENTITY_PATH: Record<string, string> = {
+  venue: "venues",
+  person: "people",
+  productionCompany: "companies",
+};
+
+// "See all" target: entity-sourced lists link to that entity's detail page
+// (e.g. "Shows at Caveat" → the Caveat venue page); others link to the list page.
+function seeAllHref(list: any): string {
+  if (list.sourceMode === "entity" && list.sourceEntityType && list.sourceEntitySlug) {
+    const base = ENTITY_PATH[list.sourceEntityType];
+    if (base) return `/${base}/${list.sourceEntitySlug}`;
+  }
+  return `/u/${list.owner.username}/lists/${list.slug}`;
+}
+
 function BrowseCarousel({ children }: { children: ReactNode }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [peekMap, setPeekMap] = useState<Map<number, PeekSide>>(new Map());
   const childArray = Children.toArray(children);
+  const twoRows = childArray.length > TWO_ROW_THRESHOLD;
 
   const updatePeek = useCallback(() => {
     const container = scrollRef.current;
@@ -67,45 +89,65 @@ function BrowseCarousel({ children }: { children: ReactNode }) {
     container.scrollTo({ left: target, behavior: "smooth" });
   }
 
+  // Each card: uniform height (h-56), width follows the poster's aspect ratio.
+  const renderItem = (child: ReactNode, i: number) => {
+    const side = peekMap.get(i);
+    return (
+      <div
+        key={i}
+        ref={(el) => { itemRefs.current[i] = el; }}
+        className="relative shrink-0 h-full"
+      >
+        {child}
+        {side && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              scrollToItem(i);
+            }}
+            className={`group/peek absolute inset-0 z-10 flex items-center cursor-pointer ${
+              side === "left" ? "justify-end" : "justify-start"
+            }`}
+            aria-label={side === "left" ? "Scroll left" : "Scroll right"}
+          >
+            <div className="absolute inset-0 bg-curtn-deep/40 opacity-0 group-hover/peek:opacity-100 transition-opacity duration-200" />
+            <Icon
+              name={side === "left" ? "caret-left" : "caret-right"}
+              size={24}
+              weight="bold"
+              className="text-curtn-cream opacity-0 group-hover/peek:opacity-100 transition-opacity duration-200 relative mx-2"
+            />
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  // One horizontal scroll container. Few posters → a single flex row. More →
+  // two independent flex rows stacked (each packs its own variable-width cards
+  // tightly, uniform height); w-max lets the rows extend and the container scroll.
   return (
     <div
       ref={scrollRef}
-      className="flex gap-[var(--spacing-2)] overflow-x-auto pb-2 -mx-6 px-6 scrollbar-hide"
+      className="overflow-x-auto pb-2 -mx-6 px-6 scrollbar-hide"
     >
-      {childArray.map((child, i) => {
-        const side = peekMap.get(i);
-        return (
-          <div
-            key={i}
-            ref={(el) => { itemRefs.current[i] = el; }}
-            className="relative shrink-0"
-          >
-            {child}
-            {side && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  scrollToItem(i);
-                }}
-                className={`group/peek absolute inset-0 z-10 flex items-center cursor-pointer ${
-                  side === "left" ? "justify-end" : "justify-start"
-                }`}
-                aria-label={side === "left" ? "Scroll left" : "Scroll right"}
-              >
-                <div className="absolute inset-0 bg-curtn-deep/40 opacity-0 group-hover/peek:opacity-100 transition-opacity duration-200" />
-                <Icon
-                  name={side === "left" ? "caret-left" : "caret-right"}
-                  size={24}
-                  weight="bold"
-                  className="text-curtn-cream opacity-0 group-hover/peek:opacity-100 transition-opacity duration-200 relative mx-2"
-                />
-              </button>
-            )}
-          </div>
-        );
-      })}
+      {twoRows ? (
+        // Whole shelf = one playbill tall (h-56); the two rows split that height,
+        // so two stacked cards equal a single full-height poster.
+        <div className="flex h-56 w-max flex-col gap-[var(--spacing-2)]">
+          {[0, 1].map((row) => (
+            <div key={row} className="flex min-h-0 flex-1 gap-[var(--spacing-2)]">
+              {childArray.map((child, i) => (i % 2 === row ? renderItem(child, i) : null))}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex h-56 gap-[var(--spacing-2)]">
+          {childArray.map((child, i) => renderItem(child, i))}
+        </div>
+      )}
     </div>
   );
 }
@@ -168,7 +210,7 @@ function EditorialCarousel() {
                 {list.name}
               </h3>
               <Link
-                href={`/u/${list.owner.username}/lists/${list.slug}`}
+                href={seeAllHref(list)}
                 className="text-[10px] uppercase tracking-wider text-curtn-muted hover:text-curtn-coral transition-colors"
               >
                 See all
@@ -198,11 +240,11 @@ function BrowseItemCard({ item, listType }: { item: any; listType: string }) {
     return (
       <WiredPosterCard
         showId={item.showId}
-        imageUrl={item.posterUrl || item.imageUrl}
+        imageUrl={item.posterUrl}
         title={item.showTitle}
         href={`/performances/${encodeURIComponent(item.showId)}`}
         size="md"
-        className="!w-36"
+        fitHeight
       />
     );
   }
@@ -215,7 +257,7 @@ function BrowseItemCard({ item, listType }: { item: any; listType: string }) {
         subtitle={`${item.city}, ${item.state}`}
         href={`/venues/${item.venueSlug}`}
         size="lg"
-        className="!w-48"
+        fitHeight
       />
     );
   }
@@ -227,7 +269,7 @@ function BrowseItemCard({ item, listType }: { item: any; listType: string }) {
         title={item.personName}
         href={`/people/${item.personSlug}`}
         size="md"
-        className="!w-32"
+        fitHeight
       />
     );
   }
@@ -237,7 +279,7 @@ function BrowseItemCard({ item, listType }: { item: any; listType: string }) {
     <PosterCard
       title={item.runTitle || item.date || "Item"}
       size="md"
-      className="!w-36"
+      fitHeight
     />
   );
 }

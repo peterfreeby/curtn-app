@@ -37,7 +37,7 @@ function extractPosterUrls(list: ListNode): string[] {
   return edges.reduce<string[]>((urls, { node }) => {
     const item = node.item;
     if (!item) return urls;
-    const url = item.posterUrl || item.imageUrl || item.venueImageUrl || item.headshotUrl;
+    const url = item.posterUrl || item.venueImageUrl || item.headshotUrl;
     if (url) urls.push(url);
     return urls;
   }, []);
