@@ -4,15 +4,22 @@ export const LIST_TYPES = ['shows', 'venues', 'runs', 'performances', 'people'] 
 export type ListType = typeof LIST_TYPES[number]
 
 // How a list's items are populated:
-//  - manual:  hand-picked ListItem docs (the original behavior)
-//  - entity:  auto — all shows from one venue/person/company, by recency
-//  - follows: auto — all shows from the viewer's followed entities of a type, by recency
-export const LIST_SOURCE_MODES = ['manual', 'entity', 'follows'] as const
+//  - manual:   hand-picked ListItem docs (the original behavior)
+//  - entity:   auto — all shows from one venue/person/company, by recency
+//  - follows:  auto — all shows from the viewer's followed entities of a type, by recency
+//  - combined: auto — the union of other show lists, filtered to a baked date window
+//              and ordered by soonest upcoming performance (see resolveDynamicListItems)
+export const LIST_SOURCE_MODES = ['manual', 'entity', 'follows', 'combined'] as const
 export type ListSourceMode = typeof LIST_SOURCE_MODES[number]
 
 // Entity kinds a dynamic list can source shows from (aligns with EntityFollow target types)
 export const LIST_SOURCE_ENTITY_TYPES = ['venue', 'person', 'productionCompany'] as const
 export type ListSourceEntityType = typeof LIST_SOURCE_ENTITY_TYPES[number]
+
+// Date windows a combined list can filter to. Computed relative to "now" in
+// America/New_York at query time — see dateWindows.ts.
+export const LIST_DATE_WINDOWS = ['tonight', 'tomorrow', 'this_weekend', 'this_week', 'next_week', 'this_month'] as const
+export type ListDateWindow = typeof LIST_DATE_WINDOWS[number]
 
 export interface IList {
   name: string
@@ -30,6 +37,8 @@ export interface IList {
   sourceEntityType?: ListSourceEntityType
   sourceEntityId?: Types.ObjectId
   followTargetType?: ListSourceEntityType
+  sourceListIds?: Types.ObjectId[]
+  dateWindow?: ListDateWindow
   createdAt: Date
   updatedAt: Date
 }
@@ -100,6 +109,17 @@ const listSchema = new Schema<IList>({
   followTargetType: {
     type: String,
     enum: LIST_SOURCE_ENTITY_TYPES,
+    required: false
+  },
+  // combined-mode: the other show lists this list unions over
+  sourceListIds: [{
+    type: Schema.Types.ObjectId,
+    ref: 'list'
+  }],
+  // combined-mode: the date window to filter the union down to
+  dateWindow: {
+    type: String,
+    enum: LIST_DATE_WINDOWS,
     required: false
   }
 }, {

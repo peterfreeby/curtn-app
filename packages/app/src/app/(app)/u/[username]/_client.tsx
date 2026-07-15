@@ -15,6 +15,7 @@ import { ClaimPrompt } from "@/components/profile/ClaimPrompt";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { SeenCard } from "@/components/seen/SeenCard";
 import { WiredPosterCard } from "@/components/WiredPosterCard";
+import { toCastHeadshots } from "@/components/MondrianPoster";
 import { ListGrid } from "@/components/lists/ListGrid";
 import { useAuth } from "@/lib/auth/useAuth";
 
@@ -319,6 +320,9 @@ export default function ProfilePage() {
                     size="md"
                     className="!w-full"
                     isOnWatchlist={true}
+                    castHeadshots={
+                      show.posterUrl ? undefined : toCastHeadshots(show.castHeadshots)
+                    }
                   />
                 );
               })}

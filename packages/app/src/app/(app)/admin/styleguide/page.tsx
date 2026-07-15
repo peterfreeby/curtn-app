@@ -8,6 +8,7 @@ import { StarRating } from "@/components/StarRating";
 import { Icon, type IconName } from "@/components/icons/Icons";
 import { Avatar } from "@/components/Avatar";
 import { PosterCard } from "@/components/PosterCard";
+import type { CastHeadshot } from "@/components/MondrianPoster";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { BackdropHero } from "@/components/BackdropHero";
 import { PosterStrip } from "@/components/PosterStrip";
@@ -28,6 +29,25 @@ const COLORS = [
   { name: "curtn-cream", hex: "#F5F1E3", text: "text-curtn-deep", bg: "bg-curtn-cream" },
   { name: "curtn-coral", hex: "#FE5F55", text: "text-curtn-deep", bg: "bg-curtn-coral" },
   { name: "curtn-red", hex: "#FE4134", text: "text-curtn-deep", bg: "bg-curtn-red" },
+];
+
+// Real headshot URLs from the catalog, used only to preview the Mondrian
+// fallback poster here in the styleguide (no matching imageless shows in the
+// current data, so this is the reliable way to see it render).
+const HEADSHOTS: CastHeadshot[] = [
+  { name: "Mark Normand", url: "https://thestandnyc.com/images/comedians/_square/Mark_Normand.jpg" },
+  { name: "Emma Willmann", url: "https://thestandnyc.com/images/comedians/_square/Emma.jpg" },
+  { name: "Ian Lara", url: "https://thestandnyc.com/images/comedians/_square/ian-lara.jpg" },
+  { name: "Jamie Wolf", url: "https://thestandnyc.com/images/comedians/_square/Jamie_Wolf_1.jpg" },
+  { name: "Rachel Williams", url: "https://thestandnyc.com/images/comedians/_square/rachel_williams.jpeg" },
+];
+
+const MONDRIAN_DEMOS: { title: string; cast: CastHeadshot[] }[] = [
+  { title: "Ragtime", cast: HEADSHOTS.slice(0, 1) },
+  { title: "Every Brilliant Thing", cast: HEADSHOTS.slice(0, 2) },
+  { title: "Songs For A New World", cast: HEADSHOTS.slice(0, 3) },
+  { title: "The Wild Party", cast: HEADSHOTS.slice(0, 4) },
+  { title: "Assassins", cast: HEADSHOTS.slice(0, 5) },
 ];
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -404,6 +424,31 @@ export default function StyleGuidePage() {
           />
         </div>
         <p className="mt-[var(--spacing-1)] text-xs text-curtn-muted/50">Hover posters for overlay + actions. Default actions: seen, like, watchlist. Sizes: sm (98px), md (147px), lg (196px).</p>
+      </Section>
+
+      {/* Mondrian Posters — imageless fallback for shows with cast headshots */}
+      <Section title="Mondrian Posters">
+        <p className="mb-[var(--spacing-2)] max-w-prose text-xs text-curtn-muted/70">
+          Shown in place of the plain typographic poster when a show has no
+          poster art but has cast members with headshots. A seeded block grid
+          (stable per show) mixes the faces with the title. Headshot count
+          drives the composition; caps at 5.
+        </p>
+        <div className="flex flex-wrap gap-[var(--spacing-2)]">
+          {MONDRIAN_DEMOS.map((demo) => (
+            <div key={demo.title} className="w-[147px]">
+              <PosterCard
+                title={demo.title}
+                castHeadshots={demo.cast}
+                size="md"
+                className="!w-full"
+              />
+              <p className="mt-1 text-[10px] uppercase tracking-wider text-curtn-muted/50">
+                {demo.cast.length} headshot{demo.cast.length === 1 ? "" : "s"}
+              </p>
+            </div>
+          ))}
+        </div>
       </Section>
 
       {/* Poster Strip */}

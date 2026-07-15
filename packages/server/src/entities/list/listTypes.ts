@@ -7,7 +7,7 @@ import {
   GraphQLUnionType,
   GraphQLList
 } from 'graphql'
-import { globalIdField, connectionDefinitions, connectionArgs } from 'graphql-relay'
+import { globalIdField, connectionDefinitions, connectionArgs, toGlobalId } from 'graphql-relay'
 import { applyCursorToQuery, buildConnection } from '../../graphql/cursorPagination'
 import { nodeInterface } from '../../graphql/nodeInterface'
 import { entityRegister } from '../../graphql/entityHelpers'
@@ -213,6 +213,16 @@ export const listType: GraphQLObjectType = new GraphQLObjectType({
         type: GraphQLString,
         description: 'For follows lists: the kind of followed entity (venue/person/productionCompany)',
         resolve: (list: any) => list.followTargetType || null
+      },
+      dateWindow: {
+        type: GraphQLString,
+        description: 'For combined lists: the baked date window (tonight/tomorrow/this_weekend/this_week/next_week/this_month)',
+        resolve: (list: any) => list.dateWindow || null
+      },
+      sourceListIds: {
+        type: new GraphQLList(GraphQLString),
+        description: 'For combined lists: global IDs of the source lists it unions over',
+        resolve: (list: any) => (list.sourceListIds || []).map((id: any) => toGlobalId('List', id.toString()))
       },
       items: {
         type: ListItemConnection,

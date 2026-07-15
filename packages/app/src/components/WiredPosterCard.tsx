@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "urql";
 import { PosterCard, type PosterAction } from "@/components/PosterCard";
+import { type CastHeadshot } from "@/components/MondrianPoster";
 import {
   WATCHLIST_ADD_MUTATION,
   WATCHLIST_REMOVE_MUTATION,
@@ -35,6 +36,8 @@ interface WiredPosterCardProps {
   naturalAspect?: boolean;
   /** When true, the poster fills its parent's height and width follows the image. */
   fitHeight?: boolean;
+  /** Cast headshots — drives the Mondrian fallback when there's no poster image. */
+  castHeadshots?: CastHeadshot[];
 }
 
 export function WiredPosterCard({
@@ -51,6 +54,7 @@ export function WiredPosterCard({
   ticketUrl,
   naturalAspect = false,
   fitHeight = false,
+  castHeadshots,
 }: WiredPosterCardProps) {
   const router = useRouter();
   const { user } = useAuth();
@@ -146,6 +150,7 @@ export function WiredPosterCard({
         actions={actions}
         naturalAspect={naturalAspect}
         fitHeight={fitHeight}
+        castHeadshots={castHeadshots}
       />
 
       {/* Run picker popup */}

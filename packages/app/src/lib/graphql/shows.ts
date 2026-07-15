@@ -26,6 +26,11 @@ export const SHOW_LIST_QUERY = gql`
           reviewCount
           watchlistCount
           isOnMyWatchlist
+          castHeadshots {
+            name
+            slug
+            headshotUrl
+          }
           runs {
             edges {
               node {

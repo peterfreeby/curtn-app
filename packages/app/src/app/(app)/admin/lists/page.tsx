@@ -9,6 +9,7 @@ import {
   LIST_SET_EDITORIAL_MUTATION,
   LIST_DELETE_MUTATION,
   ADMIN_EDITORIAL_LISTS_QUERY,
+  COMBINABLE_LISTS_QUERY,
 } from "@/lib/graphql/lists";
 import { Icon } from "@/components/icons/Icons";
 import { EntitySourcePicker } from "@/components/admin/EntitySourcePicker";
@@ -26,7 +27,22 @@ const SOURCE_MODES = [
   { value: "manual", label: "Manual (hand-picked)" },
   { value: "entity", label: "Auto — all shows from one entity" },
   { value: "follows", label: "Auto — shows from entities I follow" },
+  { value: "combined", label: "Combined — other lists, filtered by date" },
 ];
+
+// Baked date windows for combined lists. Mirrors LIST_DATE_WINDOWS on the server.
+const DATE_WINDOWS = [
+  { value: "tonight", label: "Tonight" },
+  { value: "tomorrow", label: "Tomorrow" },
+  { value: "this_weekend", label: "This Weekend" },
+  { value: "this_week", label: "This Week" },
+  { value: "next_week", label: "Next Week" },
+  { value: "this_month", label: "This Month" },
+];
+
+const WINDOW_LABEL: Record<string, string> = Object.fromEntries(
+  DATE_WINDOWS.map((w) => [w.value, w.label]),
+);
 
 const ENTITY_TYPES = [
   { value: "venue", label: "Venue" },
@@ -43,6 +59,11 @@ function sourceLabel(list: any): string {
   if (list.sourceMode === "follows") {
     return `Auto · ${list.followTargetType ?? "entities"} I follow`;
   }
+  if (list.sourceMode === "combined") {
+    const window = WINDOW_LABEL[list.dateWindow] ?? list.dateWindow ?? "no window";
+    const count = list.sourceListIds?.length ?? 0;
+    return `Combined · ${window} · ${count} list${count === 1 ? "" : "s"}`;
+  }
   return `${list.itemCount} items`;
 }
 
@@ -53,7 +74,19 @@ export default function AdminListsPage() {
   const [sourceEntityType, setSourceEntityType] = useState<SourceEntityType>("venue");
   const [selectedEntity, setSelectedEntity] = useState<{ id: string; name: string } | null>(null);
   const [followTargetType, setFollowTargetType] = useState<SourceEntityType>("person");
+  const [dateWindow, setDateWindow] = useState("this_weekend");
+  const [selectedListIds, setSelectedListIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  // Show-type editorial lists available as combined-list sources.
+  const [{ data: combinableData }] = useQuery({
+    query: COMBINABLE_LISTS_QUERY,
+    variables: { first: 200 },
+  });
+  const combinableLists = combinableData?.editorialLists?.edges
+    ?.map((e: any) => e.node)
+    // A combined list can't source itself or another combined list.
+    ?.filter((l: any) => l.sourceMode !== "combined") ?? [];
 
   // Active editorial lists (mirrors the browse query). Small, complete, always shown
   // first in the merged editorial scroll area — never crowded out by the inactive pile.
@@ -102,6 +135,15 @@ export default function AdminListsPage() {
       input.followTargetType = followTargetType;
     }
 
+    if (sourceMode === "combined") {
+      if (selectedListIds.length === 0) {
+        setError("Pick at least one source list to combine.");
+        return;
+      }
+      input.dateWindow = dateWindow;
+      input.sourceListIds = selectedListIds;
+    }
+
     const result = await executeCreate({ input });
 
     if (result.data?.listCreate?.error) {
@@ -118,8 +160,15 @@ export default function AdminListsPage() {
 
     setName("");
     setSelectedEntity(null);
+    setSelectedListIds([]);
     setSourceMode("manual");
     refreshLists();
+  }
+
+  function toggleSourceList(id: string) {
+    setSelectedListIds((ids) =>
+      ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id],
+    );
   }
 
   async function toggleEditorial(listId: string, isCurrentlyEditorial: boolean) {
@@ -310,11 +359,61 @@ export default function AdminListsPage() {
           </div>
         )}
 
+        {sourceMode === "combined" && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase tracking-wider text-curtn-muted">Date window</span>
+              <select
+                value={dateWindow}
+                onChange={(e) => setDateWindow(e.target.value)}
+                className="border border-curtn-dark bg-curtn-deep px-3 py-1.5 text-sm text-curtn-cream focus:outline-none cursor-pointer"
+              >
+                {DATE_WINDOWS.map((w) => (
+                  <option key={w.value} value={w.value}>{w.label}</option>
+                ))}
+              </select>
+              <span className="text-[10px] text-curtn-muted/50">Recomputed in NYC time on every browse load.</span>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-curtn-muted mb-1">
+                Source lists ({selectedListIds.length} selected)
+              </p>
+              {combinableLists.length === 0 ? (
+                <p className="text-[10px] text-curtn-muted/50">
+                  No show lists yet — create some show/entity/follows lists first.
+                </p>
+              ) : (
+                <div className="max-h-40 overflow-y-auto border border-curtn-dark/50 bg-curtn-deep divide-y divide-curtn-dark/30">
+                  {combinableLists.map((l: any) => (
+                    <label
+                      key={l.id}
+                      className="flex items-center gap-2 px-2 py-1.5 text-sm text-curtn-cream cursor-pointer hover:bg-curtn-surface"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedListIds.includes(l.id)}
+                        onChange={() => toggleSourceList(l.id)}
+                        className="accent-curtn-coral"
+                      />
+                      <span>{l.name}</span>
+                      <span className="text-[10px] text-curtn-muted/50">{sourceLabel(l)}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-end">
           <button
             type="button"
             onClick={handleQuickCreate}
-            disabled={!name.trim() || (sourceMode === "entity" && !selectedEntity)}
+            disabled={
+              !name.trim() ||
+              (sourceMode === "entity" && !selectedEntity) ||
+              (sourceMode === "combined" && selectedListIds.length === 0)
+            }
             className="bg-curtn-coral px-4 py-1.5 text-xs font-semibold text-curtn-deep uppercase tracking-wider hover:bg-curtn-red disabled:opacity-40 cursor-pointer"
           >
             Create

@@ -1,11 +1,12 @@
 import {
   GraphQLBoolean,
   GraphQLID,
+  GraphQLList,
   GraphQLNonNull,
   GraphQLString
 } from 'graphql'
 import { fromGlobalId, mutationWithClientMutationId } from 'graphql-relay'
-import { ListModel, LIST_SOURCE_ENTITY_TYPES, LIST_SOURCE_MODES } from '../listModel'
+import { ListModel, LIST_SOURCE_ENTITY_TYPES, LIST_SOURCE_MODES, LIST_DATE_WINDOWS } from '../listModel'
 import { listType } from '../listTypes'
 import { errorField } from '../../../graphql/errorField'
 import { generateListSlug } from '../slugify'
@@ -45,6 +46,14 @@ export const listCreate = mutationWithClientMutationId({
     followTargetType: {
       type: GraphQLString,
       description: 'For follows lists: venue, person, or productionCompany'
+    },
+    sourceListIds: {
+      type: new GraphQLList(GraphQLID),
+      description: 'For combined lists: global IDs of the show lists to union over'
+    },
+    dateWindow: {
+      type: GraphQLString,
+      description: `For combined lists: one of ${LIST_DATE_WINDOWS.join(', ')}`
     }
   },
   outputFields: {
@@ -54,7 +63,7 @@ export const listCreate = mutationWithClientMutationId({
     },
     ...errorField
   },
-  mutateAndGetPayload: async ({ name, description, listType, isPublic, sourceMode, sourceEntityType, sourceEntityId, followTargetType }, ctx) => {
+  mutateAndGetPayload: async ({ name, description, listType, isPublic, sourceMode, sourceEntityType, sourceEntityId, followTargetType, sourceListIds, dateWindow }, ctx) => {
     if (!ctx.user) {
       return { list: null, error: 'Unauthorized' }
     }
@@ -92,6 +101,26 @@ export const listCreate = mutationWithClientMutationId({
         return { list: null, error: `Follows lists require followTargetType: ${LIST_SOURCE_ENTITY_TYPES.join(', ')}` }
       }
       extra.followTargetType = followTargetType
+    }
+
+    if (mode === 'combined') {
+      if (!dateWindow || !LIST_DATE_WINDOWS.includes(dateWindow)) {
+        return { list: null, error: `Combined lists require a dateWindow: ${LIST_DATE_WINDOWS.join(', ')}` }
+      }
+      if (!Array.isArray(sourceListIds) || sourceListIds.length === 0) {
+        return { list: null, error: 'Combined lists require at least one source list' }
+      }
+      const ids = sourceListIds.map((gid: string) => fromGlobalId(gid).id)
+      const sources = await ListModel.find({ _id: { $in: ids } }).select('listType sourceMode').lean()
+      if (sources.length !== ids.length) {
+        return { list: null, error: 'One or more source lists were not found' }
+      }
+      const invalid = sources.find((s: any) => s.listType !== 'shows' || s.sourceMode === 'combined')
+      if (invalid) {
+        return { list: null, error: 'Source lists must be show lists and cannot themselves be combined lists' }
+      }
+      extra.sourceListIds = ids
+      extra.dateWindow = dateWindow
     }
 
     const slug = await generateListSlug(name, ctx.user.id)

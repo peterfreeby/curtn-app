@@ -3,6 +3,7 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import { Icon, type IconName } from "@/components/icons/Icons";
 import { useDuotone } from "@/hooks/useDuotone";
+import { MondrianPoster, type CastHeadshot } from "@/components/MondrianPoster";
 
 const FONT_WEIGHTS = [200, 300, 400, 700, 900];
 
@@ -120,6 +121,10 @@ interface PosterCardProps {
   /** When true, the card fills its parent's height and its width follows the
    *  image's aspect ratio (no crop). Used for uniform-height carousel rows. */
   fitHeight?: boolean;
+  /** Cast members with headshots. When there's no poster image but the show has
+   *  headshots, the imageless fallback becomes a Mondrian tile grid mixing those
+   *  faces with the title instead of the plain typographic poster. */
+  castHeadshots?: CastHeadshot[];
 }
 
 const sizeClasses = {
@@ -144,9 +149,11 @@ export function PosterCard({
   className = "",
   naturalAspect = false,
   fitHeight = false,
+  castHeadshots,
 }: PosterCardProps) {
   const [imgFailed, setImgFailed] = useState(false);
   const hasImage = !!imageUrl && !imgFailed;
+  const hasHeadshots = !!castHeadshots && castHeadshots.some((c) => c.url);
   const Wrapper = href ? "a" : "div";
   const wrapperProps = href ? { href } : {};
   const resolvedActions = actions ?? defaultActions;
@@ -199,6 +206,8 @@ export function PosterCard({
               className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none"
             />
           </>
+        ) : hasHeadshots ? (
+          <MondrianPoster title={title} cast={castHeadshots!} seed={title} />
         ) : (
           <TextPoster title={title} />
         )}

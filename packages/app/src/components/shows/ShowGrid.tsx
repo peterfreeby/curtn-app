@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { WiredPosterCard } from "@/components/WiredPosterCard";
+import { toCastHeadshots } from "@/components/MondrianPoster";
 
 // Locked column counts per viewport — does not change with content size.
 function useColumnCount(): number {
@@ -26,6 +27,12 @@ function useColumnCount(): number {
   return cols;
 }
 
+interface CastHeadshot {
+  name: string;
+  slug?: string;
+  headshotUrl?: string | null;
+}
+
 interface RunNode {
   id: string;
   productionCompany?: { name: string; slug: string } | null;
@@ -43,6 +50,7 @@ interface ShowNode {
   averageRating: number | null;
   reviewCount: number;
   isOnMyWatchlist?: boolean;
+  castHeadshots?: CastHeadshot[] | null;
   runs?: {
     edges: {
       node: RunNode;
@@ -141,6 +149,11 @@ export function ShowGrid({ shows, loading }: ShowGridProps) {
               id: e.node.id,
               label: buildRunLabel(e.node, show.title),
             }));
+            // Only needed when there's no poster art (the Mondrian fallback);
+            // skip the work otherwise.
+            const castHeadshots = show.posterUrl
+              ? undefined
+              : toCastHeadshots(show.castHeadshots);
 
             return (
               <WiredPosterCard
@@ -155,6 +168,7 @@ export function ShowGrid({ shows, loading }: ShowGridProps) {
                 runId={singleRunId}
                 runs={runs.length > 1 ? runs : undefined}
                 isOnWatchlist={show.isOnMyWatchlist}
+                castHeadshots={castHeadshots}
                 naturalAspect
               />
             );

@@ -164,6 +164,39 @@ export const showType: GraphQLObjectType = new GraphQLObjectType({
           return buildConnection(showCredits, { first: args.first, sortField: 'order', maxLimit: 100 })
         }
       },
+      castHeadshots: {
+        type: new GraphQLList(require('../person/personTypes').personType),
+        description:
+          'Deduped cast members that have a headshot, across all runs (top-billed first). Feeds the Mondrian fallback poster used when a show has no poster art.',
+        resolve: async (show: any, _args: any, ctx: any) => {
+          const MAX = 8
+          const { CreditModel } = require('../credit/creditModel')
+          const { PersonModel } = require('../person/personModel')
+          const runs = ctx.loaders
+            ? await ctx.loaders.runsByShowLoader.load(show._id.toString())
+            : await RunModel.find({ show: show._id }, '_id').lean()
+          const seen = new Set<string>()
+          const out: any[] = []
+          for (const run of runs) {
+            if (out.length >= MAX) break
+            const credits = ctx.loaders
+              ? await ctx.loaders.creditsByRunLoader.load(run._id.toString())
+              : await CreditModel.find({ run: run._id }).sort({ order: 1 }).lean()
+            for (const credit of credits) {
+              if (out.length >= MAX) break
+              if (credit.creditType !== 'cast' || !credit.person) continue
+              const pid = credit.person.toString()
+              if (seen.has(pid)) continue
+              seen.add(pid)
+              const person = ctx.loaders
+                ? await ctx.loaders.personLoader.load(pid)
+                : await PersonModel.findById(pid).lean()
+              if (person?.headshotUrl) out.push(person)
+            }
+          }
+          return out
+        }
+      },
       source: {
         type: require('../dataSource/dataSourceTypes').dataSourceType,
         resolve: async (show: any, _args: any, ctx: any) => {

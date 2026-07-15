@@ -33,6 +33,11 @@ export const MY_WATCHLIST_QUERY = gql`
           posterUrl
           averageRating
           reviewCount
+          castHeadshots {
+            name
+            slug
+            headshotUrl
+          }
         }
       }
       pageInfo {

@@ -8,6 +8,7 @@ import { SHOW_LIST_QUERY } from "@/lib/graphql/shows";
 import { ShowGrid } from "@/components/shows/ShowGrid";
 import { PosterCard } from "@/components/PosterCard";
 import { WiredPosterCard } from "@/components/WiredPosterCard";
+import { toCastHeadshots } from "@/components/MondrianPoster";
 import { Icon } from "@/components/icons/Icons";
 import { useNearbyMetroState } from "@/lib/location/useNearbyMetro";
 
@@ -62,7 +63,11 @@ function BrowseCarousel({ children }: { children: ReactNode }) {
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
-    const imgs = Array.from(container.querySelectorAll("img"));
+    // Exclude Mondrian tile headshots — they're decorative, not the poster image
+    // whose orientation should drive the shelf layout.
+    const imgs = Array.from(
+      container.querySelectorAll<HTMLImageElement>("img:not([data-mondrian-tile])"),
+    );
     if (imgs.length === 0) return; // all-text shelf → leave to count-based split
 
     let settled = 0;
@@ -295,6 +300,9 @@ function BrowseItemCard({ item, listType }: { item: any; listType: string }) {
         title={item.showTitle}
         href={`/performances/${encodeURIComponent(item.showId)}`}
         size="md"
+        castHeadshots={
+          item.posterUrl ? undefined : toCastHeadshots(item.castHeadshots)
+        }
         fitHeight
       />
     );

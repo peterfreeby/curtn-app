@@ -1,6 +1,10 @@
 """The root query type"""
 type Query {
-  movieList(
+  singlePerformance(
+    """Performance ID"""
+    id: ID!
+  ): Performance
+  performancesByRun(
     """Returns the items in the list that come after the specified cursor."""
     after: String
 
@@ -12,9 +16,11 @@ type Query {
 
     """Returns the last n items from the list."""
     last: Int
-  ): MovieConnection
-  singleMovie(id: ID!): Movie
-  searchMovieFromTMDB(
+
+    """Run ID"""
+    runId: ID!
+  ): PerformanceConnection
+  upcomingPerformances(
     """Returns the items in the list that come after the specified cursor."""
     after: String
 
@@ -26,9 +32,132 @@ type Query {
 
     """Returns the last n items from the list."""
     last: Int
-    title: String!
-  ): MovieConnection
-  movieSummary(id: ID!): MovieSummary
+
+    """Filter by city"""
+    city: String
+  ): PerformanceConnection
+  performanceList(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+
+    """Search by show title or venue name"""
+    search: String
+
+    """Bounding box south-west latitude"""
+    swLat: Float
+
+    """Bounding box south-west longitude"""
+    swLng: Float
+
+    """Bounding box north-east latitude"""
+    neLat: Float
+
+    """Bounding box north-east longitude"""
+    neLng: Float
+
+    """Filter performances on or after this ISO date"""
+    startDate: String
+
+    """Filter performances before this ISO date"""
+    endDate: String
+  ): PerformanceConnection
+  singleVenue(
+    """Venue ID"""
+    id: ID!
+  ): Venue
+  venueBySlug(
+    """Venue slug (URL-friendly name)"""
+    slug: String!
+  ): Venue
+  venueList(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+
+    """Filter by city (NYC, Minneapolis, LA)"""
+    city: String
+
+    """Filter by venue type (theater, comedy-club, etc.)"""
+    venueType: String
+
+    """Search by name or description"""
+    search: String
+
+    """Bounding box south-west latitude"""
+    swLat: Float
+
+    """Bounding box south-west longitude"""
+    swLng: Float
+
+    """Bounding box north-east latitude"""
+    neLat: Float
+
+    """Bounding box north-east longitude"""
+    neLng: Float
+  ): VenueConnection
+  venuesNear(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+
+    """Latitude to search near"""
+    latitude: Float!
+
+    """Longitude to search near"""
+    longitude: Float!
+
+    """Maximum distance in meters (default: 10000 = ~6 miles)"""
+    maxDistance: Float
+  ): VenueConnection
+  venuesByCity(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+
+    """City name (NYC, Minneapolis, LA)"""
+    city: String!
+  ): VenueConnection
+  singlePerson(
+    """Person ID"""
+    id: ID!
+  ): Person
+  personBySlug(
+    """Person slug"""
+    slug: String!
+  ): Person
   personList(
     """Returns the items in the list that come after the specified cursor."""
     after: String
@@ -41,6 +170,9 @@ type Query {
 
     """Returns the last n items from the list."""
     last: Int
+
+    """Search by name"""
+    search: String
   ): PersonConnection
   me: User
   userList(
@@ -85,13 +217,501 @@ type Query {
     """Filter reviews by this rating"""
     rating: Int
 
-    """Filter reviews by this movie"""
-    movie: ID
+    """Filter reviews by this performance (showing)"""
+    performance: ID
+
+    """Filter reviews by this run (aggregates all performances in that run)"""
+    runId: ID
+
+    """
+    Filter reviews by this show (aggregates all performances across all runs)
+    """
+    showId: ID
 
     """Filter reviews by this username"""
     username: String
+
+    """Only return reviews from users the viewer follows"""
+    followedOnly: Boolean
   ): UserReviewConnection
   singleReview(id: ID!): UserReview
+
+  """Reviews from users the current user follows"""
+  feedReviews(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+  ): UserReviewConnection
+
+  """Seen records from users the current user follows"""
+  feedSeen(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+  ): SeenConnection
+  singleShow(
+    """Show ID"""
+    id: ID!
+  ): Show
+  showList(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+
+    """Filter by performance types"""
+    performanceTypes: [String]
+
+    """Search by title or description"""
+    search: String
+  ): ShowConnection
+  searchShows(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+
+    """Search query"""
+    query: String!
+  ): ShowConnection
+  singleRun(
+    """Run ID"""
+    id: ID!
+  ): Run
+  runsByShow(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+
+    """Show ID"""
+    showId: ID!
+  ): RunConnection
+  runsByVenue(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+
+    """Venue name"""
+    venueName: String!
+  ): RunConnection
+  runList(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+
+    """Search by run title or show title"""
+    search: String
+  ): RunConnection
+  singleProductionCompany(
+    """ProductionCompany ID"""
+    id: ID!
+  ): ProductionCompany
+  productionCompanyBySlug(
+    """Company slug"""
+    slug: String!
+  ): ProductionCompany
+  productionCompanyList(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+
+    """Search by name or description"""
+    search: String
+  ): ProductionCompanyConnection
+  creditsByRun(
+    """Run ID"""
+    runId: ID!
+
+    """Filter by credit type (cast or crew)"""
+    creditType: String
+  ): [Credit]
+  creditsByPerson(
+    """Person ID"""
+    personId: ID!
+  ): [Credit]
+  showCreditsByShow(
+    """Show GlobalID"""
+    showId: ID!
+  ): ShowCreditConnection
+  showCompanyCreditsByShow(
+    """Show GlobalID"""
+    showId: ID!
+  ): ShowCompanyCreditConnection
+
+  """Shows on the current user's watchlist, sorted by most recently added"""
+  myWatchlist(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+  ): ShowConnection
+
+  """
+  List all data sources (admin only). Optional association filters narrow results to sources attached to a specific entity.
+  """
+  dataSourceList(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+    associatedVenueId: String
+    associatedCompanyId: String
+    associatedShowId: String
+    associatedRunId: String
+  ): DataSourceConnection
+
+  """Sync DataSources the calling user created (purpose: 'claimant-sync')"""
+  myClaimantSyncs: [DataSource!]
+  stagesByVenue(
+    venueId: String!
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+  ): StageConnection
+  pendingImports(
+    """Filter by status (pending, approved, rejected)"""
+    status: String
+
+    """Filter by data source"""
+    dataSourceId: String
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+  ): PendingImportConnection
+  listById(
+    """Global ID of the list"""
+    id: ID!
+  ): List
+  listBySlug(
+    """Username of the list owner"""
+    ownerUsername: String!
+
+    """List slug"""
+    slug: String!
+  ): List
+  myLists(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+
+    """Filter by list type (shows, venues, runs, performances, people)"""
+    listType: String
+  ): ListConnection
+  userLists(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+
+    """Global ID of the user"""
+    userId: ID!
+  ): ListConnection
+  editorialLists(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+
+    """Filter by list type"""
+    listType: String
+
+    """If true, only return lists where isActive is true"""
+    activeOnly: Boolean
+
+    """
+    If provided, filter by exact active state (true = active, false = inactive)
+    """
+    isActive: Boolean
+  ): ListConnection
+
+  """
+  Units (Venue, ProductionCompany, Person) currently claimed by the authenticated user.
+  """
+  myClaims: [MyClaim]
+
+  """
+  All claim requests the current user has submitted (across statuses, newest first).
+  """
+  myClaimRequests: [ClaimRequest]
+  claimRequests(
+    """Filter by status (pending, approved, rejected)"""
+    status: String
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+  ): ClaimRequestConnection
+
+  """The current user's most recent pending claim request, or null"""
+  myClaimRequest: ClaimRequest
+
+  """
+  Fetch a ClaimRequest with freshly-computed verification signals (Phase 8).
+  """
+  getClaimSignals(claimRequestId: String!): ClaimRequest
+  autoPromotedClaims(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+  ): ClaimRequestConnection
+
+  """List seen records, optionally filtered by username"""
+  seenList(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+
+    """Filter by username"""
+    username: String
+  ): SeenConnection
+
+  """Current user's notifications, newest first."""
+  myNotifications(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+    unreadOnly: Boolean
+  ): NotificationConnection
+
+  """
+  Count of unread notifications for the current user. Returns 0 when not authenticated.
+  """
+  unreadNotificationCount: Int!
+
+  """Claim transfers awaiting the current user's response (received)."""
+  myPendingTransfers: [ClaimTransfer]
+
+  """Claim transfers the current user has initiated."""
+  myInitiatedTransfers: [ClaimTransfer]
+
+  """
+  Edit history rows for a target (Venue/ProductionCompany/Person/Show/Run/Performance/Stage). Newest first.
+  """
+  auditLog(
+    targetKind: String!
+    targetId: String!
+
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+  ): AuditLogEntryConnection
+
+  """Admin: all pending removal requests, newest first."""
+  pendingRemovalRequests(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+
+    """Filter by status; default = pending."""
+    status: String
+  ): RemovalRequestConnection
+
+  """
+  Pending proposals on units the authenticated user steward. Sorted newest first.
+  """
+  myPendingProposals(
+    """Optional filter: "User" or "Scraper"."""
+    authorType: String
+
+    """
+    Optional filter: Venue / ProductionCompany / Person / Performance / etc.
+    """
+    targetKind: String
+
+    """Optional recency filter (proposals created in the last N days)."""
+    sinceDays: Int
+  ): [Proposal]
+
+  """
+  Pending proposals on unclaimed records from non-autoconfirmed users. Visible to admins + autoconfirmed users.
+  """
+  communityReviewProposals(targetKind: String, sinceDays: Int): [Proposal]
+
+  """
+  Pending proposals targeting a specific entity. Used by the in-context strip on detail pages.
+  """
+  pendingProposalsForTarget(targetKind: String!, targetId: String!): [Proposal]
+
+  """Trusted-editor grants the authenticated user has made."""
+  myGrantedTrustedEditors(includeRevoked: Boolean): [TrustedEditor]
+
+  """Trusted-editor grants where the authenticated user is the recipient."""
+  myReceivedTrustedEditors(includeRevoked: Boolean): [TrustedEditor]
+
+  """Active blocks the authenticated user has issued on a specific unit."""
+  blocksForUnit(scopedToKind: String!, scopedToId: String!, includeRevoked: Boolean): [Block]
+
+  """Active blocks the authenticated user has issued, across all units."""
+  myIssuedBlocks(includeRevoked: Boolean): [Block]
+
+  """
+  Admin-only aggregate of recent block activity. Surfaces high-volume blockers.
+  """
+  adminBlockActivity(windowDays: Int): AdminBlockActivity
 
   """Fetches an object given its ID"""
   node(
@@ -106,13 +726,189 @@ type Query {
   ): [Node]!
 }
 
+"""A single showing/performance instance"""
+type Performance implements Node {
+  """The ID of an object"""
+  id: ID!
+  run: Run
+  date: String
+  time: String
+  venue: Venue
+
+  """Stage override for this specific performance (if different from run)"""
+  stageOverride: Stage
+
+  """Resolved stage: performance override > run default"""
+  effectiveStage: Stage
+  ticketUrl: String
+  soldOut: Boolean
+  imageUrl: String
+
+  """Resolved poster: performance override > run poster > show poster"""
+  effectivePosterUrl: String
+
+  """Resolved description: performance override > run > show"""
+  effectiveDescription: String
+
+  """Cast with per-performance overrides applied"""
+  effectiveCast: [Credit]
+
+  """Crew with per-performance overrides applied"""
+  effectiveCrew: [Credit]
+  createdAt: String
+  updatedAt: String
+}
+
+"""An object with an ID"""
+interface Node {
+  """The id of the object."""
+  id: ID!
+}
+
+"""
+A specific production of a Show by a Company at a Venue during a time window
+"""
+type Run implements Node {
+  """The ID of an object"""
+  id: ID!
+
+  """
+  Run-specific title (e.g. "Inwood Shakespeare Festival's Annual: King Lear")
+  """
+  title: String
+
+  """Run title if set, otherwise falls back to show title"""
+  effectiveTitle: String!
+  show: Show!
+  productionCompany: ProductionCompany
+  venues: [Venue]!
+  stage: Stage
+  intermissions: Int
+
+  """
+  When true, this run has a different lineup each performance (recurring showcase / comedy night). The aggregate run cast is empty by design; each performance carries its own cast via effectiveCast.
+  """
+  lineupPerPerformance: Boolean
+  startDate: String
+  endDate: String
+  description: String
+  imageUrl: String
+  posterUrl: String
+  wikidataId: String
+  eventbriteId: String
+  verificationStatus: String
+
+  """All showings in this run"""
+  performances(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+  ): PerformanceConnection
+
+  """Future showings only"""
+  upcomingPerformances(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+  ): PerformanceConnection
+  cast: [Credit]
+  crew: [Credit]
+  averageRating: Float
+  reviewCount: Int
+
+  """Whether the current viewer has logged this run (via Seen or Review)"""
+  viewerHasSeen: Boolean
+
+  """Total users who have seen this run (Seen + unique Review users)"""
+  totalAttendees: Int
+  createdAt: String
+  updatedAt: String
+}
+
+"""An intellectual work (e.g. "Hamilton", "Rejected Shorts")"""
+type Show implements Node {
+  """The ID of an object"""
+  id: ID!
+  title: String!
+  description: String!
+  performanceTypes: [String]!
+  duration: Int!
+  languages: [String]
+  url: String
+  imageUrl: String
+  posterUrl: String
+  wikidataId: String
+  verificationStatus: String
+
+  """All production runs of this show"""
+  runs(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+  ): RunConnection
+  averageRating: Float
+  reviewCount: Int
+  watchlistCount: Int
+  isOnMyWatchlist: Boolean
+
+  """Whether the current viewer has seen any run of this show"""
+  viewerHasSeen: Boolean
+
+  """Show-level credits (playwrights, composers, etc.)"""
+  creators(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+  ): ShowCreditConnection
+
+  """
+  Deduped cast members that have a headshot, across all runs (top-billed first). Feeds the Mondrian fallback poster used when a show has no poster art.
+  """
+  castHeadshots: [Person]
+  source: DataSource
+  createdAt: String
+  updatedAt: String
+}
+
 """A connection to a list of items."""
-type MovieConnection {
+type RunConnection {
   """Information to aid in pagination."""
   pageInfo: PageInfo!
 
   """A list of edges."""
-  edges: [MovieEdge]
+  edges: [RunEdge]
 }
 
 """Information about pagination in a connection."""
@@ -131,99 +927,294 @@ type PageInfo {
 }
 
 """An edge in a connection."""
-type MovieEdge {
+type RunEdge {
   """The item at the end of the edge"""
-  node: Movie
+  node: Run
 
   """A cursor for use in pagination"""
   cursor: String!
 }
 
-"""Movie type"""
-type Movie implements Node {
-  """The ID of an object"""
-  id: ID!
-
-  """Movie's title"""
-  title: String!
-
-  """Movie's duration"""
-  duration: String!
-
-  """Movie's description"""
-  description: String!
-
-  """Movie's genres"""
-  genres: [String]!
-
-  """Movie's global release date"""
-  releaseDate: String!
-
-  """Movie's poster path"""
-  posterPath: String
-
-  """Movie's rating according to users"""
-  rating: Float!
-
-  """Movie's cast"""
-  cast: [Credit]
-
-  """Movie's crew  """
-  crew: [Credit]
-}
-
-"""An object with an ID"""
-interface Node {
-  """The id of the object."""
-  id: ID!
-}
-
-"""Who made what on this movie development"""
-type Credit {
-  """Who played this role"""
-  person: Person!
-
-  """What was the role of this person on this movie development"""
-  role: String!
-}
-
-"""Person type"""
-type Person implements Node {
-  """The ID of an object"""
-  id: ID!
-
-  """Person's name"""
-  name: String!
-}
-
-type MovieSummary {
-  error: String
-  totalWatches: Int
-  reviewsPerRating: [ReviewsPerRating]
-  uniqueWatches: Int
-}
-
-type ReviewsPerRating {
-  rating: Float
-  count: Int
-}
-
 """A connection to a list of items."""
-type PersonConnection {
+type ShowCreditConnection {
   """Information to aid in pagination."""
   pageInfo: PageInfo!
 
   """A list of edges."""
-  edges: [PersonEdge]
+  edges: [ShowCreditEdge]
 }
 
 """An edge in a connection."""
-type PersonEdge {
+type ShowCreditEdge {
   """The item at the end of the edge"""
-  node: Person
+  node: ShowCredit
 
   """A cursor for use in pagination"""
   cursor: String!
+}
+
+"""
+A credit linking a person to a show (e.g. playwright, composer, lyricist)
+"""
+type ShowCredit implements Node {
+  """The ID of an object"""
+  id: ID!
+  person: Person!
+  show: Show!
+  role: String!
+  order: Int
+  createdAt: String
+  updatedAt: String
+}
+
+"""A cast or crew member"""
+type Person implements Node {
+  """The ID of an object"""
+  id: ID!
+  name: String!
+  slug: String!
+  bio: String
+  headshotUrl: String
+  wikidataId: String
+  castCredits: [Credit]
+  crewCredits: [Credit]
+
+  """Show-level credits (e.g. playwright, composer, lyricist)"""
+  showCredits: [ShowCredit]
+
+  """Unique companies this person has worked with"""
+  productionCompanies: [ProductionCompany]
+
+  """Linked User account (if this person has claimed a profile)"""
+  user: User
+
+  """Whether this person has been claimed by a user"""
+  isClaimed: Boolean
+  createdAt: String
+  updatedAt: String
+
+  """Whether the current viewer follows this entity"""
+  isFollowedByViewer: Boolean
+
+  """
+  Claim ownership state: unclaimed | provisionally-claimed | claimed-passive | claimed-synced
+  """
+  claimState: String!
+
+  """User who has claimed this unit (null when unclaimed/provisional)"""
+  claimedBy: User
+
+  """When the claim was approved (ISO string)"""
+  claimedAt: String
+
+  """
+  Sync feed health (healthy | stale); only meaningful when claimState is claimed-synced
+  """
+  syncHealth: String
+
+  """When the claimant connected a sync source (ISO string)"""
+  syncSourceConnectedAt: String
+
+  """Most recent claimant activity timestamp (for auto-expire; ISO string)"""
+  lastClaimantActivityAt: String
+}
+
+"""A cast or crew credit linking a person to a run"""
+type Credit {
+  """The ID of an object"""
+  id: ID!
+  person: Person!
+  run: Run!
+  creditType: String!
+  role: String!
+  order: Int
+  createdAt: String
+}
+
+"""A production company or theater troupe"""
+type ProductionCompany implements Node {
+  """The ID of an object"""
+  id: ID!
+  name: String!
+  slug: String!
+  description: String
+  logoUrl: String
+  wikidataId: String
+
+  """All runs by this company"""
+  runs(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+  ): RunConnection
+
+  """Unique venues from all runs"""
+  venues: [Venue]
+
+  """Unique people from all credits on runs"""
+  people: [Person]
+  createdAt: String
+  updatedAt: String
+
+  """Whether the current viewer follows this entity"""
+  isFollowedByViewer: Boolean
+
+  """
+  Claim ownership state: unclaimed | provisionally-claimed | claimed-passive | claimed-synced
+  """
+  claimState: String!
+
+  """User who has claimed this unit (null when unclaimed/provisional)"""
+  claimedBy: User
+
+  """When the claim was approved (ISO string)"""
+  claimedAt: String
+
+  """
+  Sync feed health (healthy | stale); only meaningful when claimState is claimed-synced
+  """
+  syncHealth: String
+
+  """When the claimant connected a sync source (ISO string)"""
+  syncSourceConnectedAt: String
+
+  """Most recent claimant activity timestamp (for auto-expire; ISO string)"""
+  lastClaimantActivityAt: String
+}
+
+"""Performance venue (theater, comedy club, etc.)"""
+type Venue implements Node {
+  """The ID of an object"""
+  id: ID!
+
+  """Venue name"""
+  name: String!
+
+  """URL-friendly venue name"""
+  slug: String!
+
+  """Venue description"""
+  description: String
+
+  """Street address"""
+  address: String
+
+  """City"""
+  city: String
+
+  """State abbreviation"""
+  state: String
+
+  """ZIP/postal code"""
+  zipCode: String
+
+  """Geographic coordinates"""
+  coordinates: Coordinates
+
+  """Seating capacity"""
+  capacity: Int
+
+  """Type of venue (theater, comedy-club, etc.)"""
+  venueType: String!
+
+  """
+  Discipline this venue predominantly programs. Fallback for imported events with no type of their own. Unset for mixed-discipline venues.
+  """
+  defaultPerformanceType: String
+
+  """Venue website URL"""
+  website: String
+
+  """Phone number"""
+  phone: String
+
+  """Contact email"""
+  email: String
+
+  """Venue image URL"""
+  imageUrl: String
+
+  """Whether this venue is permanently closed"""
+  permanentlyClosed: Boolean!
+
+  """Date the venue permanently closed (ISO string)"""
+  closedDate: String
+
+  """Wikidata entity identifier (e.g. Q12345)"""
+  wikidataId: String
+
+  """Eventbrite venue identifier"""
+  eventbriteVenueId: String
+
+  """Google Places identifier"""
+  googlePlaceId: String
+
+  """Whether this venue is verified or community-submitted"""
+  verificationStatus: String
+
+  """Stages within this venue (excludes default if only one exists)"""
+  stages: [Stage!]!
+
+  """When venue was added"""
+  createdAt: String
+
+  """When venue was last updated"""
+  updatedAt: String
+
+  """Whether the current viewer follows this entity"""
+  isFollowedByViewer: Boolean
+
+  """
+  Claim ownership state: unclaimed | provisionally-claimed | claimed-passive | claimed-synced
+  """
+  claimState: String!
+
+  """User who has claimed this unit (null when unclaimed/provisional)"""
+  claimedBy: User
+
+  """When the claim was approved (ISO string)"""
+  claimedAt: String
+
+  """
+  Sync feed health (healthy | stale); only meaningful when claimState is claimed-synced
+  """
+  syncHealth: String
+
+  """When the claimant connected a sync source (ISO string)"""
+  syncSourceConnectedAt: String
+
+  """Most recent claimant activity timestamp (for auto-expire; ISO string)"""
+  lastClaimantActivityAt: String
+}
+
+type Coordinates {
+  """Latitude"""
+  lat: Float!
+
+  """Longitude"""
+  lng: Float!
+}
+
+"""A specific stage or performance space within a venue"""
+type Stage implements Node {
+  """The ID of an object"""
+  id: ID!
+  name: String!
+  slug: String!
+  venue: Venue!
+  isDefault: Boolean!
+  capacity: Int
+  description: String
+  createdAt: String
+  updatedAt: String
 }
 
 """User type"""
@@ -232,13 +1223,145 @@ type User implements Node {
   id: ID!
 
   """User's full name"""
-  fullName: String!
+  fullName: String
 
   """User's username"""
-  username: String!
+  username: String
 
   """User's email"""
-  email: String!
+  email: String
+
+  """User's phone number"""
+  phoneNumber: String
+
+  """Whether the user has completed onboarding"""
+  hasProfile: Boolean!
+
+  """User's bio"""
+  bio: String
+
+  """User's avatar image URL"""
+  avatarUrl: String
+
+  """Number of followers"""
+  followerCount: Int
+
+  """Number of users this user follows"""
+  followingCount: Int
+
+  """Whether the current viewer follows this user"""
+  isFollowing: Boolean
+  isAdmin: Boolean
+
+  """Number of reviews this user has written"""
+  reviewCount: Int
+
+  """Linked Person entity (for cast/crew credits)"""
+  person: Person
+
+  """Number of public lists this user has created"""
+  listCount: Int
+
+  """User's public lists"""
+  lists(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+  ): ListConnection
+}
+
+"""A connection to a list of items."""
+type ListConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [ListEdge]
+}
+
+"""An edge in a connection."""
+type ListEdge {
+  """The item at the end of the edge"""
+  node: List
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+type List implements Node {
+  """The ID of an object"""
+  id: ID!
+  name: String!
+  slug: String!
+  description: String
+  listType: String!
+  isPublic: Boolean
+  isEditorial: Boolean
+  isActive: Boolean
+  displayOrder: Int
+  owner: User
+  collaborators: UserConnection
+  itemCount: Int
+
+  """How items are populated: manual, entity, or follows"""
+  sourceMode: String
+
+  """
+  For entity lists: the kind of source entity (venue/person/productionCompany)
+  """
+  sourceEntityType: String
+
+  """For entity lists: the display name of the source entity"""
+  sourceEntityName: String
+
+  """
+  For entity lists: the slug of the source entity (for linking to its detail page)
+  """
+  sourceEntitySlug: String
+
+  """
+  For follows lists: the kind of followed entity (venue/person/productionCompany)
+  """
+  followTargetType: String
+
+  """
+  For combined lists: the baked date window (tonight/tomorrow/this_weekend/this_week/next_week/this_month)
+  """
+  dateWindow: String
+
+  """For combined lists: global IDs of the source lists it unions over"""
+  sourceListIds: [String]
+
+  """Items in this list, ordered by position"""
+  items(
+    """Returns the items in the list that come after the specified cursor."""
+    after: String
+
+    """Returns the first n items from the list."""
+    first: Int
+
+    """Returns the items in the list that come before the specified cursor."""
+    before: String
+
+    """Returns the last n items from the list."""
+    last: Int
+  ): ListItemConnection
+
+  """Whether the current viewer is a collaborator on this list"""
+  isCollaborator: Boolean
+
+  """Whether the current viewer owns this list"""
+  isOwner: Boolean
+  createdAt: String
+  updatedAt: String
 }
 
 """A connection to a list of items."""
@@ -254,6 +1377,134 @@ type UserConnection {
 type UserEdge {
   """The item at the end of the edge"""
   node: User
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+"""A connection to a list of items."""
+type ListItemConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [ListItemEdge]
+}
+
+"""An edge in a connection."""
+type ListItemEdge {
+  """The item at the end of the edge"""
+  node: ListItem
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+type ListItem implements Node {
+  """The ID of an object"""
+  id: ID!
+  item: ListableItem
+  position: Int
+  note: String
+  addedBy: User
+  createdAt: String
+}
+
+union ListableItem = Show | Venue | Run | Performance | Person
+
+"""A data partner or feed (CSV upload, RSS, iCal, API, etc.)"""
+type DataSource implements Node {
+  """The ID of an object"""
+  id: ID!
+  name: String!
+  type: String!
+
+  """'scraper' or 'claimant-sync'"""
+  purpose: String!
+  lastSuccessAt: String
+  url: String
+
+  """Cleanup rules as JSON string"""
+  config: String
+
+  """Associated venue ID"""
+  associatedVenue: String
+
+  """Associated production company ID"""
+  associatedCompany: String
+
+  """Associated show ID"""
+  associatedShow: String
+
+  """Associated run ID"""
+  associatedRun: String
+  lastPolledAt: String
+
+  """'healthy' or 'needs-attention' based on recent template fill rates"""
+  healthStatus: String
+
+  """Explanation when healthStatus is needs-attention"""
+  healthReason: String
+
+  """
+  Fields verified as legitimately unavailable upstream (missing_* categories)
+  """
+  acceptedGaps: [String]
+  isActive: Boolean!
+  createdBy: String
+  createdAt: String
+  updatedAt: String
+}
+
+"""A connection to a list of items."""
+type PerformanceConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [PerformanceEdge]
+}
+
+"""An edge in a connection."""
+type PerformanceEdge {
+  """The item at the end of the edge"""
+  node: Performance
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+"""A connection to a list of items."""
+type VenueConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [VenueEdge]
+}
+
+"""An edge in a connection."""
+type VenueEdge {
+  """The item at the end of the edge"""
+  node: Venue
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+"""A connection to a list of items."""
+type PersonConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [PersonEdge]
+}
+
+"""An edge in a connection."""
+type PersonEdge {
+  """The item at the end of the edge"""
+  node: Person
 
   """A cursor for use in pagination"""
   cursor: String!
@@ -277,7 +1528,7 @@ type UserReviewEdge {
   cursor: String!
 }
 
-"""Users review's type"""
+"""User's review of a specific performance"""
 type UserReview implements Node {
   """The ID of an object"""
   id: ID!
@@ -285,19 +1536,25 @@ type UserReview implements Node {
   """The user who wrote the review"""
   user: User!
 
-  """The movie being reviewed"""
-  movie: Movie!
+  """The specific showing reviewed"""
+  performance: Performance!
 
-  """User's review"""
+  """The run this review belongs to"""
+  run: Run
+
+  """Which venue the user saw the performance at"""
+  venue: String!
+
+  """User's review text"""
   text: String
 
-  """User's rating"""
-  rating: Float
+  """User's rating (0-5)"""
+  rating: Float!
 
-  """When the user watched the movie"""
-  watchedAt: String
+  """When the user attended the performance"""
+  attendedAt: String!
 
-  """Users comments on the review"""
+  """Comments on this review"""
   comments(
     """Returns the items in the list that come after the specified cursor."""
     after: String
@@ -311,7 +1568,18 @@ type UserReview implements Node {
     """Returns the last n items from the list."""
     last: Int
   ): CommentConnection
+
+  """Total number of comments on this review"""
   totalComments: Int
+
+  """Whether the current viewer follows this review author"""
+  isFollowedByViewer: Boolean
+
+  """When the review was created"""
+  createdAt: String
+
+  """When the review was last updated"""
+  updatedAt: String
 }
 
 """A connection to a list of items."""
@@ -339,23 +1607,577 @@ type Comment implements Node {
   content: String
 }
 
+"""A connection to a list of items."""
+type SeenConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [SeenEdge]
+}
+
+"""An edge in a connection."""
+type SeenEdge {
+  """The item at the end of the edge"""
+  node: Seen
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+"""A record of a user having seen a run"""
+type Seen implements Node {
+  """The ID of an object"""
+  id: ID!
+  user: User!
+  run: Run
+  show: Show
+  createdAt: String
+}
+
+"""A connection to a list of items."""
+type ShowConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [ShowEdge]
+}
+
+"""An edge in a connection."""
+type ShowEdge {
+  """The item at the end of the edge"""
+  node: Show
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+"""A connection to a list of items."""
+type ProductionCompanyConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [ProductionCompanyEdge]
+}
+
+"""An edge in a connection."""
+type ProductionCompanyEdge {
+  """The item at the end of the edge"""
+  node: ProductionCompany
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+"""A connection to a list of items."""
+type ShowCompanyCreditConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [ShowCompanyCreditEdge]
+}
+
+"""An edge in a connection."""
+type ShowCompanyCreditEdge {
+  """The item at the end of the edge"""
+  node: ShowCompanyCredit
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+"""
+A credit linking a production company to a show (e.g. rights holder, original producer, licensor)
+"""
+type ShowCompanyCredit implements Node {
+  """The ID of an object"""
+  id: ID!
+  productionCompany: ProductionCompany!
+  show: Show!
+  role: String!
+  order: Int
+  createdAt: String
+  updatedAt: String
+}
+
+"""A connection to a list of items."""
+type DataSourceConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [DataSourceEdge]
+}
+
+"""An edge in a connection."""
+type DataSourceEdge {
+  """The item at the end of the edge"""
+  node: DataSource
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+"""A connection to a list of items."""
+type StageConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [StageEdge]
+}
+
+"""An edge in a connection."""
+type StageEdge {
+  """The item at the end of the edge"""
+  node: Stage
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+"""A connection to a list of items."""
+type PendingImportConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [PendingImportEdge]
+  totalCount: Int
+}
+
+"""An edge in a connection."""
+type PendingImportEdge {
+  """The item at the end of the edge"""
+  node: PendingImport
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+"""An event imported from a feed, awaiting admin review"""
+type PendingImport implements Node {
+  """The ID of an object"""
+  id: ID!
+  dataSource: DataSource!
+  status: String!
+  title: String!
+  runTitle: String
+  showDescription: String
+  runDescription: String
+  performanceDescription: String
+  performanceTypes: [String]
+  duration: Int
+  date: String
+  time: String
+  venueName: String
+  stageName: String
+  companyName: String
+  ticketUrl: String
+  imageUrl: String
+  cast: [PendingImportCredit]
+  crew: [PendingImportCredit]
+  importedAt: String!
+  reviewedAt: String
+  error: String
+  createdAt: String
+}
+
+"""
+A cast or crew entry on a pending import (not yet promoted to a real Person record)
+"""
+type PendingImportCredit {
+  name: String!
+  role: String
+  headshotUrl: String
+}
+
+"""A unit the current user has claimed (active claim)."""
+type MyClaim {
+  kind: String!
+  targetId: String!
+  name: String!
+  slug: String!
+  claimState: String!
+  claimedAt: String
+  syncHealth: String
+}
+
+"""
+A request from a user to claim a Venue, ProductionCompany, or Person, pending admin approval
+"""
+type ClaimRequest implements Node {
+  """The ID of an object"""
+  id: ID!
+  user: User!
+  person: Person
+
+  """
+  Polymorphic target (venue / productionCompany / person). Source of truth for Phase 2 onward.
+  """
+  target: ClaimTarget
+  status: String!
+  message: String
+  reviewerNotes: String
+  requestedAt: String!
+  reviewedAt: String
+  reviewedBy: User
+  createdAt: String
+
+  """
+  Phase 8 — verification signals (webmaster status, profile links, trust-graph endorsements, score).
+  """
+  signals: ClaimSignals
+}
+
+"""The unit being claimed (venue, productionCompany, or person)."""
+type ClaimTarget {
+  kind: String!
+  targetId: String!
+
+  """The display name of the target unit, resolved at query time."""
+  name: String
+
+  """The slug of the target unit, for linking."""
+  slug: String
+}
+
+"""Phase 8 verification signals attached to a ClaimRequest."""
+type ClaimSignals {
+  webmasterVerified: Boolean!
+  webmasterToken: String
+  webmasterTokenExpires: String
+  externalProfileLinks: [ExternalProfileLink]
+  trustGraphEndorsements: [TrustGraphEndorsement]
+  autoPromotionScore: Int!
+  autoPromotedAt: String
+}
+
+type ExternalProfileLink {
+  url: String!
+  platform: String!
+  verifiedAt: String
+}
+
+type TrustGraphEndorsement {
+  grantingUnitKind: String
+  grantingUnitId: String
+  grantedAt: String
+}
+
+"""A connection to a list of items."""
+type ClaimRequestConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [ClaimRequestEdge]
+}
+
+"""An edge in a connection."""
+type ClaimRequestEdge {
+  """The item at the end of the edge"""
+  node: ClaimRequest
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+"""A connection to a list of items."""
+type NotificationConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [NotificationEdge]
+}
+
+"""An edge in a connection."""
+type NotificationEdge {
+  """The item at the end of the edge"""
+  node: Notification
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+"""An in-app notification surfaced to a recipient user."""
+type Notification implements Node {
+  """The ID of an object"""
+  id: ID!
+
+  """Kind of notification (claim_approved, transfer_received, etc.)"""
+  kind: String!
+
+  """JSON-encoded context payload — shape depends on `kind`."""
+  contextJson: String
+
+  """ISO timestamp when read; null if unread."""
+  readAt: String
+
+  """When the notification was created (ISO)."""
+  createdAt: String
+}
+
+"""A pending or resolved transfer of a claim from one user to another."""
+type ClaimTransfer implements Node {
+  """The ID of an object"""
+  id: ID!
+  fromUser: User!
+  toUser: User!
+  target: ClaimTransferTarget!
+  status: String!
+  message: String
+  expiresAt: String!
+  respondedAt: String
+  createdAt: String
+}
+
+type ClaimTransferTarget {
+  kind: String!
+  targetId: String!
+  name: String
+  slug: String
+}
+
+"""A connection to a list of items."""
+type AuditLogEntryConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [AuditLogEntryEdge]
+}
+
+"""An edge in a connection."""
+type AuditLogEntryEdge {
+  """The item at the end of the edge"""
+  node: AuditLogEntry
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+"""One row of edit history on a record. Append-only."""
+type AuditLogEntry implements Node {
+  """The ID of an object"""
+  id: ID!
+  target: AuditTarget!
+  author: AuditAuthor!
+
+  """
+  JSON-encoded diff: { fieldName: { old, new } }. Empty {} for record creation.
+  """
+  diffJson: String
+  approvalSource: String!
+  approvalContextJson: String
+  isRevert: String!
+
+  """
+  AuditLogEntry id (raw ObjectId string) of the entry this one reverts, if any.
+  """
+  revertOf: String
+
+  """true if this entry has been hidden by admin (revision deletion)."""
+  hidden: String!
+  createdAt: String!
+}
+
+type AuditTarget {
+  kind: String!
+  targetId: String!
+}
+
+type AuditAuthor {
+  kind: String!
+  label: String
+
+  """Populated when author.kind === "User"."""
+  user: User
+}
+
+"""A connection to a list of items."""
+type RemovalRequestConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [RemovalRequestEdge]
+}
+
+"""An edge in a connection."""
+type RemovalRequestEdge {
+  """The item at the end of the edge"""
+  node: RemovalRequest
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
+"""A user-submitted request to hide a specific audit log entry."""
+type RemovalRequest implements Node {
+  """The ID of an object"""
+  id: ID!
+  reason: String!
+  category: String!
+  status: String!
+  targetAuditLogId: String!
+  requester: User
+  reviewerNotes: String
+  reviewedAt: String
+  createdAt: String!
+}
+
+"""A staged edit waiting for claimant approval."""
+type Proposal implements Node {
+  """The ID of an object"""
+  id: ID!
+  target: ProposalTarget!
+  proposer: ProposalProposer!
+
+  """JSON-encoded diff: { fieldName: { old, new } }."""
+  diffJson: String!
+  submissionVersion: String!
+  status: String!
+  isJointStewardship: Boolean!
+  isCommunityReview: Boolean!
+  approvals: [ProposalApproval]!
+  firstApprovalAt: String
+  declineReason: String
+  conflictsWithProposalIds: [String]!
+  createdAt: String!
+  approvedAt: String
+  declinedAt: String
+}
+
+type ProposalTarget {
+  kind: String!
+  targetId: String!
+  name: String
+  slug: String
+}
+
+type ProposalProposer {
+  kind: String!
+  label: String
+  user: User
+}
+
+type ProposalApproval {
+  userId: String!
+  role: String!
+  approvedAt: String!
+}
+
+"""
+A directional grant from a claimed unit to a recipient (user or unit), letting the recipient auto-publish within scope.
+"""
+type TrustedEditor implements Node {
+  """The ID of an object"""
+  id: ID!
+  grantedOn: TrustedEditorGrantedOn!
+  recipient: TrustedEditorRecipient!
+  scope: [String!]!
+  roleTemplate: String!
+  grantedBy: String!
+  grantedAt: String!
+  revokedAt: String
+  revokedBy: String
+  createdAt: String!
+}
+
+type TrustedEditorGrantedOn {
+  kind: String!
+  targetId: String!
+  name: String
+  slug: String
+}
+
+type TrustedEditorRecipient {
+  kind: String!
+  targetId: String!
+  name: String
+  slug: String
+}
+
+"""
+A claimant-issued block preventing a specific user from proposing edits to a specific unit.
+"""
+type Block implements Node {
+  """The ID of an object"""
+  id: ID!
+  blockerId: String!
+  blockedUser: BlockUserSummary!
+  blocker: BlockUserSummary!
+  scopedTo: BlockScopedTo!
+  reason: String
+  createdAt: String!
+  revokedAt: String
+}
+
+type BlockUserSummary {
+  userId: String!
+  username: String
+  fullName: String
+}
+
+type BlockScopedTo {
+  kind: String!
+  targetId: String!
+  name: String
+  slug: String
+}
+
+type AdminBlockActivity {
+  topBlockers: [TopBlocker!]!
+  recentBlocks: [Block!]!
+  windowDays: Int!
+  threshold: Int!
+}
+
+type TopBlocker {
+  blockerId: String!
+  blockerUsername: String
+  blockerFullName: String
+  blockCount: Int!
+  flagged: Boolean!
+}
+
 """The root mutation type"""
 type Mutation {
-  """Creates a new user"""
-  userCreate(input: userCreateInput!): userCreatePayload
+  """Verify a Firebase ID token from phone auth. Finds or creates the user."""
+  authenticateWithPhone(input: authenticateWithPhoneInput!): authenticateWithPhonePayload
 
-  """Update a user using its id"""
+  """
+  Complete onboarding by setting username and full name. Requires authentication.
+  """
+  createProfile(input: createProfileInput!): createProfilePayload
+
+  """Update the authenticated user's profile"""
   userUpdate(input: userUpdateInput!): userUpdatePayload
+
+  """Update the current user's profile details"""
+  userProfileUpdate(input: userProfileUpdateInput!): userProfileUpdatePayload
 
   """Delete a user using its id"""
   userDelete(input: userDeleteInput!): userDeletePayload
 
-  """Login a user"""
-  loginUser(input: loginUserInput!): loginUserPayload
-  userLogout: userLogoutPayload
+  """
+  Deprecated — use submitClaimRequest instead. Claims now require admin approval.
+  """
+  userClaimPerson(input: userClaimPersonInput!): userClaimPersonPayload
 
-  """From a given refresh token, generate a new access token"""
-  userRefreshToken(input: userRefreshTokenInput!): userRefreshTokenPayload
+  """Unlink the current user from their claimed Person entity"""
+  userUnclaimPerson(input: userUnclaimPersonInput!): userUnclaimPersonPayload
+
+  """Break the link between a User and a Person (admin only)"""
+  adminUnclaimPerson(input: adminUnclaimPersonInput!): adminUnclaimPersonPayload
+
+  """Bumps activity timestamp on all of the current user's claimed units."""
+  pingDashboardActivity(input: pingDashboardActivityInput!): pingDashboardActivityPayload
 
   """Add a comment"""
   commentCreate(input: commentCreateInput!): commentCreatePayload
@@ -374,45 +2196,367 @@ type Mutation {
 
   """Delete a review using its id"""
   reviewDelete(input: reviewDeleteInput!): reviewDeletePayload
+
+  """Toggle follow/unfollow a user"""
+  followToggle(input: followToggleInput!): followTogglePayload
+
+  """Add a credit (cast/crew) to a run"""
+  creditAdd(input: creditAddInput!): creditAddPayload
+
+  """Remove a credit from a run"""
+  creditRemove(input: creditRemoveInput!): creditRemovePayload
+
+  """Create a credit linking a person to a show (e.g. Playwright, Composer)"""
+  showCreditCreate(input: showCreditCreateInput!): showCreditCreatePayload
+
+  """
+  Create a credit linking a production company to a show (e.g. Rights Holder, Original Producer, Licensor)
+  """
+  showCompanyCreditCreate(input: showCompanyCreditCreateInput!): showCompanyCreditCreatePayload
+
+  """Create a new production company"""
+  productionCompanyCreate(input: productionCompanyCreateInput!): productionCompanyCreatePayload
+
+  """Update an existing production company (admin or claimant)"""
+  productionCompanyUpdate(input: productionCompanyUpdateInput!): productionCompanyUpdatePayload
+
+  """Find an existing show by title or create a new one"""
+  showFindOrCreate(input: showFindOrCreateInput!): showFindOrCreatePayload
+
+  """Update an existing show (admin only)"""
+  showUpdate(input: showUpdateInput!): showUpdatePayload
+
+  """
+  Delete a show and all its runs, performances, credits, reviews (admin only)
+  """
+  showDelete(input: showDeleteInput!): showDeletePayload
+
+  """
+  Merge source show into target show. Reassigns all runs, deletes source (admin only)
+  """
+  showMerge(input: showMergeInput!): showMergePayload
+
+  """
+  Find an existing run by show (+ optional production company), or create a new one
+  """
+  runFindOrCreate(input: runFindOrCreateInput!): runFindOrCreatePayload
+
+  """Update an existing run (admin only)"""
+  runUpdate(input: runUpdateInput!): runUpdatePayload
+
+  """Delete a run and all its performances, credits, reviews (admin only)"""
+  runDelete(input: runDeleteInput!): runDeletePayload
+
+  """
+  Merge source run into target run. Reassigns performances, credits, reviews, deletes source (admin only)
+  """
+  runMerge(input: runMergeInput!): runMergePayload
+
+  """Create a new performance (single showing)"""
+  performanceCreate(input: performanceCreateInput!): performanceCreatePayload
+
+  """Update an existing performance (admin only)"""
+  performanceUpdate(input: performanceUpdateInput!): performanceUpdatePayload
+
+  """Delete a performance and its reviews (admin only)"""
+  performanceDelete(input: performanceDeleteInput!): performanceDeletePayload
+
+  """
+  Merge source performance into target. Reassigns reviews, deletes source (admin only)
+  """
+  performanceMerge(input: performanceMergeInput!): performanceMergePayload
+
+  """Remove an inherited credit from this specific performance (sub out)"""
+  performanceCreditRemove(input: performanceCreditRemoveInput!): performanceCreditRemovePayload
+
+  """Restore a previously removed credit for this performance"""
+  performanceCreditRestore(input: performanceCreditRestoreInput!): performanceCreditRestorePayload
+
+  """
+  Add a credit that only applies to this specific performance (guest, sub-in)
+  """
+  performanceCreditAdd(input: performanceCreditAddInput!): performanceCreditAddPayload
+
+  """Add a show to your watchlist, or update the note if already added"""
+  watchlistAdd(input: watchlistAddInput!): watchlistAddPayload
+
+  """Remove a show from your watchlist"""
+  watchlistRemove(input: watchlistRemoveInput!): watchlistRemovePayload
+
+  """Create a new data source (admin only)"""
+  dataSourceCreate(input: dataSourceCreateInput!): dataSourceCreatePayload
+
+  """Update an existing data source (admin only)"""
+  dataSourceUpdate(input: dataSourceUpdateInput!): dataSourceUpdatePayload
+
+  """Delete a data source and its pending imports (admin only)"""
+  dataSourceDelete(input: dataSourceDeleteInput!): dataSourceDeletePayload
+
+  """Bulk import performances from CSV data"""
+  csvImport(input: csvImportInput!): csvImportPayload
+
+  """Search Wikidata for shows or venues to preview before importing"""
+  wikidataSearch(input: wikidataSearchInput!): wikidataSearchPayload
+
+  """
+  Import selected Wikidata entities into Curtn. Enriches existing records or creates new ones.
+  """
+  wikidataImport(input: wikidataImportInput!): wikidataImportPayload
+
+  """Test a parsing template against a URL without creating imports"""
+  testParsingTemplate(input: testParsingTemplateInput!): testParsingTemplatePayload
+
+  """Scrape a single URL using a data source template and create records"""
+  scrapeUrl(input: scrapeUrlInput!): scrapeUrlPayload
+
+  """Claimant connects an RSS or iCal feed to a unit they own"""
+  createClaimantSync(input: createClaimantSyncInput!): createClaimantSyncPayload
+
+  """Claimant disconnects their sync source and reverts to passive"""
+  disconnectClaimantSync(input: disconnectClaimantSyncInput!): disconnectClaimantSyncPayload
+
+  """Fetch and preview a sync feed without saving"""
+  testSyncSource(input: testSyncSourceInput!): testSyncSourcePayload
+
+  """
+  Set the fields verified as legitimately unavailable for a source (admin only)
+  """
+  setSourceAcceptedGaps(input: setSourceAcceptedGapsInput!): setSourceAcceptedGapsPayload
+
+  """Fetch a feed and create pending imports for new events"""
+  pollDataSource(input: pollDataSourceInput!): pollDataSourcePayload
+
+  """Approve a pending import and promote it to real records"""
+  approvePendingImport(input: approvePendingImportInput!): approvePendingImportPayload
+
+  """Reject a pending import"""
+  rejectPendingImport(input: rejectPendingImportInput!): rejectPendingImportPayload
+
+  """Edit fields on a pending import before approving"""
+  editPendingImport(input: editPendingImportInput!): editPendingImportPayload
+
+  """Auto-approve pending imports older than 1 day"""
+  autoValidatePendingImports(input: autoValidatePendingImportsInput!): autoValidatePendingImportsPayload
+
+  """
+  Approve every pending import matching the optional filter (no age requirement)
+  """
+  approveAllPendingImports(input: approveAllPendingImportsInput!): approveAllPendingImportsPayload
+
+  """Log a scraper-quality issue on a pending import (does not reject it)"""
+  flagScraperIssue(input: flagScraperIssueInput!): flagScraperIssuePayload
+
+  """Find an existing venue by name or create a new one"""
+  venueFindOrCreate(input: venueFindOrCreateInput!): venueFindOrCreatePayload
+
+  """Update an existing venue (admin or claimant)"""
+  venueUpdate(input: venueUpdateInput!): venueUpdatePayload
+
+  """Delete a venue if no runs or performances reference it (admin only)"""
+  venueDelete(input: venueDeleteInput!): venueDeletePayload
+
+  """
+  Merge source venue into target venue. Reassigns all references, deletes source (admin only)
+  """
+  venueMerge(input: venueMergeInput!): venueMergePayload
+
+  """Create a new person (find-or-create by slug)"""
+  personCreate(input: personCreateInput!): personCreatePayload
+
+  """Update an existing person (admin or claimant)"""
+  personUpdate(input: personUpdateInput!): personUpdatePayload
+
+  """Delete a person and all their credits (admin only)"""
+  personDelete(input: personDeleteInput!): personDeletePayload
+
+  """
+  Merge source person into target person. Reassigns all credits, deletes source (admin only)
+  """
+  personMerge(input: personMergeInput!): personMergePayload
+
+  """Create a new list"""
+  listCreate(input: listCreateInput!): listCreatePayload
+
+  """Update list metadata (owner only)"""
+  listUpdate(input: listUpdateInput!): listUpdatePayload
+
+  """Delete a list and all its items (owner or admin only)"""
+  listDelete(input: listDeleteInput!): listDeletePayload
+
+  """Add an item to a list (owner or collaborator)"""
+  listAddItem(input: listAddItemInput!): listAddItemPayload
+
+  """Remove an item from a list (owner or collaborator)"""
+  listRemoveItem(input: listRemoveItemInput!): listRemoveItemPayload
+
+  """Reorder items in a list (owner or collaborator)"""
+  listReorderItems(input: listReorderItemsInput!): listReorderItemsPayload
+
+  """Invite a user as a collaborator (owner only)"""
+  listAddCollaborator(input: listAddCollaboratorInput!): listAddCollaboratorPayload
+
+  """Remove a collaborator from a list (owner only)"""
+  listRemoveCollaborator(input: listRemoveCollaboratorInput!): listRemoveCollaboratorPayload
+
+  """Set a list as editorial for the browse page (admin only)"""
+  listSetEditorial(input: listSetEditorialInput!): listSetEditorialPayload
+
+  """Submit a request to claim a Person profile (pending admin approval)"""
+  submitClaimRequest(input: submitClaimRequestInput!): submitClaimRequestPayload
+
+  """Create a new Person record and submit a claim request for it"""
+  submitClaimRequestNewPerson(input: submitClaimRequestNewPersonInput!): submitClaimRequestNewPersonPayload
+
+  """
+  Approve a pending claim request, linking the user to the person (admin only)
+  """
+  approveClaimRequest(input: approveClaimRequestInput!): approveClaimRequestPayload
+
+  """Reject a pending claim request (admin only)"""
+  rejectClaimRequest(input: rejectClaimRequestInput!): rejectClaimRequestPayload
+
+  """
+  Submit a claim request on a Venue, ProductionCompany, or Person. Transitions the unit to provisionally-claimed pending admin approval.
+  """
+  submitClaim(input: submitClaimInput!): submitClaimPayload
+
+  """
+  Admin approves a polymorphic claim request. Target unit transitions to claimed-passive.
+  """
+  approveClaim(input: approveClaimInput!): approveClaimPayload
+
+  """
+  Admin declines a polymorphic claim request. Target unit reverts to unclaimed if no other pending requests exist.
+  """
+  declineClaim(input: declineClaimInput!): declineClaimPayload
+
+  """
+  Issue a per-claim webmaster verification token. Claimant uses it via meta tag or DNS TXT.
+  """
+  generateWebmasterToken(input: generateWebmasterTokenInput!): generateWebmasterTokenPayload
+
+  """
+  Fetch the unit website and check for the issued curtn-verify token (meta tag or DNS TXT).
+  """
+  verifyWebmaster(input: verifyWebmasterInput!): verifyWebmasterPayload
+
+  """
+  Attach a verified external-profile URL (IMDb Pro, Wikidata, etc.) to a pending claim.
+  """
+  linkExternalProfile(input: linkExternalProfileInput!): linkExternalProfilePayload
+
+  """
+  Admin reverts a prior auto-promotion. Unit returns to unclaimed; claimant notified.
+  """
+  adminRevokeAutoPromotion(input: adminRevokeAutoPromotionInput!): adminRevokeAutoPromotionPayload
+
+  """Mark a run as seen"""
+  seenCreate(input: seenCreateInput!): seenCreatePayload
+
+  """Remove a seen mark from a run"""
+  seenDelete(input: seenDeleteInput!): seenDeletePayload
+
+  """Mark a single notification as read."""
+  markNotificationRead(input: markNotificationReadInput!): markNotificationReadPayload
+
+  """Mark all of the current user's notifications as read."""
+  markAllNotificationsRead(input: markAllNotificationsReadInput!): markAllNotificationsReadPayload
+
+  """
+  Initiate a transfer of a claim to another user. Pending until they accept or decline.
+  """
+  initiateTransfer(input: initiateTransferInput!): initiateTransferPayload
+
+  """Recipient responds to a pending claim transfer."""
+  respondToTransfer(input: respondToTransferInput!): respondToTransferPayload
+
+  """
+  Revert a prior edit by applying the inverse diff. Writes a new AuditLog row (isRevert=true).
+  """
+  revertAuditLogEntry(input: revertAuditLogEntryInput!): revertAuditLogEntryPayload
+
+  """
+  Admin-only: hide an audit log entry from public history (revision deletion).
+  """
+  hideAuditLogEntry(input: hideAuditLogEntryInput!): hideAuditLogEntryPayload
+
+  """
+  Submit a request to hide a specific audit log entry (admin review required).
+  """
+  submitRemovalRequest(input: submitRemovalRequestInput!): submitRemovalRequestPayload
+
+  """Admin: approve or decline a pending removal request."""
+  processRemovalRequest(input: processRemovalRequestInput!): processRemovalRequestPayload
+
+  """
+  Approve a proposal. Applies the diff for single-approver flows; records a vote for joint stewardship until both sides approve.
+  """
+  approveProposal(input: approveProposalInput!): approveProposalPayload
+
+  """
+  Decline a proposal. Either claimant kills a joint proposal regardless of partial approvals.
+  """
+  declineProposal(input: declineProposalInput!): declineProposalPayload
+
+  """
+  Promote a recipient (user or unit) to trusted editor on a unit you claim. Auto-publishes their future edits within the granted scope.
+  """
+  createTrustedEditor(input: createTrustedEditorInput!): createTrustedEditorPayload
+
+  """Update the scope of an existing trusted-editor grant."""
+  updateTrustedEditorScope(input: updateTrustedEditorScopeInput!): updateTrustedEditorScopePayload
+
+  """
+  Revoke a trusted-editor grant. Immediately stops auto-publish for the recipient.
+  """
+  revokeTrustedEditor(input: revokeTrustedEditorInput!): revokeTrustedEditorPayload
+
+  """
+  One-click accept of a reciprocity offer — creates the reverse trust grant with the Manager template.
+  """
+  acceptReciprocity(input: acceptReciprocityInput!): acceptReciprocityPayload
+
+  """
+  Block a user from proposing edits to a unit you claim. Silent from the blocked user’s perspective.
+  """
+  blockUser(input: blockUserInput!): blockUserPayload
+
+  """
+  Lift a block you previously issued. The original block row is preserved (revokedAt set).
+  """
+  unblockUser(input: unblockUserInput!): unblockUserPayload
+
+  """
+  Toggle follow/unfollow an entity (venue, person, or production company)
+  """
+  entityFollowToggle(input: entityFollowToggleInput!): entityFollowTogglePayload
 }
 
-type userCreatePayload {
+type authenticateWithPhonePayload {
   user: User
-  token: Token
+  isNewUser: Boolean
   error: String
   clientMutationId: String
 }
 
-"""The access and the refresh token"""
-type Token {
-  """The access token, needed to authenticate"""
-  accessToken: String
-  refreshToken: RefreshToken
+input authenticateWithPhoneInput {
+  """Firebase ID token from client-side phone authentication"""
+  idToken: String!
+  clientMutationId: String
 }
 
-type RefreshToken {
-  """"""
-  expiresIn: String
-
-  """The refresh token, used to generate a new access token"""
-  value: String
+type createProfilePayload {
+  user: User
+  error: String
+  clientMutationId: String
 }
 
-input userCreateInput {
-  """User's full name"""
-  fullName: String!
-
-  """User's email"""
-  email: String!
-
-  """User's username"""
+input createProfileInput {
+  """User's chosen username"""
   username: String!
 
-  """User's password"""
-  password: String!
-
-  """User's confirm password"""
-  confirmPassword: String!
+  """User's full name"""
+  fullName: String!
   clientMutationId: String
 }
 
@@ -423,13 +2567,32 @@ type userUpdatePayload {
 }
 
 input userUpdateInput {
-  id: ID!
-
   """User's full name"""
-  fullName: String!
+  fullName: String
 
-  """User's password"""
-  password: String!
+  """User's username"""
+  username: String
+
+  """User's email"""
+  email: String
+  clientMutationId: String
+}
+
+type userProfileUpdatePayload {
+  user: User
+  error: String
+  clientMutationId: String
+}
+
+input userProfileUpdateInput {
+  """Display name"""
+  fullName: String
+
+  """Short bio"""
+  bio: String
+
+  """Avatar image URL (from Vercel Blob)"""
+  avatarUrl: String
   clientMutationId: String
 }
 
@@ -444,31 +2607,47 @@ input userDeleteInput {
   clientMutationId: String
 }
 
-type loginUserPayload {
-  token: Token
+type userClaimPersonPayload {
+  error: String
   user: User
+  clientMutationId: String
+}
+
+input userClaimPersonInput {
+  """Global ID of the Person to claim"""
+  personId: String!
+  clientMutationId: String
+}
+
+type userUnclaimPersonPayload {
+  error: String
+  user: User
+  clientMutationId: String
+}
+
+input userUnclaimPersonInput {
+  clientMutationId: String
+}
+
+type adminUnclaimPersonPayload {
+  error: String
+  success: String
+  clientMutationId: String
+}
+
+input adminUnclaimPersonInput {
+  """MongoDB ObjectId of the Person to unclaim"""
+  personId: String!
+  clientMutationId: String
+}
+
+type pingDashboardActivityPayload {
+  ok: Boolean!
   error: String
   clientMutationId: String
 }
 
-input loginUserInput {
-  email: String!
-  password: String!
-  clientMutationId: String
-}
-
-type userLogoutPayload {
-  error: String
-}
-
-type userRefreshTokenPayload {
-  error: String
-  accessToken: String
-  clientMutationId: String
-}
-
-input userRefreshTokenInput {
-  refreshToken: String!
+input pingDashboardActivityInput {
   clientMutationId: String
 }
 
@@ -520,17 +2699,23 @@ type reviewCreatePayload {
 }
 
 input reviewCreateInput {
-  """Movie's unique identifier"""
-  movie: ID!
+  """Performance (showing) unique identifier"""
+  performance: ID!
 
-  """Users review's text"""
+  """Run unique identifier"""
+  run: ID!
+
+  """Which venue the performance was seen at"""
+  venue: String!
+
+  """Review text content"""
   text: String
 
-  """User review's rating"""
-  rating: Float
+  """Rating from 0-5"""
+  rating: Float!
 
-  """When the user watched the movie"""
-  watchedAt: String
+  """When the user attended the performance (ISO date string)"""
+  attendedAt: String!
   clientMutationId: String
 }
 
@@ -563,4 +2748,1899 @@ type reviewDeletePayload {
 input reviewDeleteInput {
   id: ID!
   clientMutationId: String
+}
+
+type followTogglePayload {
+  isFollowing: Boolean
+  error: String
+  clientMutationId: String
+}
+
+input followToggleInput {
+  """The global ID of the user to follow/unfollow"""
+  userId: ID!
+  clientMutationId: String
+}
+
+type creditAddPayload {
+  credit: Credit
+  error: String
+  clientMutationId: String
+}
+
+input creditAddInput {
+  """Existing person ID (provide this OR personName)"""
+  personId: ID
+
+  """New person name (auto-creates Person if no match)"""
+  personName: String
+
+  """Run to attach credit to"""
+  runId: ID!
+
+  """cast or crew"""
+  creditType: String!
+
+  """Role name (e.g. "Hamlet", "Director")"""
+  role: String!
+
+  """Billing order (default 0)"""
+  order: Int
+  clientMutationId: String
+}
+
+type creditRemovePayload {
+  deletedCount: Int
+  error: String
+  clientMutationId: String
+}
+
+input creditRemoveInput {
+  """Credit ID to remove"""
+  creditId: ID!
+  clientMutationId: String
+}
+
+type showCreditCreatePayload {
+  showCredit: ShowCredit
+  error: String
+  clientMutationId: String
+}
+
+input showCreditCreateInput {
+  """Show MongoDB ObjectId"""
+  showId: String!
+
+  """Person name (find-or-create by slug)"""
+  personName: String!
+
+  """
+  Role (e.g. "Playwright", "Composer", "Lyricist", "Choreographer", "Librettist")
+  """
+  role: String!
+
+  """Display order (default 0)"""
+  order: Int
+  clientMutationId: String
+}
+
+type showCompanyCreditCreatePayload {
+  showCompanyCredit: ShowCompanyCredit
+  error: String
+  clientMutationId: String
+}
+
+input showCompanyCreditCreateInput {
+  """Show MongoDB ObjectId"""
+  showId: String!
+
+  """Production company name (find-or-create by slug)"""
+  companyName: String!
+
+  """
+  Role (e.g. "Rights Holder", "Original Producer", "Licensor", "Publisher")
+  """
+  role: String!
+
+  """Display order (default 0)"""
+  order: Int
+  clientMutationId: String
+}
+
+type productionCompanyCreatePayload {
+  productionCompany: ProductionCompany
+  error: String
+  clientMutationId: String
+}
+
+input productionCompanyCreateInput {
+  """Company name"""
+  name: String!
+
+  """Company description"""
+  description: String
+
+  """Logo URL"""
+  logoUrl: String
+  clientMutationId: String
+}
+
+type productionCompanyUpdatePayload {
+  productionCompany: ProductionCompany
+  queued: Boolean
+  proposalId: String
+  isCommunityReview: Boolean
+  error: String
+  clientMutationId: String
+}
+
+input productionCompanyUpdateInput {
+  """MongoDB ObjectId of the production company to update"""
+  productionCompanyId: String!
+
+  """
+  Optimistic concurrency token. ISO string of updatedAt at edit-form load time.
+  """
+  expectedUpdatedAt: String
+
+  """Company name"""
+  name: String
+
+  """Company description"""
+  description: String
+
+  """Logo URL"""
+  logoUrl: String
+
+  """Wikidata ID"""
+  wikidataId: String
+  clientMutationId: String
+}
+
+type showFindOrCreatePayload {
+  show: Show
+  created: Boolean
+  error: String
+  clientMutationId: String
+}
+
+input showFindOrCreateInput {
+  """Show title (case-insensitive match)"""
+  title: String!
+
+  """Show description"""
+  description: String
+
+  """Types of performance"""
+  performanceTypes: [String]
+
+  """Duration in minutes"""
+  duration: Int
+
+  """Languages"""
+  languages: [String]
+
+  """External URL for the show (website, social media, etc.)"""
+  url: String
+  clientMutationId: String
+}
+
+type showUpdatePayload {
+  show: Show
+  error: String
+  clientMutationId: String
+}
+
+input showUpdateInput {
+  """MongoDB ObjectId of the show to update"""
+  showId: String!
+
+  """
+  Optimistic concurrency token. ISO string of updatedAt at edit-form load time.
+  """
+  expectedUpdatedAt: String
+
+  """Show title"""
+  title: String
+
+  """Show description"""
+  description: String
+
+  """Comma-separated performance types"""
+  performanceTypes: String
+
+  """Duration in minutes (string, parsed to int)"""
+  duration: String
+
+  """External URL for the show"""
+  url: String
+
+  """Image URL (from Vercel Blob)"""
+  imageUrl: String
+
+  """Poster URL — portrait poster image (from Vercel Blob)"""
+  posterUrl: String
+  clientMutationId: String
+}
+
+type showDeletePayload {
+  deletedId: String
+  error: String
+  clientMutationId: String
+}
+
+input showDeleteInput {
+  """MongoDB ObjectId of the show to delete"""
+  showId: String!
+  clientMutationId: String
+}
+
+type showMergePayload {
+  show: Show
+  error: String
+  clientMutationId: String
+}
+
+input showMergeInput {
+  """MongoDB ObjectId of the show to merge FROM (will be deleted)"""
+  sourceId: String!
+
+  """MongoDB ObjectId of the show to merge INTO (will be kept)"""
+  targetId: String!
+  clientMutationId: String
+}
+
+type runFindOrCreatePayload {
+  run: Run
+  created: Boolean
+  error: String
+  clientMutationId: String
+}
+
+input runFindOrCreateInput {
+  """Show global ID"""
+  showId: String!
+
+  """Production company global ID (optional)"""
+  productionCompanyId: String
+
+  """Venue global IDs"""
+  venueIds: [String]
+
+  """Number of intermissions"""
+  intermissions: Int
+
+  """Run start date (ISO)"""
+  startDate: String
+
+  """Run end date (ISO)"""
+  endDate: String
+
+  """Run description"""
+  description: String
+  clientMutationId: String
+}
+
+type runUpdatePayload {
+  run: Run
+  error: String
+  clientMutationId: String
+}
+
+input runUpdateInput {
+  """MongoDB ObjectId of the run to update"""
+  runId: String!
+
+  """
+  Optimistic concurrency token. ISO string of updatedAt at edit-form load time.
+  """
+  expectedUpdatedAt: String
+
+  """Run-specific title"""
+  title: String
+
+  """Run description"""
+  description: String
+
+  """Number of intermissions (string, parsed to int)"""
+  intermissions: String
+
+  """
+  Override the variable-lineup flag ("true"/"false"). true = cast varies per performance (no aggregate run cast); false = fixed cast shared across performances.
+  """
+  lineupPerPerformance: String
+
+  """Start date (ISO string)"""
+  startDate: String
+
+  """End date (ISO string)"""
+  endDate: String
+
+  """Image URL (from Vercel Blob)"""
+  imageUrl: String
+
+  """Poster URL — portrait poster image (from Vercel Blob)"""
+  posterUrl: String
+
+  """MongoDB ObjectId of the show this run belongs to"""
+  showId: String
+
+  """JSON array of venue MongoDB ObjectIds"""
+  venueIds: String
+
+  """MongoDB ObjectId of the production company (empty string to clear)"""
+  productionCompanyId: String
+
+  """MongoDB ObjectId of the stage (empty string to clear)"""
+  stageId: String
+  clientMutationId: String
+}
+
+type runDeletePayload {
+  deletedId: String
+  error: String
+  clientMutationId: String
+}
+
+input runDeleteInput {
+  """MongoDB ObjectId of the run to delete"""
+  runId: String!
+  clientMutationId: String
+}
+
+type runMergePayload {
+  deletedId: String
+  error: String
+  clientMutationId: String
+}
+
+input runMergeInput {
+  """MongoDB ObjectId of the run to merge FROM (will be deleted)"""
+  sourceId: String!
+
+  """MongoDB ObjectId of the run to merge INTO (will be kept)"""
+  targetId: String!
+  clientMutationId: String
+}
+
+type performanceCreatePayload {
+  performance: Performance
+  error: String
+  clientMutationId: String
+}
+
+input performanceCreateInput {
+  """Run global ID"""
+  runId: String!
+
+  """Performance date (ISO string)"""
+  date: String!
+
+  """Performance time (e.g. "7:30 PM")"""
+  time: String!
+
+  """
+  Venue global ID (optional — a performance can be logged without a venue)
+  """
+  venueId: String
+
+  """URL to purchase tickets"""
+  ticketUrl: String
+
+  """Whether the performance is sold out"""
+  soldOut: Boolean
+  clientMutationId: String
+}
+
+type performanceUpdatePayload {
+  performance: Performance
+  queued: Boolean
+  proposalId: String
+  isCommunityReview: Boolean
+  error: String
+  clientMutationId: String
+}
+
+input performanceUpdateInput {
+  """MongoDB ObjectId of the performance to update"""
+  performanceId: String!
+
+  """
+  Optimistic concurrency token. ISO string of updatedAt at edit-form load time.
+  """
+  expectedUpdatedAt: String
+
+  """Performance date (ISO string)"""
+  date: String
+
+  """Performance time"""
+  time: String
+
+  """Ticket purchase URL"""
+  ticketUrl: String
+
+  """Whether the performance is sold out"""
+  soldOut: Boolean
+
+  """Performance-level description override"""
+  description: String
+
+  """Image URL (from Vercel Blob)"""
+  imageUrl: String
+
+  """MongoDB ObjectId of the run this performance belongs to"""
+  runId: String
+
+  """MongoDB ObjectId of the venue for this performance"""
+  venueId: String
+  clientMutationId: String
+}
+
+type performanceDeletePayload {
+  deletedId: String
+  error: String
+  clientMutationId: String
+}
+
+input performanceDeleteInput {
+  """MongoDB ObjectId of the performance to delete"""
+  performanceId: String!
+  clientMutationId: String
+}
+
+type performanceMergePayload {
+  deletedId: String
+  error: String
+  clientMutationId: String
+}
+
+input performanceMergeInput {
+  """MongoDB ObjectId of the performance to merge FROM (will be deleted)"""
+  sourceId: String!
+
+  """MongoDB ObjectId of the performance to merge INTO (will be kept)"""
+  targetId: String!
+  clientMutationId: String
+}
+
+type performanceCreditRemovePayload {
+  performance: Performance
+  error: String
+  clientMutationId: String
+}
+
+input performanceCreditRemoveInput {
+  """Performance MongoDB ObjectId"""
+  performanceId: String!
+
+  """Credit MongoDB ObjectId to remove from this performance"""
+  creditId: String!
+  clientMutationId: String
+}
+
+type performanceCreditRestorePayload {
+  performance: Performance
+  error: String
+  clientMutationId: String
+}
+
+input performanceCreditRestoreInput {
+  """Performance MongoDB ObjectId"""
+  performanceId: String!
+
+  """Credit MongoDB ObjectId to restore"""
+  creditId: String!
+  clientMutationId: String
+}
+
+type performanceCreditAddPayload {
+  performance: Performance
+  error: String
+  clientMutationId: String
+}
+
+input performanceCreditAddInput {
+  """Performance MongoDB ObjectId"""
+  performanceId: String!
+
+  """Person name (creates new if not found)"""
+  personName: String!
+
+  """cast or crew"""
+  creditType: String!
+
+  """Role name"""
+  role: String!
+  clientMutationId: String
+}
+
+type watchlistAddPayload {
+  onWatchlist: Boolean
+  watchlistCount: Int
+  error: String
+  clientMutationId: String
+}
+
+input watchlistAddInput {
+  """The global ID of the show to add"""
+  showId: ID!
+
+  """Optional note (e.g. "my friend said this is amazing")"""
+  note: String
+  clientMutationId: String
+}
+
+type watchlistRemovePayload {
+  onWatchlist: Boolean
+  watchlistCount: Int
+  error: String
+  clientMutationId: String
+}
+
+input watchlistRemoveInput {
+  """The global ID of the show to remove"""
+  showId: ID!
+  clientMutationId: String
+}
+
+type dataSourceCreatePayload {
+  dataSource: DataSource
+  error: String
+  clientMutationId: String
+}
+
+input dataSourceCreateInput {
+  """Data source name"""
+  name: String!
+
+  """Type: manual, csv, rss, ical, api, or web"""
+  type: String!
+
+  """Feed URL (for rss/ical sources)"""
+  url: String
+
+  """Cleanup rules as JSON string"""
+  config: String
+
+  """Optional associated venue ID"""
+  associatedVenueId: String
+
+  """Optional associated production company ID"""
+  associatedCompanyId: String
+
+  """Optional associated show ID"""
+  associatedShowId: String
+
+  """Optional associated run ID"""
+  associatedRunId: String
+
+  """Whether the source is active (default true)"""
+  isActive: Boolean
+  clientMutationId: String
+}
+
+type dataSourceUpdatePayload {
+  dataSource: DataSource
+  error: String
+  clientMutationId: String
+}
+
+input dataSourceUpdateInput {
+  """DataSource MongoDB ID"""
+  dataSourceId: String!
+
+  """Updated name"""
+  name: String
+
+  """Updated feed URL"""
+  url: String
+
+  """Updated config as JSON string"""
+  config: String
+
+  """Whether the source is active"""
+  isActive: Boolean
+
+  """Associated venue ID (pass empty string to clear)"""
+  associatedVenueId: String
+
+  """Associated production company ID (pass empty string to clear)"""
+  associatedCompanyId: String
+
+  """Associated show ID (pass empty string to clear)"""
+  associatedShowId: String
+
+  """Associated run ID (pass empty string to clear)"""
+  associatedRunId: String
+  clientMutationId: String
+}
+
+type dataSourceDeletePayload {
+  deletedId: String
+  pendingImportsRemoved: String
+  error: String
+  clientMutationId: String
+}
+
+input dataSourceDeleteInput {
+  """DataSource MongoDB ID"""
+  dataSourceId: String!
+  clientMutationId: String
+}
+
+type csvImportPayload {
+  result: CsvImportResult
+  error: String
+  clientMutationId: String
+}
+
+type CsvImportResult {
+  totalRows: Int
+  showsCreated: Int
+  showsMatched: Int
+  runsCreated: Int
+  runsMatched: Int
+  performancesCreated: Int
+  performancesMatched: Int
+  venuesCreated: Int
+  venuesMatched: Int
+  companiesCreated: Int
+  companiesMatched: Int
+  personsCreated: Int
+  personsMatched: Int
+  creditsCreated: Int
+  listsCreated: Int
+  listsMatched: Int
+  listItemsAdded: Int
+  errors: [String]
+}
+
+input csvImportInput {
+  rows: [CsvRowInput!]!
+
+  """Optional DataSource ID to tag imported data"""
+  dataSourceId: String
+
+  """If true, preview results without creating anything"""
+  dryRun: Boolean
+  clientMutationId: String
+}
+
+input CsvRowInput {
+  title: String!
+  showDescription: String
+  performanceTypes: String
+  duration: String
+  showUrl: String
+  showImageUrl: String
+  showPosterUrl: String
+  languages: String
+  venueName: String
+  stageName: String
+  venueDescription: String
+  venueAddress: String
+  venueCity: String
+  venueState: String
+  venueZipCode: String
+  venueCapacity: String
+  venueType: String
+  venueWebsite: String
+  venuePhone: String
+  venueEmail: String
+  venueImageUrl: String
+  runTitle: String
+  runDescription: String
+  runStartDate: String
+  runEndDate: String
+  intermissions: String
+  runImageUrl: String
+  runPosterUrl: String
+  date: String
+  time: String
+  startTime: String
+  endTime: String
+  ticketUrl: String
+  performanceDescription: String
+  soldOut: String
+  companyName: String
+  companyDescription: String
+  companyLogoUrl: String
+  performanceImageUrl: String
+  personHeadshotUrl: String
+  personName: String
+  personRole: String
+  creditType: String
+  creditDepartment: String
+  listName: String
+  listType: String
+  listDescription: String
+  listItemNote: String
+}
+
+type wikidataSearchPayload {
+  shows: [WikidataShowResult]
+  venues: [WikidataVenueResult]
+  error: String
+  clientMutationId: String
+}
+
+type WikidataShowResult {
+  wikidataId: String
+  title: String
+  description: String
+  performanceType: String
+  premiereDate: String
+  venueLabel: String
+  directorLabel: String
+  composerLabel: String
+  duration: String
+  existsInCurtn: Boolean
+}
+
+type WikidataVenueResult {
+  wikidataId: String
+  name: String
+  capacity: String
+  coordinates: String
+  website: String
+  architectLabel: String
+  ownerLabel: String
+  openedDate: String
+  existsInCurtn: Boolean
+}
+
+input wikidataSearchInput {
+  searchType: WikidataSearchType!
+
+  """
+  Search term (show title), city name (for venues/region), or company name
+  """
+  query: String!
+
+  """Filter shows premiered on or after this year (for SHOWS_BY_REGION)"""
+  yearFrom: Int
+
+  """Filter shows premiered on or before this year (for SHOWS_BY_REGION)"""
+  yearTo: Int
+  limit: Int
+  clientMutationId: String
+}
+
+enum WikidataSearchType {
+  SHOWS
+  SHOWS_BY_REGION
+  VENUES
+  COMPANY
+}
+
+type wikidataImportPayload {
+  result: WikidataImportResult
+  error: String
+  clientMutationId: String
+}
+
+type WikidataImportResult {
+  totalProcessed: Int
+  showsCreated: Int
+  showsEnriched: Int
+  showsSkipped: Int
+  venuesCreated: Int
+  venuesEnriched: Int
+  venuesSkipped: Int
+  companiesCreated: Int
+  personsCreated: Int
+  creditsCreated: Int
+  errors: [String]
+}
+
+input wikidataImportInput {
+  """Wikidata entity IDs to import (e.g. ["Q19320959", "Q1137861"])"""
+  wikidataIds: [String!]!
+
+  """Whether these are show or venue entities"""
+  entityType: WikidataSearchType!
+
+  """
+  City context from the search (e.g. "NYC", "Manhattan"). Used to set city/state on new venues.
+  """
+  city: String
+
+  """
+  Fetch full intro paragraphs from Wikipedia (slower, 1 req/s). Default: true
+  """
+  fetchDescriptions: Boolean
+
+  """Preview results without creating/updating anything"""
+  dryRun: Boolean
+  clientMutationId: String
+}
+
+type testParsingTemplatePayload {
+  events: [TestParsedEvent]
+  flatRows: String
+  jsonLdDetected: Boolean
+  error: String
+  clientMutationId: String
+}
+
+type TestParsedEvent {
+  title: String
+  description: String
+  date: String
+  time: String
+  venue: String
+  ticketUrl: String
+  imageUrl: String
+  price: String
+  runTitle: String
+  showDescription: String
+  runDescription: String
+  duration: Int
+  startDate: String
+  endDate: String
+  cast: [TestParsedCredit]
+  crew: [TestParsedCredit]
+}
+
+type TestParsedCredit {
+  name: String
+  role: String
+  headshotUrl: String
+}
+
+input testParsingTemplateInput {
+  """URL of the page to test against"""
+  url: String!
+
+  """Parsing template as JSON string (V1 or V2 format)"""
+  template: String!
+  clientMutationId: String
+}
+
+type scrapeUrlPayload {
+  eventsFound: Int
+  eventsCreated: Int
+  showsCreated: Int
+  showsMatched: Int
+  runsCreated: Int
+  performancesCreated: Int
+  venuesCreated: Int
+  personsCreated: Int
+  creditsCreated: Int
+  importErrors: [String]
+  error: String
+  clientMutationId: String
+}
+
+input scrapeUrlInput {
+  """URL to scrape"""
+  url: String!
+
+  """DataSource MongoDB ID (uses its template and presets)"""
+  dataSourceId: String
+
+  """Parsing template as JSON string (V1 or V2)"""
+  template: String
+  clientMutationId: String
+}
+
+type createClaimantSyncPayload {
+  dataSource: DataSource
+  error: String
+  clientMutationId: String
+}
+
+input createClaimantSyncInput {
+  """'venue' (v1 only)"""
+  targetKind: String!
+
+  """ID of the unit being synced"""
+  targetId: String!
+
+  """'rss' or 'ical'"""
+  feedType: String!
+
+  """Feed URL"""
+  url: String!
+
+  """Optional human label"""
+  name: String
+  clientMutationId: String
+}
+
+type disconnectClaimantSyncPayload {
+  ok: Boolean
+  error: String
+  clientMutationId: String
+}
+
+input disconnectClaimantSyncInput {
+  dataSourceId: String!
+  clientMutationId: String
+}
+
+type testSyncSourcePayload {
+  itemCount: Int
+  preview: [SyncSourcePreviewItem]
+  error: String
+  clientMutationId: String
+}
+
+type SyncSourcePreviewItem {
+  title: String
+  description: String
+  date: String
+  time: String
+  ticketUrl: String
+}
+
+input testSyncSourceInput {
+  feedType: String!
+  url: String!
+  clientMutationId: String
+}
+
+type setSourceAcceptedGapsPayload {
+  dataSource: DataSource
+  issuesAccepted: Int
+  rowsRestored: Int
+  error: String
+  clientMutationId: String
+}
+
+input setSourceAcceptedGapsInput {
+  dataSourceId: String!
+  gaps: [String]
+  clientMutationId: String
+}
+
+type pollDataSourcePayload {
+  eventsFound: Int
+  eventsCreated: Int
+  eventsSkipped: Int
+  error: String
+  clientMutationId: String
+}
+
+input pollDataSourceInput {
+  """DataSource MongoDB ID"""
+  dataSourceId: String!
+  clientMutationId: String
+}
+
+type approvePendingImportPayload {
+  pendingImport: PendingImport
+
+  """
+  True when the PI was routed to a claimant Proposal instead of being promoted directly (Phase 4 scraper bridge).
+  """
+  queued: Boolean
+  proposalId: String
+  error: String
+  clientMutationId: String
+}
+
+input approvePendingImportInput {
+  pendingImportId: String!
+  clientMutationId: String
+}
+
+type rejectPendingImportPayload {
+  pendingImport: PendingImport
+  error: String
+  clientMutationId: String
+}
+
+input rejectPendingImportInput {
+  pendingImportId: String!
+  clientMutationId: String
+}
+
+type editPendingImportPayload {
+  pendingImport: PendingImport
+  error: String
+  clientMutationId: String
+}
+
+input editPendingImportInput {
+  pendingImportId: String!
+  title: String
+  runTitle: String
+  showDescription: String
+  runDescription: String
+  performanceDescription: String
+  performanceTypes: String
+  duration: String
+  date: String
+  time: String
+  venueName: String
+  stageName: String
+  companyName: String
+  ticketUrl: String
+  clientMutationId: String
+}
+
+type autoValidatePendingImportsPayload {
+  approvedCount: Int
+  errorCount: Int
+  error: String
+  clientMutationId: String
+}
+
+input autoValidatePendingImportsInput {
+  clientMutationId: String
+}
+
+type approveAllPendingImportsPayload {
+  approvedCount: Int
+  errorCount: Int
+  firstErrors: [String]
+  error: String
+  clientMutationId: String
+}
+
+input approveAllPendingImportsInput {
+  dataSourceId: String
+  pendingImportIds: [String]
+  clientMutationId: String
+}
+
+type flagScraperIssuePayload {
+  pendingImport: PendingImport
+  flagged: Boolean
+  issueId: String
+  error: String
+  clientMutationId: String
+}
+
+input flagScraperIssueInput {
+  pendingImportId: String!
+  categories: [String]
+  note: String
+  clientMutationId: String
+}
+
+type venueFindOrCreatePayload {
+  venue: Venue
+  created: Boolean
+  error: String
+  clientMutationId: String
+}
+
+input venueFindOrCreateInput {
+  """Venue name (case-insensitive match)"""
+  name: String!
+
+  """
+  Street address (optional — omit for a name-only stub to be verified later)
+  """
+  address: String
+
+  """City (NYC, Minneapolis, LA)"""
+  city: String
+
+  """State (NY, MN, CA)"""
+  state: String
+
+  """Latitude coordinate (set with longitude to place the pin)"""
+  latitude: Float
+
+  """Longitude coordinate (set with latitude to place the pin)"""
+  longitude: Float
+
+  """Venue type (default: theater)"""
+  venueType: String
+
+  """Website URL"""
+  website: String
+  clientMutationId: String
+}
+
+type venueUpdatePayload {
+  venue: Venue
+
+  """
+  True when the edit was queued as a Proposal instead of applied directly (Phase 4).
+  """
+  queued: Boolean
+
+  """ID of the Proposal created when queued."""
+  proposalId: String
+
+  """True when the queued proposal routed to community review (Phase 7)."""
+  isCommunityReview: Boolean
+  error: String
+  clientMutationId: String
+}
+
+input venueUpdateInput {
+  """MongoDB ObjectId of the venue to update"""
+  venueId: String!
+
+  """
+  Optimistic concurrency token. ISO string of updatedAt at edit-form load time. If provided and the record has changed since, returns STALE_VERSION.
+  """
+  expectedUpdatedAt: String
+
+  """Venue name"""
+  name: String
+
+  """Venue description"""
+  description: String
+
+  """Street address"""
+  address: String
+
+  """City (NYC, Minneapolis, LA)"""
+  city: String
+
+  """State abbreviation (NY, MN, CA)"""
+  state: String
+
+  """ZIP/postal code"""
+  zipCode: String
+
+  """
+  Latitude from address verification. Set with longitude to place the map pin directly (skips the async geocoding queue).
+  """
+  latitude: Float
+
+  """
+  Longitude from address verification. Set with latitude to place the map pin directly.
+  """
+  longitude: Float
+
+  """Seating capacity (string, parsed to int)"""
+  capacity: String
+
+  """Type of venue (theater, comedy-club, etc.)"""
+  venueType: String
+
+  """
+  Default discipline for imported events with no type (a PERFORMANCE_TYPES value; empty string unsets it for mixed-discipline venues)
+  """
+  defaultPerformanceType: String
+
+  """Venue website URL"""
+  website: String
+
+  """Phone number"""
+  phone: String
+
+  """Contact email"""
+  email: String
+
+  """Image URL (from Vercel Blob)"""
+  imageUrl: String
+
+  """Whether this venue is permanently closed"""
+  permanentlyClosed: Boolean
+
+  """Date the venue permanently closed (ISO string)"""
+  closedDate: String
+  clientMutationId: String
+}
+
+type venueDeletePayload {
+  deletedId: String
+  error: String
+  clientMutationId: String
+}
+
+input venueDeleteInput {
+  """MongoDB ObjectId of the venue to delete"""
+  venueId: String!
+  clientMutationId: String
+}
+
+type venueMergePayload {
+  deletedId: String
+  error: String
+  clientMutationId: String
+}
+
+input venueMergeInput {
+  """MongoDB ObjectId of the venue to merge FROM (will be deleted)"""
+  sourceId: String!
+
+  """MongoDB ObjectId of the venue to merge INTO (will be kept)"""
+  targetId: String!
+  clientMutationId: String
+}
+
+type personCreatePayload {
+  person: Person
+  error: String
+  clientMutationId: String
+}
+
+input personCreateInput {
+  """Person name"""
+  name: String!
+
+  """Short bio"""
+  bio: String
+  clientMutationId: String
+}
+
+type personUpdatePayload {
+  person: Person
+  queued: Boolean
+  proposalId: String
+  isCommunityReview: Boolean
+  error: String
+  clientMutationId: String
+}
+
+input personUpdateInput {
+  """MongoDB ObjectId of the person to update"""
+  personId: String!
+
+  """
+  Optimistic concurrency token. ISO string of updatedAt at edit-form load time.
+  """
+  expectedUpdatedAt: String
+
+  """Person name"""
+  name: String
+
+  """Biography"""
+  bio: String
+
+  """Headshot image URL (from Vercel Blob)"""
+  headshotUrl: String
+
+  """Wikidata ID"""
+  wikidataId: String
+  clientMutationId: String
+}
+
+type personDeletePayload {
+  deletedId: String
+  error: String
+  clientMutationId: String
+}
+
+input personDeleteInput {
+  """MongoDB ObjectId of the person to delete"""
+  personId: String!
+  clientMutationId: String
+}
+
+type personMergePayload {
+  person: Person
+  error: String
+  clientMutationId: String
+}
+
+input personMergeInput {
+  """MongoDB ObjectId of the person to merge FROM (will be deleted)"""
+  sourceId: String!
+
+  """MongoDB ObjectId of the person to merge INTO (will be kept)"""
+  targetId: String!
+  clientMutationId: String
+}
+
+type listCreatePayload {
+  list: List
+  error: String
+  clientMutationId: String
+}
+
+input listCreateInput {
+  """List name"""
+  name: String!
+
+  """List description"""
+  description: String
+
+  """Entity type: shows, venues, runs, performances, or people"""
+  listType: String!
+
+  """Whether the list is public (default true)"""
+  isPublic: Boolean
+
+  """How items are populated: manual (default), entity, or follows"""
+  sourceMode: String
+
+  """For entity lists: venue, person, or productionCompany"""
+  sourceEntityType: String
+
+  """For entity lists: global ID of the source entity"""
+  sourceEntityId: ID
+
+  """For follows lists: venue, person, or productionCompany"""
+  followTargetType: String
+
+  """For combined lists: global IDs of the show lists to union over"""
+  sourceListIds: [ID]
+
+  """
+  For combined lists: one of tonight, tomorrow, this_weekend, this_week, next_week, this_month
+  """
+  dateWindow: String
+  clientMutationId: String
+}
+
+type listUpdatePayload {
+  list: List
+  error: String
+  clientMutationId: String
+}
+
+input listUpdateInput {
+  """Global ID of the list"""
+  listId: ID!
+  name: String
+  description: String
+  isPublic: Boolean
+
+  """For combined lists: global IDs of the show lists to union over"""
+  sourceListIds: [ID]
+
+  """
+  For combined lists: one of tonight, tomorrow, this_weekend, this_week, next_week, this_month
+  """
+  dateWindow: String
+  clientMutationId: String
+}
+
+type listDeletePayload {
+  success: Boolean
+  error: String
+  clientMutationId: String
+}
+
+input listDeleteInput {
+  """Global ID of the list"""
+  listId: ID!
+  clientMutationId: String
+}
+
+type listAddItemPayload {
+  listItem: ListItem
+  error: String
+  clientMutationId: String
+}
+
+input listAddItemInput {
+  """Global ID of the list"""
+  listId: ID!
+
+  """Global ID of the entity to add"""
+  itemId: ID!
+
+  """Optional note about this item"""
+  note: String
+  clientMutationId: String
+}
+
+type listRemoveItemPayload {
+  success: Boolean
+  error: String
+  clientMutationId: String
+}
+
+input listRemoveItemInput {
+  """Global ID of the list"""
+  listId: ID!
+
+  """Global ID of the entity to remove"""
+  itemId: ID!
+  clientMutationId: String
+}
+
+type listReorderItemsPayload {
+  success: Boolean
+  error: String
+  clientMutationId: String
+}
+
+input listReorderItemsInput {
+  """Global ID of the list"""
+  listId: ID!
+
+  """Ordered array of ListItem global IDs"""
+  itemIds: [ID!]!
+  clientMutationId: String
+}
+
+type listAddCollaboratorPayload {
+  list: List
+  error: String
+  clientMutationId: String
+}
+
+input listAddCollaboratorInput {
+  """Global ID of the list"""
+  listId: ID!
+
+  """Global ID of the user to invite"""
+  userId: ID!
+  clientMutationId: String
+}
+
+type listRemoveCollaboratorPayload {
+  list: List
+  error: String
+  clientMutationId: String
+}
+
+input listRemoveCollaboratorInput {
+  """Global ID of the list"""
+  listId: ID!
+
+  """Global ID of the user to remove"""
+  userId: ID!
+  clientMutationId: String
+}
+
+type listSetEditorialPayload {
+  list: List
+  error: String
+  clientMutationId: String
+}
+
+input listSetEditorialInput {
+  """Global ID of the list"""
+  listId: ID!
+
+  """Whether this list should appear on the browse page"""
+  isEditorial: Boolean!
+
+  """Whether this editorial list is currently visible on the browse page"""
+  isActive: Boolean
+
+  """Sort order on the browse page (lower = first)"""
+  displayOrder: Int
+  clientMutationId: String
+}
+
+type submitClaimRequestPayload {
+  error: String
+  claimRequest: ClaimRequest
+  clientMutationId: String
+}
+
+input submitClaimRequestInput {
+  """Global ID of the Person to claim"""
+  personId: String!
+
+  """Optional note explaining why this is you"""
+  message: String
+  clientMutationId: String
+}
+
+type submitClaimRequestNewPersonPayload {
+  error: String
+  claimRequest: ClaimRequest
+  person: Person
+  clientMutationId: String
+}
+
+input submitClaimRequestNewPersonInput {
+  """Name for the new Person record"""
+  personName: String!
+
+  """Optional note explaining why this is you"""
+  message: String
+  clientMutationId: String
+}
+
+type approveClaimRequestPayload {
+  error: String
+  claimRequest: ClaimRequest
+  clientMutationId: String
+}
+
+input approveClaimRequestInput {
+  """MongoDB ObjectId of the ClaimRequest to approve"""
+  claimRequestId: String!
+  clientMutationId: String
+}
+
+type rejectClaimRequestPayload {
+  error: String
+  claimRequest: ClaimRequest
+  clientMutationId: String
+}
+
+input rejectClaimRequestInput {
+  """MongoDB ObjectId of the ClaimRequest to reject"""
+  claimRequestId: String!
+  clientMutationId: String
+}
+
+type submitClaimPayload {
+  claimRequest: ClaimRequest
+  error: String
+  clientMutationId: String
+}
+
+input submitClaimInput {
+  """One of: venue | productionCompany | person"""
+  targetKind: String!
+
+  """MongoDB ObjectId of the target unit"""
+  targetId: String!
+
+  """
+  Open-text explanation of why the user is the right person to claim this unit
+  """
+  evidence: String!
+  clientMutationId: String
+}
+
+type approveClaimPayload {
+  claimRequest: ClaimRequest
+  error: String
+  clientMutationId: String
+}
+
+input approveClaimInput {
+  """MongoDB ObjectId of the ClaimRequest to approve"""
+  claimRequestId: String!
+
+  """Optional notes from the admin reviewer"""
+  reviewerNotes: String
+  clientMutationId: String
+}
+
+type declineClaimPayload {
+  claimRequest: ClaimRequest
+  error: String
+  clientMutationId: String
+}
+
+input declineClaimInput {
+  """MongoDB ObjectId of the ClaimRequest to decline"""
+  claimRequestId: String!
+
+  """Optional notes from the admin reviewer (visible to the requester)"""
+  reviewerNotes: String
+  clientMutationId: String
+}
+
+type generateWebmasterTokenPayload {
+  claimRequest: ClaimRequest
+  token: String
+  website: String
+  error: String
+  clientMutationId: String
+}
+
+input generateWebmasterTokenInput {
+  """ObjectId of the ClaimRequest"""
+  claimRequestId: String!
+  clientMutationId: String
+}
+
+type verifyWebmasterPayload {
+  claimRequest: ClaimRequest
+  verified: String
+  method: String
+  autoPromoted: String
+  error: String
+  clientMutationId: String
+}
+
+input verifyWebmasterInput {
+  claimRequestId: String!
+  clientMutationId: String
+}
+
+type linkExternalProfilePayload {
+  claimRequest: ClaimRequest
+  autoPromoted: String
+  error: String
+  clientMutationId: String
+}
+
+input linkExternalProfileInput {
+  claimRequestId: String!
+  url: String!
+
+  """Optional platform hint; auto-detected if omitted."""
+  platform: String
+  clientMutationId: String
+}
+
+type adminRevokeAutoPromotionPayload {
+  claimRequest: ClaimRequest
+  error: String
+  clientMutationId: String
+}
+
+input adminRevokeAutoPromotionInput {
+  claimRequestId: String!
+
+  """Optional reason recorded in the AuditLog and claimant notification."""
+  reason: String
+  clientMutationId: String
+}
+
+type seenCreatePayload {
+  seen: Boolean
+  seenCount: Int
+  error: String
+  clientMutationId: String
+}
+
+input seenCreateInput {
+  """The global ID of the run to mark as seen"""
+  runId: ID!
+  clientMutationId: String
+}
+
+type seenDeletePayload {
+  seen: Boolean
+  seenCount: Int
+  error: String
+  clientMutationId: String
+}
+
+input seenDeleteInput {
+  """The global ID of the run to unmark"""
+  runId: ID!
+  clientMutationId: String
+}
+
+type markNotificationReadPayload {
+  notification: Notification
+  error: String
+  clientMutationId: String
+}
+
+input markNotificationReadInput {
+  """Global ID of the notification (relay format)."""
+  notificationId: String!
+  clientMutationId: String
+}
+
+type markAllNotificationsReadPayload {
+  markedCount: Int!
+  error: String
+  clientMutationId: String
+}
+
+input markAllNotificationsReadInput {
+  clientMutationId: String
+}
+
+type initiateTransferPayload {
+  transfer: ClaimTransfer
+  error: String
+  clientMutationId: String
+}
+
+input initiateTransferInput {
+  """venue | productionCompany | person"""
+  targetKind: String!
+
+  """MongoDB ObjectId of the claimed unit"""
+  targetId: String!
+
+  """Username of the user to transfer to"""
+  toUsername: String!
+
+  """Optional note for the recipient"""
+  message: String
+  clientMutationId: String
+}
+
+type respondToTransferPayload {
+  transfer: ClaimTransfer
+  error: String
+  clientMutationId: String
+}
+
+input respondToTransferInput {
+  """MongoDB ObjectId of the ClaimTransfer"""
+  transferId: String!
+
+  """true to accept, false to decline"""
+  accept: Boolean!
+  clientMutationId: String
+}
+
+type revertAuditLogEntryPayload {
+  auditLogEntry: AuditLogEntry
+  error: String
+  clientMutationId: String
+}
+
+input revertAuditLogEntryInput {
+  auditLogEntryId: String!
+  clientMutationId: String
+}
+
+type hideAuditLogEntryPayload {
+  auditLogEntry: AuditLogEntry
+  error: String
+  clientMutationId: String
+}
+
+input hideAuditLogEntryInput {
+  auditLogEntryId: String!
+  reason: String!
+  clientMutationId: String
+}
+
+type submitRemovalRequestPayload {
+  removalRequest: RemovalRequest
+  error: String
+  clientMutationId: String
+}
+
+input submitRemovalRequestInput {
+  auditLogEntryId: String!
+  reason: String!
+  category: String!
+  clientMutationId: String
+}
+
+type processRemovalRequestPayload {
+  removalRequest: RemovalRequest
+  error: String
+  clientMutationId: String
+}
+
+input processRemovalRequestInput {
+  removalRequestId: String!
+  approve: Boolean!
+  reviewerNotes: String
+  clientMutationId: String
+}
+
+type approveProposalPayload {
+  proposal: Proposal
+  applied: Boolean
+  error: String
+  clientMutationId: String
+}
+
+input approveProposalInput {
+  proposalId: String!
+
+  """
+  When true, creates a TrustedEditor grant for the proposer on the approved unit. Phase 5.
+  """
+  autoApproveFutureFromProposer: Boolean
+
+  """
+  Optional override: Manager | Booker | Publicist | Personal | Custom. Used when autoApproveFutureFromProposer is true.
+  """
+  trustRoleTemplate: String
+
+  """
+  Optional explicit scope (ActionId list) when autoApproveFutureFromProposer is true. Overrides the template default.
+  """
+  trustScope: [String!]
+  clientMutationId: String
+}
+
+type declineProposalPayload {
+  proposal: Proposal
+  error: String
+  clientMutationId: String
+}
+
+input declineProposalInput {
+  proposalId: String!
+  reason: String
+  clientMutationId: String
+}
+
+type createTrustedEditorPayload {
+  trustedEditor: TrustedEditor
+  error: String
+  clientMutationId: String
+}
+
+input createTrustedEditorInput {
+  """Venue | ProductionCompany | Person"""
+  grantedOnKind: String!
+  grantedOnId: String!
+
+  """User | Venue | ProductionCompany | Person"""
+  recipientKind: String!
+  recipientId: String!
+
+  """Manager | Booker | Publicist | Personal | Custom"""
+  roleTemplate: String!
+
+  """
+  Optional explicit list of ActionId strings. If omitted, uses the role template default.
+  """
+  scope: [String!]
+  clientMutationId: String
+}
+
+type updateTrustedEditorScopePayload {
+  trustedEditor: TrustedEditor
+  error: String
+  clientMutationId: String
+}
+
+input updateTrustedEditorScopeInput {
+  trustedEditorId: String!
+  scope: [String!]!
+
+  """Optional: update the displayed role template label."""
+  roleTemplate: String
+  clientMutationId: String
+}
+
+type revokeTrustedEditorPayload {
+  trustedEditor: TrustedEditor
+  error: String
+  clientMutationId: String
+}
+
+input revokeTrustedEditorInput {
+  trustedEditorId: String!
+  clientMutationId: String
+}
+
+type acceptReciprocityPayload {
+  trustedEditor: TrustedEditor
+  error: String
+  clientMutationId: String
+}
+
+input acceptReciprocityInput {
+  originalTrustedEditorId: String!
+  clientMutationId: String
+}
+
+type blockUserPayload {
+  block: Block
+  error: String
+  clientMutationId: String
+}
+
+input blockUserInput {
+  """Venue | ProductionCompany | Person"""
+  scopedToKind: String!
+  scopedToId: String!
+  blockedUserId: String!
+
+  """Private — admin-visible only."""
+  reason: String
+  clientMutationId: String
+}
+
+type unblockUserPayload {
+  block: Block
+  success: Boolean
+  error: String
+  clientMutationId: String
+}
+
+input unblockUserInput {
+  blockId: String!
+  clientMutationId: String
+}
+
+type entityFollowTogglePayload {
+  isFollowing: Boolean
+  error: String
+  clientMutationId: String
+}
+
+input entityFollowToggleInput {
+  """The kind of entity to follow/unfollow"""
+  targetType: EntityFollowTargetType!
+
+  """The global ID of the entity to follow/unfollow"""
+  targetId: ID!
+  clientMutationId: String
+}
+
+"""Kind of entity that can be followed"""
+enum EntityFollowTargetType {
+  venue
+  person
+  productionCompany
 }

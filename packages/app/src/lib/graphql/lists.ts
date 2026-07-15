@@ -17,6 +17,8 @@ export const LIST_FRAGMENT = gql`
     sourceEntityName
     sourceEntitySlug
     followTargetType
+    dateWindow
+    sourceListIds
     isOwner
     isCollaborator
     owner {
@@ -104,6 +106,11 @@ export const LIST_ITEMS_QUERY = gql`
                 posterUrl
                 imageUrl
                 performanceTypes
+                castHeadshots {
+                  name
+                  slug
+                  headshotUrl
+                }
               }
               ... on Venue {
                 venueId: id
@@ -173,6 +180,26 @@ export const ADMIN_EDITORIAL_LISTS_QUERY = gql`
   ${LIST_FRAGMENT}
 `;
 
+// Show-type editorial lists offered as sources when building a combined list.
+// Metadata only (no items) — the picker just needs id/name/window.
+export const COMBINABLE_LISTS_QUERY = gql`
+  query CombinableLists($first: Int, $after: String) {
+    editorialLists(listType: "shows", first: $first, after: $after) {
+      edges {
+        cursor
+        node {
+          ...ListFields
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+  ${LIST_FRAGMENT}
+`;
+
 export const EDITORIAL_LISTS_QUERY = gql`
   query EditorialLists($listType: String, $activeOnly: Boolean, $isActive: Boolean, $first: Int, $after: String) {
     editorialLists(listType: $listType, activeOnly: $activeOnly, isActive: $isActive, first: $first, after: $after) {
@@ -193,6 +220,11 @@ export const EDITORIAL_LISTS_QUERY = gql`
                     posterUrl
                     imageUrl
                     performanceTypes
+                    castHeadshots {
+                      name
+                      slug
+                      headshotUrl
+                    }
                   }
                   ... on Venue {
                     venueId: id
