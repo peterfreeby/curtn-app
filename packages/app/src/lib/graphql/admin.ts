@@ -165,6 +165,33 @@ export const FLAG_SCRAPER_ISSUE_MUTATION = gql`
   }
 `;
 
+// Fields that can be marked "verified unavailable" for a source (the missing_*
+// subset of SCRAPER_ISSUE_CATEGORIES — the only gaps that can legitimately not
+// exist upstream). Must stay in sync with server ACCEPTABLE_GAP_CATEGORIES.
+export const GAP_ELIGIBLE_CATEGORIES = SCRAPER_ISSUE_CATEGORIES.filter((c) =>
+  [
+    "missing_description",
+    "missing_image",
+    "missing_cast",
+    "missing_date_time",
+    "missing_ticket_url",
+  ].includes(c.value)
+);
+
+export const SET_SOURCE_ACCEPTED_GAPS_MUTATION = gql`
+  mutation SetSourceAcceptedGaps($input: setSourceAcceptedGapsInput!) {
+    setSourceAcceptedGaps(input: $input) {
+      dataSource {
+        id
+        acceptedGaps
+      }
+      issuesAccepted
+      rowsRestored
+      error
+    }
+  }
+`;
+
 export const TEST_PARSING_TEMPLATE_MUTATION = gql`
   mutation TestParsingTemplate($input: testParsingTemplateInput!) {
     testParsingTemplate(input: $input) {
@@ -257,6 +284,7 @@ export const PENDING_IMPORTS_QUERY = gql`
           dataSource {
             id
             name
+            acceptedGaps
           }
         }
       }

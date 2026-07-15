@@ -8,15 +8,33 @@
 
 import { connectToDatabase, disconnectFromDatabase } from '../db/mongoose'
 import { ScraperIssueModel } from '../entities/scraperIssue/scraperIssueModel'
+import { DataSourceModel } from '../entities/dataSource/dataSourceModel'
 
 async function main() {
   await connectToDatabase()
 
-  const [openCount, resolvedCount] = await Promise.all([
+  const [openCount, resolvedCount, acceptedCount] = await Promise.all([
     ScraperIssueModel.countDocuments({ status: 'open' }),
     ScraperIssueModel.countDocuments({ status: 'resolved' }),
+    ScraperIssueModel.countDocuments({ status: 'accepted' }),
   ])
-  console.log(`\nScraperIssue totals: ${openCount} open, ${resolvedCount} resolved\n`)
+  console.log(
+    `\nScraperIssue totals: ${openCount} open, ${resolvedCount} resolved, ${acceptedCount} accepted (verified-unavailable)\n`
+  )
+
+  // Sources with fields marked verified-unavailable — these gaps are expected,
+  // not fix work, so they never appear in the open rollup below.
+  const withGaps = await DataSourceModel.find(
+    { acceptedGaps: { $exists: true, $ne: [] } },
+    { name: 1, acceptedGaps: 1 }
+  ).lean()
+  if (withGaps.length) {
+    console.log('=== Verified-unavailable fields by source ===')
+    for (const s of withGaps) {
+      console.log(`  ${s.name}: ${(s.acceptedGaps ?? []).join(', ')}`)
+    }
+    console.log('')
+  }
 
   if (openCount === 0) {
     await disconnectFromDatabase()

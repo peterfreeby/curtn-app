@@ -24,6 +24,20 @@ export const SCRAPER_ISSUE_CATEGORIES = [
 
 export type ScraperIssueCategory = (typeof SCRAPER_ISSUE_CATEGORIES)[number]
 
+// The subset of categories that can be marked "verified unavailable" on a
+// source — i.e. data that legitimately doesn't exist upstream, not a scraper
+// bug. Only "missing_*" fields qualify; wrong_title / spam / duplicate are
+// always defects. See DataSource.acceptedGaps and setSourceAcceptedGaps.
+export const ACCEPTABLE_GAP_CATEGORIES = [
+  'missing_description',
+  'missing_image',
+  'missing_cast',
+  'missing_date_time',
+  'missing_ticket_url',
+] as const
+
+export type AcceptableGapCategory = (typeof ACCEPTABLE_GAP_CATEGORIES)[number]
+
 export interface IScraperIssue {
   dataSource?: Types.ObjectId
   pendingImport?: Types.ObjectId
@@ -32,7 +46,9 @@ export interface IScraperIssue {
   venueName?: string
   categories: string[]
   note?: string
-  status: 'open' | 'resolved'
+  // 'accepted' = closed because the gap was marked verified-unavailable on the
+  // source (distinct from 'resolved' = the scraper was actually fixed).
+  status: 'open' | 'resolved' | 'accepted'
   createdBy?: Types.ObjectId
   resolvedAt?: Date
   createdAt: Date
@@ -47,7 +63,7 @@ const scraperIssueSchema = new Schema<IScraperIssue>(
     venueName: { type: String, trim: true },
     categories: { type: [String], default: [] },
     note: { type: String, trim: true },
-    status: { type: String, enum: ['open', 'resolved'], default: 'open', index: true },
+    status: { type: String, enum: ['open', 'resolved', 'accepted'], default: 'open', index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: 'user' },
     resolvedAt: { type: Date },
   },

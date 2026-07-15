@@ -25,6 +25,11 @@ export interface IDataSource {
   fillRateSamples?: number[]
   healthStatus?: 'healthy' | 'needs-attention'
   healthReason?: string
+  // Fields verified as legitimately unavailable upstream for this source. Their
+  // absence is expected, not a scraper bug — suppressed from review flags and
+  // from triage (via issue status 'accepted'). Subset of ScraperIssue's
+  // ACCEPTABLE_GAP_CATEGORIES, e.g. ['missing_description'].
+  acceptedGaps?: string[]
   isActive: boolean
   createdBy: Types.ObjectId
   createdAt: Date
@@ -96,6 +101,10 @@ const dataSourceSchema = new Schema<IDataSource>({
   },
   healthReason: {
     type: String
+  },
+  acceptedGaps: {
+    type: [String],
+    default: undefined
   },
   isActive: {
     type: Boolean,

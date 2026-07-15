@@ -5,6 +5,7 @@ import { UserModel } from '../../user/userModel'
 import { PendingImportModel } from '../pendingImportModel'
 import { pendingImportType } from '../pendingImportTypes'
 import { ScraperIssueModel, SCRAPER_ISSUE_CATEGORIES } from '../../scraperIssue/scraperIssueModel'
+import { DataSourceModel } from '../../dataSource/dataSourceModel'
 
 // Flag a scraper-quality problem on a reviewed import WITHOUT rejecting it.
 // Logs to the ScraperIssue collection so we can later see which sources need
@@ -32,12 +33,22 @@ export const flagScraperIssue = mutationWithClientMutationId({
     if (!pi) return { error: 'Pending import not found' }
 
     const allowed = new Set<string>(SCRAPER_ISSUE_CATEGORIES as readonly string[])
-    const cats = (Array.isArray(categories) ? categories : [])
+    // Drop categories already marked verified-unavailable for this source — those
+    // aren't scraper bugs, so re-flagging them would just re-add closed noise.
+    const ds = await DataSourceModel.findById(pi.dataSource)
+    const acceptedGaps = new Set<string>(ds?.acceptedGaps ?? [])
+    const validCats = (Array.isArray(categories) ? categories : [])
       .map((c: string) => String(c).trim())
       .filter((c: string) => allowed.has(c))
+    const cats = validCats.filter((c: string) => !acceptedGaps.has(c))
     const cleanNote = typeof note === 'string' ? note.trim() : ''
     if (cats.length === 0 && !cleanNote) {
-      return { error: 'Pick at least one category or add a note' }
+      // All requested categories were already accepted vs. nothing submitted.
+      return {
+        error: validCats.length > 0
+          ? 'Nothing to flag — those fields are marked verified-unavailable for this source'
+          : 'Pick at least one category or add a note',
+      }
     }
 
     const issue = await ScraperIssueModel.create({

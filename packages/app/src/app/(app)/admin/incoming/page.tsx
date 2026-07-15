@@ -11,6 +11,8 @@ import {
   APPROVE_ALL_MUTATION,
   FLAG_SCRAPER_ISSUE_MUTATION,
   SCRAPER_ISSUE_CATEGORIES,
+  SET_SOURCE_ACCEPTED_GAPS_MUTATION,
+  GAP_ELIGIBLE_CATEGORIES,
 } from "@/lib/graphql/admin";
 import { Button } from "@/components/Button";
 
@@ -42,7 +44,7 @@ interface PendingImportNode {
   importedAt: string;
   reviewedAt: string | null;
   error: string | null;
-  dataSource: { id: string; name: string };
+  dataSource: { id: string; name: string; acceptedGaps: string[] | null };
 }
 
 type StatusFilter = "pending" | "approved" | "rejected" | "flagged" | "all";
@@ -53,6 +55,9 @@ export default function IncomingEventsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFields, setEditFields] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Client-side title search. Matches on "title contains" (case-insensitive).
+  // Filters the visible rows only — select-all keys off what's visible.
+  const [search, setSearch] = useState("");
   // Anchor for shift-click range selection across pending rows
   const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
   // Shift-key state captured from the checkbox's onClick (fires just before its
@@ -72,6 +77,12 @@ export default function IncomingEventsPage() {
   const [flagNote, setFlagNote] = useState("");
   const [flagBusy, setFlagBusy] = useState(false);
   const [flagMsg, setFlagMsg] = useState<string | null>(null);
+  // "Mark unavailable" modal — source-scoped, only opens for a single-source
+  // selection. gapCats holds the full desired accepted set for that source.
+  const [managingGaps, setManagingGaps] = useState(false);
+  const [gapCats, setGapCats] = useState<Set<string>>(new Set());
+  const [gapBusy, setGapBusy] = useState(false);
+  const [gapMsg, setGapMsg] = useState<string | null>(null);
 
   const [{ data, fetching }, reexecuteQuery] = useQuery({
     query: PENDING_IMPORTS_QUERY,
@@ -91,6 +102,7 @@ export default function IncomingEventsPage() {
     APPROVE_ALL_MUTATION
   );
   const [, executeFlag] = useMutation(FLAG_SCRAPER_ISSUE_MUTATION);
+  const [, executeSetGaps] = useMutation(SET_SOURCE_ACCEPTED_GAPS_MUTATION);
 
   function openBulkFlag() {
     if (selected.size === 0) {
@@ -146,17 +158,93 @@ export default function IncomingEventsPage() {
     reexecuteQuery({ requestPolicy: "network-only" });
   }
 
+  function openManageGaps() {
+    if (!singleSelectedSource) {
+      setBulkMessage(
+        "Select rows from a single source to mark fields unavailable."
+      );
+      return;
+    }
+    setGapCats(new Set(singleSelectedSource.acceptedGaps ?? []));
+    setGapMsg(null);
+    setManagingGaps(true);
+  }
+
+  function toggleGapCat(value: string) {
+    setGapCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  }
+
+  async function submitGaps() {
+    if (!singleSelectedSource) {
+      setManagingGaps(false);
+      return;
+    }
+    setGapBusy(true);
+    setGapMsg(null);
+    const result = await executeSetGaps({
+      input: {
+        dataSourceId: decodeGlobalId(singleSelectedSource.id),
+        gaps: Array.from(gapCats),
+      },
+    });
+    setGapBusy(false);
+    const d = result.data?.setSourceAcceptedGaps;
+    if (result.error || d?.error) {
+      setGapMsg(d?.error || result.error?.message || "Failed to save.");
+      return;
+    }
+    setManagingGaps(false);
+    setSelected(new Set());
+    const parts: string[] = [];
+    if (d.issuesAccepted)
+      parts.push(
+        `${d.issuesAccepted} issue${d.issuesAccepted === 1 ? "" : "s"} closed`
+      );
+    if (d.rowsRestored)
+      parts.push(
+        `${d.rowsRestored} row${d.rowsRestored === 1 ? "" : "s"} returned to review`
+      );
+    setBulkMessage(
+      `Updated verified-unavailable fields for ${singleSelectedSource.name}${
+        parts.length ? ` — ${parts.join(", ")}` : ""
+      }.`
+    );
+    reexecuteQuery({ requestPolicy: "network-only" });
+  }
+
   const items: PendingImportNode[] =
     data?.pendingImports?.edges?.map((e: { node: PendingImportNode }) => e.node) || [];
   // True count for the active status filter (server-side count, not page-capped).
   const totalCount: number | null =
     data?.pendingImports?.totalCount ?? null;
-  const pendingItems = items.filter((i) => i.status === "pending");
+  // Title search — "contains", case-insensitive. Everything downstream
+  // (rows, empty state, select-all) works off visibleItems, so a search
+  // narrows both what's shown and what "select all" grabs.
+  const searchTerm = search.trim().toLowerCase();
+  const visibleItems = searchTerm
+    ? items.filter((i) => i.title.toLowerCase().includes(searchTerm))
+    : items;
+  const pendingItems = visibleItems.filter((i) => i.status === "pending");
   const selectableIds = pendingItems.map((i) => i.id);
   const allSelected =
     selectableIds.length > 0 &&
     selectableIds.every((id) => selected.has(id));
   const partiallySelected = selected.size > 0 && !allSelected;
+
+  // "Mark unavailable" is source-scoped, so it only lights up when the whole
+  // selection belongs to one source (null if the selection is empty or mixed).
+  const selectedSourceIds = Array.from(
+    new Set(items.filter((i) => selected.has(i.id)).map((i) => i.dataSource.id))
+  );
+  const singleSelectedSource =
+    selectedSourceIds.length === 1
+      ? items.find((i) => selected.has(i.id))?.dataSource ?? null
+      : null;
 
   function decodeGlobalId(globalId: string): string {
     return atob(globalId).split(":")[1];
@@ -441,6 +529,27 @@ export default function IncomingEventsPage() {
               >
                 {flagBusy ? "Flagging..." : `Flag ${selected.size} Selected`}
               </Button>
+              <span
+                title={
+                  singleSelectedSource
+                    ? `Mark fields verified-unavailable for ${singleSelectedSource.name}`
+                    : "Select rows from a single source"
+                }
+              >
+                <Button
+                  variant="tertiary"
+                  onClick={openManageGaps}
+                  disabled={
+                    validating ||
+                    approvingAll ||
+                    rejectingSelected ||
+                    gapBusy ||
+                    !singleSelectedSource
+                  }
+                >
+                  Mark Unavailable…
+                </Button>
+              </span>
             </>
           )}
           <Button
@@ -492,14 +601,41 @@ export default function IncomingEventsPage() {
         ))}
       </div>
 
+      {/* Title search — filters visible rows by "title contains" */}
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search titles…"
+          className="w-full max-w-xs border border-curtn-dark bg-curtn-surface px-3 py-1.5 text-sm text-curtn-cream placeholder:text-curtn-muted focus:border-curtn-coral focus:outline-none"
+          aria-label="Search titles"
+        />
+        {searchTerm && (
+          <button
+            onClick={() => setSearch("")}
+            className="text-xs uppercase tracking-wider text-curtn-muted hover:text-curtn-cream"
+          >
+            Clear
+          </button>
+        )}
+        {searchTerm && (
+          <span className="text-xs text-curtn-muted">
+            {visibleItems.length} match{visibleItems.length === 1 ? "" : "es"}
+          </span>
+        )}
+      </div>
+
       {fetching && !data ? (
         <p className="text-sm text-curtn-muted">Loading...</p>
-      ) : items.length === 0 ? (
+      ) : visibleItems.length === 0 ? (
         <div className="border border-curtn-dark bg-curtn-surface px-4 py-12 text-center">
           <p className="text-sm text-curtn-muted">
-            {statusFilter === "pending"
-              ? "No pending events. Poll a data source to import new events."
-              : "No events match this filter."}
+            {searchTerm
+              ? `No titles match "${search.trim()}".`
+              : statusFilter === "pending"
+                ? "No pending events. Poll a data source to import new events."
+                : "No events match this filter."}
           </p>
         </div>
       ) : (
@@ -534,7 +670,7 @@ export default function IncomingEventsPage() {
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => {
+              {visibleItems.map((item) => {
                 const busy = rowBusy[item.id];
                 const error = rowError[item.id];
                 const isEditing = editingId === item.id;
@@ -626,6 +762,57 @@ export default function IncomingEventsPage() {
           </div>
         </div>
       )}
+
+      {managingGaps && singleSelectedSource && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => !gapBusy && setManagingGaps(false)}
+        >
+          <div
+            className="w-full max-w-md bg-curtn-surface border border-curtn-dark p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-medium text-curtn-cream">
+              Verified-unavailable fields
+            </h3>
+            <p className="mb-3 text-xs text-curtn-muted">
+              For <span className="text-curtn-cream">{singleSelectedSource.name}</span>
+              . Check fields you've confirmed this source never publishes. They'll
+              stop being flagged and show a muted marker instead — this applies to
+              the whole source and survives re-scrapes, not just the selected rows.
+            </p>
+            <div className="mb-3 grid gap-1.5">
+              {GAP_ELIGIBLE_CATEGORIES.map((c) => (
+                <label
+                  key={c.value}
+                  className="flex cursor-pointer items-center gap-2 text-sm text-curtn-cream"
+                >
+                  <input
+                    type="checkbox"
+                    checked={gapCats.has(c.value)}
+                    onChange={() => toggleGapCat(c.value)}
+                    className="accent-curtn-coral"
+                  />
+                  {c.label}
+                </label>
+              ))}
+            </div>
+            {gapMsg && <p className="mb-2 text-xs text-curtn-coral">{gapMsg}</p>}
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="tertiary"
+                onClick={() => setManagingGaps(false)}
+                disabled={gapBusy}
+              >
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={submitGaps} disabled={gapBusy}>
+                {gapBusy ? "Saving…" : "Save"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -669,6 +856,10 @@ function RowGroup(props: {
     timeSince,
   } = props;
 
+  // Fields this source has been verified as never publishing — render a muted
+  // marker in the empty cell instead of leaving it looking like a scraper miss.
+  const accepted = new Set(item.dataSource.acceptedGaps ?? []);
+
   return (
     <>
       <tr className="border-t border-curtn-dark hover:bg-curtn-surface/30">
@@ -696,6 +887,13 @@ function RowGroup(props: {
               // room and squeezed this column. Keeps the poster a firm 84px.
               className="h-12 w-12 max-w-none object-cover bg-curtn-surface-2"
             />
+          ) : accepted.has("missing_image") ? (
+            <div
+              className="h-12 w-12 bg-curtn-surface-2 flex items-center justify-center text-curtn-muted/50 text-[9px] leading-tight text-center"
+              title="Double-checked — no image at this source"
+            >
+              ✓ n/a
+            </div>
           ) : (
             <div className="h-12 w-12 bg-curtn-surface-2 flex items-center justify-center text-curtn-muted/40 text-[10px]">
               no img
@@ -715,6 +913,11 @@ function RowGroup(props: {
               {item.showDescription}
             </div>
           )}
+          {!item.showDescription && accepted.has("missing_description") && (
+            <div className="mt-1">
+              <VerifiedUnavailable label="No description" />
+            </div>
+          )}
         </td>
         <td className="px-3 py-3 align-top">
           {item.venueName && (
@@ -727,6 +930,11 @@ function RowGroup(props: {
             {formatDate(item.date)}
             {item.time ? ` · ${item.time}` : ""}
           </div>
+          {!item.date && !item.time && accepted.has("missing_date_time") && (
+            <div className="mt-1">
+              <VerifiedUnavailable label="No date/time" />
+            </div>
+          )}
         </td>
         <td className="px-3 py-3 align-top">
           {item.cast.length > 0 ? (
@@ -736,6 +944,8 @@ function RowGroup(props: {
                 {item.cast.length}
               </span>
             </div>
+          ) : accepted.has("missing_cast") ? (
+            <VerifiedUnavailable label="No cast" />
           ) : (
             <span className="text-xs text-curtn-muted/40">—</span>
           )}
@@ -759,6 +969,14 @@ function RowGroup(props: {
             >
               ↗
             </a>
+          )}
+          {!item.ticketUrl && accepted.has("missing_ticket_url") && (
+            <span
+              className="text-[9px] uppercase tracking-wider text-curtn-muted/50"
+              title="Double-checked — no ticket URL at this source"
+            >
+              ✓ n/a
+            </span>
           )}
         </td>
         <td className="px-3 py-3 align-top">
@@ -880,6 +1098,20 @@ function EditDrawer({
         </div>
       </td>
     </tr>
+  );
+}
+
+// Muted marker for a field this source has been verified as never publishing —
+// signals "double-checked, legitimately unavailable" rather than a scraper miss.
+function VerifiedUnavailable({ label }: { label: string }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 bg-curtn-cream/5 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-curtn-muted/60"
+      title="Double-checked — legitimately unavailable at this source"
+    >
+      <span aria-hidden>✓</span>
+      {label}
+    </span>
   );
 }
 

@@ -2,7 +2,8 @@ import {
   GraphQLBoolean,
   GraphQLString,
   GraphQLNonNull,
-  GraphQLObjectType
+  GraphQLObjectType,
+  GraphQLList
 } from 'graphql'
 import { connectionDefinitions, globalIdField } from 'graphql-relay'
 import { nodeInterface } from '../../graphql/nodeInterface'
@@ -74,6 +75,11 @@ export const dataSourceType = new GraphQLObjectType({
       type: GraphQLString,
       description: 'Explanation when healthStatus is needs-attention',
       resolve: ds => ds.healthReason || null
+    },
+    acceptedGaps: {
+      type: new GraphQLList(GraphQLString),
+      description: 'Fields verified as legitimately unavailable upstream (missing_* categories)',
+      resolve: ds => ds.acceptedGaps || []
     },
     isActive: {
       type: new GraphQLNonNull(GraphQLBoolean),
